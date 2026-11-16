@@ -1,0 +1,21 @@
+[Unit]
+Description=Orange Rewards API
+After=network.target
+
+[Service]
+Type=simple
+User=orange
+Group=orange
+WorkingDirectory=/opt/orange-rewards/current/server
+EnvironmentFile=/etc/orange-rewards/server.env
+ExecStart=/opt/orange-rewards/current/server/target/release/orange-rewards-server
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+ProtectSystem=strict
+ReadWritePaths=/var/lib/orange-rewards
+
+[Install]
+WantedBy=multi-user.target

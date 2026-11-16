@@ -1,0 +1,12 @@
+tools/*.jar
+tools/csj-inspect/
+tools/dt-inspect/
+tools/*.log
+tools/*.png
+tools/qr-geometry-classes/
+tools/risk-privacy-classes/
+tools/rain-timing-classes/
+tools/reward-notice-classes/
+tools/risk-detail-classes/
+signing/
+app/libs/*.aar

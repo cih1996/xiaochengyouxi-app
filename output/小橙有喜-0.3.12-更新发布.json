@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 15,
+  "latest_version_name": "0.3.12",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "新增七日签到与补签入口，优化大厅推送节流",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.12-15.apk",
+  "apk_sha256": "d169f51a83bf5d86164f4a1b71dbab55258845d22ef34965ac4aac6de9cef117",
+  "apk_size_bytes": 17797197
+}

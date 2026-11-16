@@ -1,0 +1,17 @@
+{
+  "checks": [
+    {
+      "host": "orange-api.lingzidev.com",
+      "public_catalog": 200,
+      "count": 38
+    },
+    {
+      "host": "orange.lingzidev.com",
+      "public_catalog": 200,
+      "count": 38
+    }
+  ],
+  "admin_protected": true,
+  "integration_wrong_key": 401,
+  "fake_products_created": false
+}

@@ -1,0 +1,10 @@
+DeviceTrust SDK 0.4.1
+
+Online guide: https://devicetrust.lingzidev.com/docs/
+API: https://devicetrust-sdk-api.lingzidev.com
+Console: https://devicetrust-console.lingzidev.com
+
+Android 7.0+, Java/Kotlin, four ABIs. Required: sdk and sdk-secure AARs. Optional: environment and rootbeer; rootbeer adapter needs Maven com.scottyab:rootbeer-lib:0.1.2.
+MainActivity.java is the sample flow reference, not a standalone library. For its BuildConfig set DEMO_URL to https://devicetrust-sdk-api.lingzidev.com/demo and SERVER_PINS to the public pin in the online guide.
+Never put the application backend secret in an APK.
+Hardware attestation and real-device compatibility require target-device acceptance. Demo payments use a demonstration ledger.

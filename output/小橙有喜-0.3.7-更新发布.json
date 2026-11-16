@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 10,
+  "latest_version_name": "0.3.7",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "新增真实商品库、金币返佣展示与正式品牌图标",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.7-10.apk",
+  "apk_sha256": "b27160142580bf31cb980fbdf500d1639e9985bc20841cb248e84ff2a2cdadc0",
+  "apk_size_bytes": 17764438
+}

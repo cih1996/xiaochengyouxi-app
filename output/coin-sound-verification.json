@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checkIn": "once",
+  "duplicateCheckIn": "silent",
+  "videoReward": "once after 5 seconds",
+  "closingReward": "silent",
+  "plays": [
+    {
+      "duration": 1.85,
+      "channels": 2,
+      "state": "running",
+      "rms": 0.09452190278213805
+    },
+    {
+      "duration": 1.85,
+      "channels": 2,
+      "state": "running",
+      "rms": 0.09452190278213805
+    }
+  ],
+  "runtimeErrors": []
+}

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "firstWelcome": true,
+  "passwordToggle": true,
+  "invitationGateKept": true,
+  "checkInDisabledAfterSuccess": true,
+  "checkInRestoredAfterReload": true,
+  "runtimeErrors": []
+}

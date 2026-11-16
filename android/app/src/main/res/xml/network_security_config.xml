@@ -1,0 +1,9 @@
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">snssdk.com</domain>
+        <domain includeSubdomains="true">pstatp.com</domain>
+        <domain includeSubdomains="true">byteimg.com</domain>
+        <domain includeSubdomains="true">bdurl.net</domain>
+    </domain-config>
+</network-security-config>

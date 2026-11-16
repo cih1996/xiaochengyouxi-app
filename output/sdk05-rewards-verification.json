@@ -1,0 +1,21 @@
+{
+  "target": "http://127.0.0.1:38183",
+  "checks": 83,
+  "passed": true,
+  "synthetic_protocol_and_callback": true,
+  "verified": [
+    "hardware-required-false",
+    "server-device-id",
+    "enforce-permit",
+    "full-intent-binding",
+    "quote-stability",
+    "unknown-device",
+    "cross-account-device-tier",
+    "inflight-reservation",
+    "session-price-lock",
+    "static-provider-validation",
+    "callback-before-credit",
+    "ledger-idempotency",
+    "private-receipts"
+  ]
+}

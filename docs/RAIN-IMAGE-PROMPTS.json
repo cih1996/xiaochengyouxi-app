@@ -1,0 +1,17 @@
+{
+  "mode": "built-in imagegen",
+  "assets": [
+    {
+      "key": "rain-small",
+      "prompt": "Use case: stylized-concept. Asset type: transparent UI sprite for a Chinese rewards app named 小橙有喜. Create ONE polished playful 3D small red lucky envelope, straight-on with a slight friendly three-quarter tilt, orange-red satin paper, rounded corners, golden circular clasp with a tiny orange-fruit symbol, tasteful embossed orange-slice pattern, a little floating gold coin next to it. Bright warm orange-red and honey-gold palette, high-end mobile app illustration, soft studio lighting, crisp silhouette, compact readable at 54 pixels. Isolated centered object with generous transparent margins. No words, no letters, no numbers, no watermark, no background or ground plane. Actual alpha transparency."
+    },
+    {
+      "key": "rain-large",
+      "prompt": "Use case: stylized-concept. Asset type: transparent special jackpot red-envelope UI sprite for Chinese rewards app 小橙有喜. ONE luxurious large red lucky envelope, front facing, visibly different from an ordinary envelope: rich vermilion-red body with ornate rounded golden frame, a radiant oversized golden clasp with orange-fruit emblem, two elegant small golden wings, sculpted golden crown, gleaming gold coins and tiny four-point golden sparkles surrounding it, soft honey-gold halo behind the envelope with transparent outer edges. Premium playful 3D mobile app illustration, warm orange-red and metallic gold, clean readable silhouette at 90px, energetic magical reward feeling. Centered with generous transparent margins. No words or letters or numbers, no watermark, no background or ground plane. Actual alpha transparency."
+    },
+    {
+      "key": "rain-sky",
+      "prompt": "Use case: stylized-concept. Asset type: transparent wide canopy decoration layered at the TOP of a mobile app red-envelope rain screen. Design a panoramic border made of fluffy sculpted peach-orange clouds along the top and both upper corners, suspended little gold stars, a few red lucky-envelope shapes and sparkling gold coins among the clouds. Center below the cloud border and lower two-thirds must be empty transparent space for interactive falling packets and countdown text rendered by app. Sophisticated friendly 3D illustration, warm vermilion-orange and soft peach with metallic honey gold highlights, luminous soft edges. Wide composition 3:2. No text, no letters, no watermark, no full-screen flat background, actual alpha transparency."
+    }
+  ]
+}

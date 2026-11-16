@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "checks": 25,
+  "target": "http://127.0.0.1:38183",
+  "synthetic_protocol_and_callback": true,
+  "verified": [
+    "bound-round",
+    "stable-join",
+    "grand-price-preserved",
+    "s2s-required",
+    "completed-after-shutdown",
+    "no-duplicate-credit"
+  ]
+}

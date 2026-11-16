@@ -1,0 +1,12 @@
+{
+  "name": "小橙有喜",
+  "version": "0.3.4",
+  "version_code": 7,
+  "package": "com.lingzidev.xiaochengyouxi",
+  "apk_sha256": "753f5736562afe19bc8c00f1d15a85a749fe73aa0d08531e51ef53059f7a65bc",
+  "signing_sha256": "E8:C6:93:62:5B:A7:88:F0:69:BD:77:4C:83:8A:58:99:04:6E:1E:F1:83:75:E3:D9:72:62:52:99:36:EF:E0:D3",
+  "admin_url": "https://orange.lingzidev.com/admin",
+  "apk_url": "https://orange.lingzidev.com/download/orange-rewards.apk",
+  "sdk": "DeviceTrust 0.4.1",
+  "hardware_attestation_enabled": false
+}

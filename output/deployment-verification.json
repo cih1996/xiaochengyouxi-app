@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "httpsApiChecks": 20,
+  "adminAuthentication": true,
+  "syntheticCallbackOnly": true,
+  "duplicateCreditPrevented": true,
+  "sseKinds": [
+    "text",
+    "red_packet",
+    "product"
+  ]
+}

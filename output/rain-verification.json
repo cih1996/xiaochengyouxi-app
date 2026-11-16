@@ -1,0 +1,20 @@
+{
+  "target": "https://orange-api.lingzidev.com",
+  "checks": 67,
+  "passed": true,
+  "synthetic_protocol_and_callback": true,
+  "verified": [
+    "outside-window",
+    "disabled",
+    "unpredictable-ids",
+    "cross-account",
+    "early-reveal",
+    "join-stability",
+    "duplicate-claim",
+    "server-amount",
+    "large-requires-callback",
+    "post-shutdown-completion",
+    "unique-ledger",
+    "proactive-cooldown-and-limit"
+  ]
+}

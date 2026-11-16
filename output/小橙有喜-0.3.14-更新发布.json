@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 17,
+  "latest_version_name": "0.3.14",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "新增用户协议与隐私政策入口，支持确认注销账号",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.14-17.apk",
+  "apk_sha256": "6b89fcb5879b1a8658e8185fdb661f7a7ce072426279acebfe53db2d91d1bcbc",
+  "apk_size_bytes": 17797196
+}

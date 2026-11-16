@@ -1,0 +1,11 @@
+{
+  "apk_sha256": "d3734aae8962a96b324b9efe28b6f6d46a0f525850913dc4c94337a98bffe1a1",
+  "apk_size_bytes": 17780835,
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.9-12.apk",
+  "enabled": true,
+  "latest_version_code": 12,
+  "release_notes": "正式版文案、商品点击统计与捡漏展示优化",
+  "min_supported_version_code": 0,
+  "latest_version_name": "0.3.9",
+  "title": "小橙有喜有新版本啦"
+}

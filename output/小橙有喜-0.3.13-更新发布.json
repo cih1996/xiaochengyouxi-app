@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 16,
+  "latest_version_name": "0.3.13",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "优化登录体验，使用更方便",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.13-16.apk",
+  "apk_sha256": "01ff8656b38f871d12922d1dbcc6271f1d7b0614cb20982891bae4e8897133a2",
+  "apk_size_bytes": 17797201
+}

@@ -1,0 +1,17 @@
+{
+  "target": "https://orange-api.lingzidev.com",
+  "checks": 64,
+  "verified": [
+    "signed-report",
+    "tamper-rejection",
+    "report-retry",
+    "business-idempotency",
+    "account-binding",
+    "risk-hold",
+    "public-redaction",
+    "admin-auth",
+    "advanced-records",
+    "manual-review"
+  ],
+  "synthetic_protocol_test": true
+}

@@ -1,0 +1,60 @@
+plugins { id 'com.android.application' }
+buildDir = file("${rootProject.projectDir}/build-output/${project.name}")
+def releaseSigning = new Properties()
+rootProject.file('signing/keystore.properties').withInputStream { releaseSigning.load(it) }
+android {
+    namespace 'com.lingzidev.xiaochengyouxi'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.lingzidev.xiaochengyouxi'; minSdk 24; targetSdk 35; versionCode 19; versionName '0.3.16'
+        buildConfigField 'String', 'DEVICE_TRUST_APP_ID', '"24befb89afb1186d8dc492c722ba302d40b148e8f5ca5a5f"'
+        buildConfigField 'String', 'CSJ_APP_ID', '"5931950"'
+        buildConfigField 'String', 'CSJ_REWARD_SLOT', '"993606639"'
+        buildConfigField 'String', 'CSJ_SPLASH_SLOT', '"899677611"'
+        buildConfigField 'String', 'CSJ_FEED_SLOT', '"993606636"'
+        buildConfigField 'String', 'PRIVACY_URL', '"https://orange-api.lingzidev.com/privacy"'
+    }
+    buildFeatures { buildConfig true }
+    signingConfigs {
+        release {
+            storeFile rootProject.file(releaseSigning.getProperty('storeFile'))
+            storePassword releaseSigning.getProperty('storePassword')
+            keyAlias releaseSigning.getProperty('keyAlias')
+            keyPassword releaseSigning.getProperty('keyPassword')
+            enableV1Signing true; enableV2Signing true; enableV3Signing true
+        }
+    }
+    buildTypes {
+        debug {
+            buildConfigField 'String', 'API_BASE_URL', '"http://127.0.0.1:38180"'
+            buildConfigField 'boolean', 'ADS_ENABLED', 'false'
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            buildConfigField 'String', 'API_BASE_URL', '"https://orange-api.lingzidev.com"'
+            buildConfigField 'boolean', 'ADS_ENABLED', 'true'
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+    implementation files('libs/device-trust-base-0.6.0.aar', 'libs/device-trust-secure-0.6.0.aar')
+    implementation files('libs/open_ad_sdk_7.8.1.4.aar')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+}
+tasks.register('syncArtwork', Copy) {
+    from '../../assets'
+    include 'packet.png', 'reward.png', 'mascot.png', 'shopping.png'
+    into 'src/main/res/drawable-nodpi'
+    rename { it.replace('-', '_') }
+}
+tasks.named('preBuild').configure { dependsOn 'syncArtwork' }
+tasks.register('syncRainArtwork', Copy) {
+    from '../../web/public/assets'
+    include 'rain-small.png', 'rain-large.png', 'rain-sky.png'
+    into 'src/main/res/drawable-nodpi'
+    rename { it.replace('-', '_') }
+}
+tasks.named('preBuild').configure { dependsOn 'syncRainArtwork' }

@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 11,
+  "latest_version_name": "0.3.8",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "新增邀请关系图、设备关联、行为审计与用户行为回放",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.8-11.apk",
+  "apk_sha256": "a2c73bc717dc83c4892037f75be95cceec533b75bc6d213f75d493529ced1fe7",
+  "apk_size_bytes": 17780829
+}

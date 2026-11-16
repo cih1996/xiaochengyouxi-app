@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 13,
+  "latest_version_name": "0.3.10",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "接入可配置营销活动、幸运转盘与奖励结算",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.10-13.apk",
+  "apk_sha256": "2d0450b6022ae5f5a763f3d4bee3e1e180a16267370660958ec5895838eeac7e",
+  "apk_size_bytes": 17797196
+}

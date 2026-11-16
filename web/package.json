@@ -1,0 +1,19 @@
+{
+  "name": "orange-rewards-web",
+  "version": "0.3.9",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 38181",
+    "prebuild": "node scripts/copy-product-docs.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 38181"
+  },
+  "dependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0",
+    "@vitejs/plugin-vue": "^5.2.0"
+  }
+}

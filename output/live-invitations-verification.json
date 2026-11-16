@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "apiChecks": 21,
+  "unboundBlocked": true,
+  "phonePrebindAutoConsumed": true,
+  "bindingDoesNotAwardCoins": true,
+  "rebindingBlocked": true,
+  "qrDecoded": true,
+  "nativeCapabilityEvent": true
+}

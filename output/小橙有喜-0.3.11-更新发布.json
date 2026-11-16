@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 14,
+  "latest_version_name": "0.3.11",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "优化首次登录路径与会话恢复，补充活动转盘视觉与活动状态展示",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.11-14.apk",
+  "apk_sha256": "a4bf5fb9b9f39abbaae78332b8eeb1f0382e6d7ee24e3d4be80c71c017e326ca",
+  "apk_size_bytes": 17797196
+}

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "reward": 100,
+  "balanceBefore": 3080,
+  "balanceAfter": 3180,
+  "products": 4,
+  "mobileOverflow": false,
+  "runtimeErrors": []
+}

@@ -1,0 +1,19 @@
+{
+  "test_vector_only": true,
+  "protocol": "OBA1",
+  "session_id": "00010203-0405-4607-8809-0a0b0c0d0e0f",
+  "seq": 1,
+  "key_base64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+  "nonce_prefix": "oKGiow==",
+  "challenge": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESd4RTKFo/BE/zKNr8+T684/mSZpODzy3y6suCMdXdj60DkX/0caaaL6IqAWoaBndTd/hZWVuRsPKWLR90+3Ytg==",
+  "plaintext_base64": "AAABmnLJggABaAMMAAAAAAADAAAAAAMBAAD//////////wAAAAAAAAAB9AUBAQAJxBOI/////wAAAAAAAAAB9AcEAQn//////////wAAAAAHd2VsY29tZQ==",
+  "header_base64": "T0JBMQABAgMEBUYHiAkKCwwNDg8AAAAAAAAAASAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4/oKGiowAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo",
+  "ciphertext_base64": "sK+5FB69RLQasq5me2sNik0ZmV1oYB8sqdVyodEB2GwUASseZbu61mBUFE4OaYge49Jg7vNNlZzq+gOFcpW8c01oYbway483GELjoqvVbYV7HDc5Cs2hbDqM8uBice8Kqbvs/cvbNmM=",
+  "signature_base64": "MEYCIQCdud9R6+IHsqxsSO6pnczxdahcYQ0IcOF3nYe0M3a3wwIhAIjiMF4AKikUNe4wZZM38zhtT5+pgkI+M6SCpaTOq3Tf",
+  "frame_base64": "T0JBMQABAgMEBUYHiAkKCwwNDg8AAAAAAAAAASAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4/oKGiowAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABosK+5FB69RLQasq5me2sNik0ZmV1oYB8sqdVyodEB2GwUASseZbu61mBUFE4OaYge49Jg7vNNlZzq+gOFcpW8c01oYbway483GELjoqvVbYV7HDc5Cs2hbDqM8uBice8Kqbvs/cvbNmMASDBGAiEAnbnfUeviB7KsbEjuqZ3M8XWoXGENCHDhd52HtDN2t8MCIQCI4jBeACopFDXuMGWTN/M4bU+fqYJCPjOkgqWkzqt03w==",
+  "packet_hash": "69d9534a0aa891dc35f5d490659b99836fcd506aa9890148fe7e45936629bb2a",
+  "expected_event_count": 3,
+  "expected_click_x": 2500,
+  "expected_click_y": 5000
+}
