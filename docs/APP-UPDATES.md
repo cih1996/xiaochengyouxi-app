@@ -137,3 +137,13 @@ APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.17-20.apk
 服务端先部署：数据库备份 `/var/lib/orange-rewards/before-0318-20261117-205946.sqlite3`，旧程序备份 `/opt/orange-rewards/backups/before-0318-20261117-205946.tgz`；网页未变。通用下载入口旧文件保留为 `orange-rewards.apk.before-0318`。
 
 APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.18-21.apk`；18,398,960 字节，SHA256 `570ef508515dbeeffd6d3ab54f99509d41292849782f46d44b9fa8f7e0e3ec40`。包名和固定签名保持不变，v2/v3 签名核验通过；`tools/verify-app-updates-live.py` 公网验收通过，服务端 58 项测试通过，本地实机完成提交注销、撤回、重启回到大厅的流程。
+
+## 0.3.19 正式短信策略与账号密码登录
+
+2026-11-18 发布 0.3.19（versionCode 22），revision 24。生产环境验证码改为每次随机生成，不再返回给客户端、不写入日志，等待短信通道接入后由服务端下发（修复了线上任意手机号可用固定 123456 登录的问题）；本地环境仍返回 123456 便于开发。登录支持“手机号或用户名 + 密码”，默认显示密码登录并可切换验证码登录；`/api/config` 下发 `auth.register_mode`，后台“运营设置 → 新用户注册方式”可选手机号+验证码或用户名+密码。用户名账号的 phone 列以 `u:<用户名>` 占位并对客户端隐藏。登录后的后台风控上报被拒时只记日志，不再弹出“操作未完成”。审核账号由服务器环境变量配置，密码登录或验证码登录均可。
+
+服务端与后台网页同次部署：数据库备份 `before-0319b-20261118-003044.sqlite3`，程序与网页备份 `/opt/orange-rewards/backups/before-0319b-20261118-003044.tgz`。APK `xiaochengyouxi-0.3.19-22.apk`，SHA256 `6df93a2b475fe59e6cc813988a07030fe72a5d35083807ce9349d38ed2bf4ec4`。
+
+## 0.3.20 修改密码统一走接口
+
+2026-11-18 发布 0.3.20（versionCode 23）。设置中的“修改密码”对所有账号统一调用找回密码接口，客户端不再对用户名账号做特殊提示；短信通道接入后只需更新服务端。服务端未变。APK `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.20-23.apk`，18,398,961 字节，SHA256 `96bbf73fe5dfaa977237f3b326c774c88e8593710119294330ae7970ff2a0f76`，包名与固定签名不变。

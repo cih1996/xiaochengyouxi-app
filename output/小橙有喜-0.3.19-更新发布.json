@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 22,
+  "latest_version_name": "0.3.19",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "支持手机号或用户名加密码登录，也可切换验证码登录；注销申请审核中可随时撤回；全新登录与设置页面、每日签到浮窗和全屏红包雨；提现改为固定档位；移除开屏广告",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.19-22.apk",
+  "apk_sha256": "6df93a2b475fe59e6cc813988a07030fe72a5d35083807ce9349d38ed2bf4ec4",
+  "apk_size_bytes": 18398961
+}
