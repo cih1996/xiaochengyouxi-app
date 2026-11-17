@@ -265,6 +265,7 @@ public final class MainActivity extends Activity {
         result -> {
           try {
             api.deviceTrustEnabled = ((JSONObject) result).getBoolean("device_trust_enabled");
+            api.authConfig = ((JSONObject) result).optJSONObject("auth");
             activities.configure((JSONObject) result);
             api.configurationLoaded = true;
             api.deviceTrust.initialize(
@@ -790,11 +791,19 @@ public final class MainActivity extends Activity {
     hallMessages = null;
     handler.removeCallbacksAndMessages(SMS_COUNTDOWN);
     stage.removeAllViews();
-    boolean login = mode.equals("login"), reset = mode.equals("reset");
+    // "login" = account (phone or username) + password, the default; "login_code" = phone + SMS code.
+    boolean codeLogin = mode.equals("login_code");
+    boolean login = mode.equals("login") || codeLogin, reset = mode.equals("reset");
+    boolean passwordLogin = login && !codeLogin;
+    boolean usernameRegister =
+        mode.equals("register")
+            && api.authConfig != null
+            && "username".equals(api.authConfig.optString("register_mode"));
+    boolean usesPhone = !passwordLogin && !usernameRegister;
     // Password change is opened from settings while signed in; it returns there instead of login.
     boolean fromSettings = reset && user != null && !api.token.isEmpty();
     authBack =
-        login
+        mode.equals("login")
             ? null
             : fromSettings
                 ? () -> {
@@ -814,7 +823,7 @@ public final class MainActivity extends Activity {
 
     // Sub-pages get a standard back affordance in the top-left; login is the root.
     LinearLayout top = row();
-    if (!login) {
+    if (!mode.equals("login")) {
       LineIcon back = new LineIcon(this, "back", INK);
       back.setContentDescription(fromSettings ? "返回设置" : "返回登录");
       back.setPadding(dp(10), dp(10), dp(10), dp(10));
@@ -842,26 +851,56 @@ public final class MainActivity extends Activity {
     add(
         body,
         text(
-            login ? "手机号登录" : fromSettings ? "修改密码" : reset ? "找回密码" : "注册新账号", 26, INK, true),
+            passwordLogin
+                ? "账号登录"
+                : codeLogin ? "验证码登录" : fromSettings ? "修改密码" : reset ? "找回密码" : "注册新账号",
+            26,
+            INK,
+            true),
         -1,
         -2);
     gap(body, 8);
     add(
         body,
         label(
-            login ? "未注册的手机号请先注册" : reset ? "验证手机号后设置新密码" : "注册后绑定好友邀请码，即可领取每日福利",
+            passwordLogin
+                ? "手机号或用户名均可登录"
+                : codeLogin
+                    ? "未注册的手机号请先注册"
+                    : reset
+                        ? "验证手机号后设置新密码"
+                        : usernameRegister ? "设置用户名和密码，马上开始领福利" : "注册后绑定好友邀请码，即可领取每日福利",
             13,
             MUTED),
         -1,
         -2);
     gap(body, 24);
 
+    EditText account =
+        input(
+            passwordLogin ? "手机号 / 用户名" : "设置用户名（字母开头，4-20 位）",
+            InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+    account.setFilters(new InputFilter[] {new InputFilter.LengthFilter(20)});
+    account.setTypeface(Typeface.DEFAULT);
+    account.setBackground(null);
+    account.setPadding(dp(18), 0, dp(12), 0);
+    account.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NEXT);
+    if (BuildConfig.DEBUG && passwordLogin) account.setText("13800138000");
+    if (!usesPhone) {
+      LinearLayout accountBox = fieldBox();
+      flex(accountBox, account);
+      focusRing(accountBox, account);
+      add(body, accountBox, -1, 54);
+    }
+
     EditText phone = input("请输入手机号", InputType.TYPE_CLASS_PHONE);
     phone.setFilters(new InputFilter[] {new InputFilter.LengthFilter(11)});
     phone.setBackground(null);
     phone.setPadding(dp(12), 0, dp(12), 0);
     phone.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NEXT);
-    if (BuildConfig.DEBUG && login) phone.setText("13800138000");
+    if (BuildConfig.DEBUG && codeLogin) phone.setText("13800138000");
     if (fromSettings) phone.setText(user.optString("phone"));
     LinearLayout phoneBox = fieldBox();
     TextView prefix = text("+86", 15, INK, true);
@@ -872,8 +911,10 @@ public final class MainActivity extends Activity {
     add(phoneBox, divider, 1, 20);
     flex(phoneBox, phone);
     focusRing(phoneBox, phone);
-    add(body, phoneBox, -1, 54);
-    gap(body, 12);
+    if (usesPhone) {
+      add(body, phoneBox, -1, 54);
+      gap(body, 12);
+    }
 
     EditText code = input("请输入验证码", InputType.TYPE_CLASS_NUMBER);
     code.setFilters(new InputFilter[] {new InputFilter.LengthFilter(6)});
@@ -889,14 +930,15 @@ public final class MainActivity extends Activity {
     send.setPadding(dp(14), 0, dp(18), 0);
     add(codeBox, send, -2, -1);
     focusRing(codeBox, code);
-    add(body, codeBox, -1, 54);
+    if (usesPhone) add(body, codeBox, -1, 54);
 
     final EditText password;
-    if (!login) {
-      gap(body, 12);
+    if (!codeLogin) {
+      if (usesPhone) gap(body, 12);
+      else gap(body, 12);
       password =
           input(
-              reset ? "设置新密码，至少 8 位" : "设置登录密码，至少 8 位",
+              passwordLogin ? "请输入密码" : reset ? "设置新密码，至少 8 位" : "设置登录密码，至少 8 位",
               InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
       password.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
       View box = passwordField(password);
@@ -942,9 +984,10 @@ public final class MainActivity extends Activity {
     Runnable validate =
         () -> {
           boolean ready =
-              phone.length() == 11
-                  && code.length() > 0
-                  && (password == null || password.length() >= 8);
+              (usesPhone
+                      ? phone.length() == 11 && code.length() > 0
+                      : account.length() >= (passwordLogin ? 1 : 4))
+                  && (password == null || password.length() >= (passwordLogin ? 1 : 8));
           submit.setAlpha(ready ? 1 : .45f);
           submit.setTag(ready);
           boolean canSend = phone.length() == 11 && send.getTag() == null;
@@ -965,6 +1008,7 @@ public final class MainActivity extends Activity {
           }
         };
     phone.addTextChangedListener(watcher);
+    account.addTextChangedListener(watcher);
     code.addTextChangedListener(watcher);
     if (password != null) password.addTextChangedListener(watcher);
 
@@ -1001,13 +1045,21 @@ public final class MainActivity extends Activity {
         () -> {
           String path = login ? "/auth/login" : reset ? "/auth/reset-password" : "/auth/register";
           JSONObject request =
-              Api.object(
-                  "phone",
-                  phone.getText().toString(),
-                  "code",
-                  code.getText().toString(),
-                  "password",
-                  login ? "" : password.getText().toString());
+              passwordLogin
+                  ? Api.object(
+                      "phone", account.getText().toString().trim(),
+                      "password", password.getText().toString())
+                  : usernameRegister
+                      ? Api.object(
+                          "username", account.getText().toString().trim(),
+                          "password", password.getText().toString())
+                      : Api.object(
+                          "phone",
+                          phone.getText().toString(),
+                          "code",
+                          code.getText().toString(),
+                          "password",
+                          codeLogin ? "" : password.getText().toString());
           if (login && !captchaId[0].isEmpty()) {
             try {
               request.put("captcha_id", captchaId[0]);
@@ -1042,7 +1094,8 @@ public final class MainActivity extends Activity {
                 @Override
                 public void failed(int status, String message, String errorCode) {
                   if (login && "LOGIN_CAPTCHA_REQUIRED".equals(errorCode)) {
-                    requestLoginCaptcha(phone, submit, captchaId, captchaAnswer, submitRequest[0]);
+                    requestLoginCaptcha(
+                        passwordLogin ? account : phone, submit, captchaId, captchaAnswer, submitRequest[0]);
                     return;
                   }
                   failed(message);
@@ -1053,9 +1106,12 @@ public final class MainActivity extends Activity {
     Runnable attempt =
         () -> {
           if (!Boolean.TRUE.equals(submit.getTag())) {
-            if (phone.length() != 11) tip("请输入 11 位手机号");
-            else if (code.length() == 0) tip("请输入验证码");
-            else tip("密码至少需要 8 位");
+            if (usesPhone && phone.length() != 11) tip("请输入 11 位手机号");
+            else if (usesPhone && code.length() == 0) tip("请输入验证码");
+            else if (!usesPhone && account.length() == 0)
+              tip(passwordLogin ? "请输入手机号或用户名" : "请设置用户名");
+            else if (usernameRegister && account.length() < 4) tip("用户名至少 4 位");
+            else tip(passwordLogin ? "请输入密码" : "密码至少需要 8 位");
             return;
           }
           if (agreementRow != null && !agree.isChecked()) {
@@ -1093,7 +1149,24 @@ public final class MainActivity extends Activity {
               return true;
             });
     add(body, submit, -1, 52);
-    gap(body, 18);
+    gap(body, 6);
+
+    if (login) {
+      LinearLayout methods = row();
+      TextView toggle = text(passwordLogin ? "验证码登录" : "密码登录", 14, RED, true);
+      toggle.setPadding(0, dp(10), dp(10), dp(10));
+      toggle.setOnClickListener(v -> auth(passwordLogin ? "login_code" : "login"));
+      add(methods, toggle, -2, -2);
+      methods.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+      if (passwordLogin) {
+        TextView forgot = label("忘记密码？", 14, MUTED);
+        forgot.setPadding(dp(10), dp(10), 0, dp(10));
+        forgot.setOnClickListener(v -> auth("reset"));
+        add(methods, forgot, -2, -2);
+      }
+      add(body, methods, -1, -2);
+    }
+    gap(body, 10);
 
     LinearLayout switchRow = row();
     switchRow.setGravity(Gravity.CENTER);
@@ -2760,7 +2833,7 @@ public final class MainActivity extends Activity {
         || (checkinDialog != null && checkinDialog.isShowing())) return;
     java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
     f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Shanghai"));
-    String key = "checkin_prompt_" + user.optString("phone");
+    String key = "checkin_prompt_" + user.optLong("id");
     String today = f.format(new java.util.Date());
     if (today.equals(api.preferences.getString(key, ""))) return;
     api.preferences.edit().putString(key, today).apply();
@@ -3105,7 +3178,9 @@ public final class MainActivity extends Activity {
     add(
         identity,
         label(
-            phone.length() == 11 ? phone.substring(0, 3) + "****" + phone.substring(7) : phone,
+            phone.length() == 11
+                ? phone.substring(0, 3) + "****" + phone.substring(7)
+                : phone.isEmpty() ? "用户名：" + user.optString("username") : phone,
             12,
             MUTED),
         -1,
@@ -3220,7 +3295,14 @@ public final class MainActivity extends Activity {
     settingsGroup(body, "账号与安全");
     LinearLayout account = col();
     account.setBackground(bg(WHITE, 18));
-    settingRow(account, "修改密码", "", () -> auth("reset"));
+    settingRow(
+        account,
+        "修改密码",
+        "",
+        () -> {
+          if (user.optString("phone").isEmpty()) tip("用户名账号暂不支持通过短信修改密码，请联系客服");
+          else auth("reset");
+        });
     line(account);
     settingRow(account, "注销账号", "需审核", this::confirmDeleteAccount);
     add(body, account, -1, -2);

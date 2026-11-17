@@ -31,6 +31,8 @@ final class Api {
   final BehaviorAudit behavior;
   boolean configurationLoaded;
   boolean deviceTrustEnabled;
+  /** Server-provided login/registration options from /api/config (register_mode, login_default). */
+  org.json.JSONObject authConfig;
   boolean updateRequired;
   String token;
 

@@ -177,6 +177,7 @@ async fn public_config(State(state): State<AppState>) -> ApiResult<Value> {
     let config = &state.config;
     let mut result = json!({"app_name":"小橙有喜","operator_name":"广西奇易电子商务有限公司","android_package":"com.lingzidev.xiaochengyouxi","environment":if config.production {"production"} else {"local"},"admin_auth_required":admin_account::required(&state,&open(&state)?)?,"ad_mode":config.ad_mode,"sms_mode":"mock","payment_mode":"mock","invite_required":true,"invite_sms_required":false});
     result["device_trust_enabled"] = json!(config.device_trust.is_some());
+    result["auth"] = json!({"register_mode":register_mode(&open(&state)?)?,"login_default":"password","login_methods":["password","sms"]});
     if let Some(url) = &config.app_download_url {
         result["app_download_url"] = json!(url);
     }
@@ -201,17 +202,20 @@ struct User {
     invitation_required: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     inviter_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    username: Option<String>,
 }
 
 fn user(db: &Connection, id: i64) -> Result<User, ApiError> {
     let mut result = db
         .query_row(
-            "SELECT id,phone,nickname,coins,invite_code,invitation_bound_at,inviter_code FROM users WHERE id=?1",
+            "SELECT id,phone,nickname,coins,invite_code,invitation_bound_at,inviter_code,username FROM users WHERE id=?1",
             [id],
             |r| {
                 Ok(User {
                     id: r.get(0)?,
-                    phone: r.get(1)?,
+                    // Username accounts have no phone; hide the internal placeholder.
+                    phone: r.get::<_, String>(1).map(|p| if p.starts_with("u:") { String::new() } else { p })?,
                     nickname: r.get(2)?,
                     coins: r.get(3)?,
                     total_earned: 0,
@@ -222,6 +226,7 @@ fn user(db: &Connection, id: i64) -> Result<User, ApiError> {
                     invite_code:r.get(4)?,
                     invitation_required:r.get::<_,Option<i64>>(5)?.is_none(),
                     inviter_code:r.get(6)?,
+                    username:r.get(7)?,
                 })
             },
         )
@@ -275,6 +280,21 @@ fn validate_phone(phone: &str) -> Result<(), ApiError> {
     }
     Ok(())
 }
+/// Usernames are case-insensitive, start with a letter and can never look like a phone number.
+fn normalize_username(value: &str) -> Result<String, ApiError> {
+    let name = value.trim().to_ascii_lowercase();
+    let valid = (4..=20).contains(&name.len())
+        && name.starts_with(|c: char| c.is_ascii_lowercase())
+        && name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+    if !valid {
+        return Err(invalid("用户名为 4 至 20 位字母、数字或下划线，并以字母开头"));
+    }
+    Ok(name)
+}
+/// Registration method chosen in the admin settings: "phone" (phone + SMS code) or "username".
+fn register_mode(db: &Connection) -> Result<&'static str, ApiError> {
+    Ok(if setting(db, "register_mode")? >= 0.5 { "username" } else { "phone" })
+}
 fn new_session(db: &Connection, user_id: i64) -> Result<Value, ApiError> {
     let token = Uuid::new_v4().to_string();
     db.execute(
@@ -322,9 +342,13 @@ async fn sms(State(state): State<AppState>, Json(input): Json<SmsInput>) -> ApiR
 }
 #[derive(Deserialize)]
 struct RegisterInput {
+    #[serde(default)]
     phone: String,
     password: String,
+    #[serde(default)]
     code: String,
+    #[serde(default)]
+    username: Option<String>,
     nickname: Option<String>,
 }
 async fn register(
@@ -332,6 +356,9 @@ async fn register(
     Extension(context): Extension<RequestContext>,
     Json(input): Json<RegisterInput>,
 ) -> ApiResult<Value> {
+    if register_mode(&open(&state)?)? == "username" {
+        return register_username(&state, &context, &input);
+    }
     validate_phone(&input.phone)?;
     let hash = password_hash(&input.password)?;
     let mut db = open(&state)?;
@@ -374,6 +401,47 @@ async fn register(
     tx.commit()?;
     Ok(Json(result))
 }
+/// Username + password registration. The phone column keeps its NOT NULL/UNIQUE contract with a
+/// "u:<username>" placeholder that can never match a real 11-digit number; it is hidden from clients.
+fn register_username(
+    state: &AppState,
+    context: &RequestContext,
+    input: &RegisterInput,
+) -> ApiResult<Value> {
+    let username = normalize_username(input.username.as_deref().unwrap_or(""))?;
+    let hash = password_hash(&input.password)?;
+    let placeholder = format!("u:{username}");
+    let mut db = open(state)?;
+    let tx = db.transaction()?;
+    let exists: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE username=?1 OR phone=?2)",
+        params![username, placeholder],
+        |r| r.get(0),
+    )?;
+    if exists {
+        return Err(conflict("用户名已被使用，请换一个"));
+    }
+    tx.execute(
+        "INSERT INTO users(phone,password_hash,nickname,coins,created_at,invite_code,username) VALUES(?1,?2,?3,0,?4,?5,?6)",
+        params![placeholder, hash, username, now(), invitations::new_code(&tx)?, username],
+    )?;
+    let id = tx.last_insert_rowid();
+    user_admin::behavior(
+        &tx,
+        context,
+        Some(id),
+        None,
+        "register",
+        "success",
+        &id.to_string(),
+        None,
+        json!({"method":"username"}),
+    )?;
+    let result = new_session(&tx, id)?;
+    tx.commit()?;
+    Ok(Json(result))
+}
+
 #[derive(Deserialize)]
 struct LoginInput {
     phone: String,
@@ -553,13 +621,27 @@ async fn login(
         .code
         .as_deref()
         .filter(|value| !value.trim().is_empty());
-    let credentials: Option<(i64, String)> = db
-        .query_row(
+    // The "phone" field carries the account: an 11-digit phone number or a username.
+    let account = input.phone.trim().to_string();
+    let by_phone = validate_phone(&account).is_ok();
+    if code_login.is_some() && !by_phone {
+        return Err(invalid("验证码登录请输入 11 位手机号"));
+    }
+    let credentials: Option<(i64, String)> = if by_phone {
+        db.query_row(
             "SELECT id,password_hash FROM users WHERE phone=?1",
-            [&input.phone],
+            [&account],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
-        .optional()?;
+        .optional()?
+    } else {
+        db.query_row(
+            "SELECT id,password_hash FROM users WHERE username=?1",
+            [account.to_ascii_lowercase()],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?
+    };
     let Some((id, hash)) = credentials else {
         let needs_captcha = record_login_failure(&db, &guard_key)?;
         user_admin::behavior(
@@ -580,7 +662,7 @@ async fn login(
                 Some("LOGIN_CAPTCHA_REQUIRED"),
             )
         } else {
-            ApiError(StatusCode::UNAUTHORIZED, "手机号或密码错误".into(), None)
+            ApiError(StatusCode::UNAUTHORIZED, "账号或密码错误".into(), None)
         });
     };
     let valid = if let Some(code) = code_login {
@@ -612,7 +694,11 @@ async fn login(
                 Some("LOGIN_CAPTCHA_REQUIRED"),
             )
         } else {
-            ApiError(StatusCode::UNAUTHORIZED, "手机号或验证码错误".into(), None)
+            ApiError(
+                StatusCode::UNAUTHORIZED,
+                if code_login.is_some() { "手机号或验证码错误" } else { "账号或密码错误" }.into(),
+                None,
+            )
         });
     }
     clear_login_failures(&db, &guard_key)?;
@@ -2130,7 +2216,7 @@ fn settings_json(db: &Connection, config: &RuntimeConfig) -> Result<Value, ApiEr
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
     Ok(
-        json!({"coins_per_yuan":COINS_PER_YUAN,"min_withdraw_yuan":setting(db,"min_withdraw_yuan")?,"daily_reward_limit":setting(db,"daily_reward_limit")? as i64,"reward_amount":setting(db,"reward_amount")? as i64,"csj_expected_reward_name":name,"csj_expected_reward_amount":amount,"sms_mode":"mock","ad_mode":config.ad_mode,"payment_mode":"mock"}),
+        json!({"coins_per_yuan":COINS_PER_YUAN,"min_withdraw_yuan":setting(db,"min_withdraw_yuan")?,"daily_reward_limit":setting(db,"daily_reward_limit")? as i64,"reward_amount":setting(db,"reward_amount")? as i64,"csj_expected_reward_name":name,"csj_expected_reward_amount":amount,"sms_mode":"mock","ad_mode":config.ad_mode,"payment_mode":"mock","register_mode":register_mode(db)?}),
     )
 }
 #[derive(Deserialize)]
@@ -2140,6 +2226,8 @@ struct SettingsInput {
     reward_amount: i64,
     csj_expected_reward_name: Option<String>,
     csj_expected_reward_amount: Option<i64>,
+    #[serde(default)]
+    register_mode: Option<String>,
 }
 async fn update_settings(
     State(state): State<AppState>,
@@ -2170,6 +2258,14 @@ async fn update_settings(
             "UPDATE csj_reward_config SET amount=?1 WHERE id=1",
             [amount],
         )?;
+    }
+    if let Some(mode) = input.register_mode.as_deref() {
+        let value = match mode {
+            "phone" => 0.0,
+            "username" => 1.0,
+            _ => return Err(invalid("注册方式应为 phone 或 username")),
+        };
+        tx.execute("UPDATE settings SET value=?1 WHERE key='register_mode'", params![value])?;
     }
     for (key, value) in [
         ("min_withdraw_yuan", input.min_withdraw_yuan),
@@ -2265,6 +2361,7 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
         [serde_json::to_string(&HallStrategy::default())?],
     )?;
     invitations::initialize(&db).map_err(|e| e.1)?;
+    db.execute_batch("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL; INSERT OR IGNORE INTO settings(key,value) VALUES('register_mode',0);")?;
     user_admin::initialize(&db)?;
     admin_account::initialize(state, &db).map_err(|e| e.1)?;
     mail_admin::initialize(&db)?;

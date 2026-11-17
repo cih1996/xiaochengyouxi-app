@@ -1308,7 +1308,12 @@ onMounted(load);
                   type="number"
                   min="1"
                   required
-              /></label>
+              /></label><label
+                >新用户注册方式<select v-model="settings.register_mode">
+                  <option value="phone">手机号 + 短信验证码</option>
+                  <option value="username">用户名 + 密码</option>
+                </select></label
+              >
             </div>
             <div class="form-two-cols">
               <label

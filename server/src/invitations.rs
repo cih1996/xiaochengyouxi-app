@@ -59,6 +59,7 @@ pub(super) fn initialize(db: &Connection) -> Result<(), ApiError> {
         ("inviter_id", "INTEGER"),
         ("inviter_code", "TEXT"),
         ("invitation_bound_at", "INTEGER"),
+        ("username", "TEXT"),
     ] {
         if !columns.iter().any(|column| column == name) {
             db.execute_batch(&format!("ALTER TABLE users ADD COLUMN {name} {definition}"))?;
