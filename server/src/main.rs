@@ -30,6 +30,7 @@ mod business_guard;
 mod campaign;
 mod device_bootstrap;
 mod hall_requests;
+mod home_layout;
 mod invitation_graph;
 mod invitations;
 mod mail_admin;
@@ -40,6 +41,7 @@ mod reward_policy;
 mod risk;
 mod user_admin;
 mod user_stats;
+mod withdraw_rules;
 use std::net::SocketAddr;
 use user_admin::{RequestContext, client_ip};
 const COINS_PER_YUAN: i64 = 1000;
@@ -228,7 +230,7 @@ fn user(db: &Connection, id: i64) -> Result<User, ApiError> {
     result.total_earned = db.query_row("SELECT COALESCE(SUM(coins),0) FROM ledger WHERE user_id=?1 AND coins>0 AND source NOT LIKE 'withdraw-refund:%'", [id], |r| r.get(0))?;
     result.today_earned = db.query_row("SELECT COALESCE(SUM(coins),0) FROM ledger WHERE user_id=?1 AND coins>0 AND source NOT LIKE 'withdraw-refund:%' AND created_at>=?2", params![id,today_start()], |r| r.get(0))?;
     result.cash_yuan = result.coins as f64 / COINS_PER_YUAN as f64;
-    result.withdraw_min_yuan = setting(db, "min_withdraw_yuan")?;
+    result.withdraw_min_yuan = withdraw_rules::minimum(db)?;
     result.checked_in_today = db.query_row(
         "SELECT EXISTS(SELECT 1 FROM ledger WHERE user_id=?1 AND source=?2)",
         params![id, format!("check-in:{}:{id}", day())],
@@ -1655,10 +1657,10 @@ async fn withdraw(
         if let Some(result) = withdraw_retry(&state, &db, &headers, uid, &input)? {
             return Ok(Json(result));
         }
-        let min = setting(&db, "min_withdraw_yuan")?;
-        if !input.amount_yuan.is_finite() || input.amount_yuan < min {
-            return Err(invalid(&format!("满 {min} 元可提现")));
+        if !input.amount_yuan.is_finite() {
+            return Err(invalid("请选择提现金额"));
         }
+        withdraw_rules::check(&db, uid, input.amount_yuan)?;
         if input.account.is_empty() {
             return Err(invalid("请填写收款账号"));
         }
@@ -1674,6 +1676,8 @@ async fn withdraw(
         return Ok(Json(result));
     }
     let event = business_guard::validate_local(&state, &tx, &headers, uid, "withdraw", actual)?;
+    // Re-check inside the transaction so two concurrent requests cannot both use a daily tier.
+    withdraw_rules::check(&tx, uid, input.amount_yuan)?;
     let coins = (input.amount_yuan * 1000.0).round() as i64;
     let balance: i64 = tx.query_row("SELECT coins FROM users WHERE id=?1", [uid], |r| r.get(0))?;
     if coins > balance {
@@ -2219,6 +2223,8 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     mail_events::initialize(&db)?;
     product_admin::initialize(&db)?;
     app_config::initialize(&db).map_err(|e| e.1)?;
+    home_layout::initialize(&db).map_err(|e| e.1)?;
+    withdraw_rules::initialize(&db).map_err(|e| e.1)?;
     risk::init(&db)?;
     rain::initialize(&db).map_err(|e| e.1)?;
     hall_requests::initialize(&db).map_err(|e| e.1)?;
@@ -2250,6 +2256,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(mail_events::admin_routes())
         .merge(product_admin::admin_routes())
         .merge(app_config::admin_routes())
+        .merge(home_layout::admin_routes())
+        .merge(withdraw_rules::admin_routes())
         .merge(reward_policy::admin_routes())
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())
@@ -2287,6 +2295,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(mail_admin::internal_routes())
         .merge(product_admin::routes())
         .merge(app_config::routes())
+        .merge(home_layout::routes())
+        .merge(withdraw_rules::routes())
         .merge(reward_policy::routes())
         .merge(rain::routes())
         .merge(hall_requests::routes())

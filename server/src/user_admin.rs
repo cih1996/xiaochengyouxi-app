@@ -967,6 +967,11 @@ mod tests {
     async fn sdk_withdrawal_retry_never_debits_twice_and_restrictions_apply() {
         let (state, context, mut headers) = fixture(true);
         let db = open(&state).unwrap();
+        db.execute(
+            "UPDATE withdraw_rules SET json=?1 WHERE id=1",
+            [r#"{"tiers":[{"id":"t1","amount_yuan":1.0,"daily_limit":0}]}"#],
+        )
+        .unwrap();
         business_guard::test_event(
             &state,
             "withdraw-proof",
