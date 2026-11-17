@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>限时活动</title>
+  <style>
+    :root{color-scheme:light;--ink:#392923;--muted:#a38c7e;--red:#f65331;--cream:#fff8f2}
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#ff7a45 0,#ffb36b 260px,var(--cream) 260px);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+    main{max-width:480px;margin:auto;padding:28px 16px 40px}
+    h1{color:#fff;font-size:28px;margin:8px 0 4px;text-shadow:0 2px 6px #c2401f55}
+    .lead{color:#fff3e4;margin:0 0 22px}
+    .card{background:#fff;border-radius:20px;padding:18px;box-shadow:0 8px 24px #e2794a22;margin-bottom:14px}
+    .me{display:flex;justify-content:space-between;align-items:center}
+    .me b{font-size:18px}
+    .coins{color:var(--red);font-weight:700;font-size:22px}
+    .muted{color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    button{border:0;border-radius:16px;padding:14px 10px;font:inherit;font-weight:600;cursor:pointer}
+    .primary{background:linear-gradient(90deg,#ff8a3d,#f2452b);color:#fff}
+    .soft{background:#fff1e4;color:#c0602f}
+    .err{color:#c0392b;font-size:13px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>限时活动示例</h1>
+  <p class="lead">这是 App 内嵌网页活动的演示页，后台“首页入口”可随时开关。</p>
+  <section class="card">
+    <div class="me">
+      <div><b id="name">读取中…</b><div class="muted" id="hint">正在确认登录状态</div></div>
+      <div class="coins" id="coins"></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="grid">
+      <button class="primary" data-open="checkin">去签到</button>
+      <button class="primary" data-open="withdraw">去提现</button>
+      <button class="soft" data-open="shop">逛捡漏</button>
+      <button class="soft" id="share">分享给好友</button>
+    </div>
+  </section>
+  <section class="card">
+    <button class="soft" id="close" style="width:100%">返回 App</button>
+    <p class="err" id="err" hidden></p>
+  </section>
+</main>
+<script>
+  // window.OrangeApp is injected by the Android WebView for our own domains only.
+  const app = window.OrangeApp;
+  const $ = (id) => document.getElementById(id);
+  const fail = (m) => { $("err").hidden = false; $("err").textContent = m; };
+  async function load() {
+    if (!app) { $("name").textContent = "请在小橙有喜 App 内打开"; $("hint").textContent = ""; return; }
+    const token = app.token();
+    if (!token) { $("name").textContent = "未登录"; $("hint").textContent = "登录后参加活动"; return; }
+    try {
+      const res = await fetch("/api/me", { headers: { Authorization: "Bearer " + token } });
+      const me = await res.json();
+      if (!res.ok) throw new Error(me.error || "读取失败");
+      $("name").textContent = me.nickname || "小橙用户";
+      $("hint").textContent = "App " + app.version();
+      $("coins").textContent = (me.coins || 0).toLocaleString() + " 金币";
+    } catch (e) { fail(e.message); }
+  }
+  document.querySelectorAll("[data-open]").forEach((b) =>
+    b.addEventListener("click", () => app ? app.open(b.dataset.open) : fail("请在 App 内打开")));
+  $("share").addEventListener("click", () => app && app.share("小橙有喜限时活动，一起来领金币！"));
+  $("close").addEventListener("click", () => app ? app.close() : history.back());
+  load();
+</script>
+</body>
+</html>

@@ -11,6 +11,8 @@ import UserCenter from "./UserCenter.vue";
 import InvitationGraph from "./InvitationGraph.vue";
 import BehaviorAdmin from "./BehaviorAdmin.vue";
 import ActivityAdmin from "./ActivityAdmin.vue";
+import HomeLayoutAdmin from "./HomeLayoutAdmin.vue";
+import WithdrawRulesAdmin from "./WithdrawRulesAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
 defineEmits(["back"]);
@@ -54,6 +56,8 @@ const rainAdmin = ref(null),
   graphPanel = ref(null),
   behaviorPanel = ref(null);
 const activityPanel = ref(null);
+const homePanel = ref(null);
+const withdrawRulesPanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -80,6 +84,8 @@ const items = [
   { id: "strategy", label: "推送策略", icon: "bell" },
   { id: "rain", label: "红包雨", icon: "gift" },
   { id: "activity-config", label: "活动配置", icon: "spark" },
+  { id: "home-layout", label: "首页入口", icon: "grid" },
+  { id: "withdraw-rules", label: "提现档位", icon: "wallet" },
   { id: "invitations", label: "邀请管理", icon: "send" },
   { id: "settings", label: "运营设置", icon: "settings" },
   { id: "release", label: "版本发布", icon: "download" },
@@ -107,6 +113,7 @@ const groups = [
       "strategy",
       "rain",
       "activity-config",
+      "home-layout",
       "invitations",
     ],
   },
@@ -114,7 +121,7 @@ const groups = [
     id: "funds",
     label: "资金管理",
     icon: "wallet",
-    children: ["rewards", "withdrawals", "account-deletions"],
+    children: ["rewards", "withdrawals", "withdraw-rules", "account-deletions"],
   },
   {
     id: "system",
@@ -271,6 +278,8 @@ async function refreshCurrent() {
   else if (tab.value === "relations") await graphPanel.value.refresh();
   else if (tab.value === "behavior") await behaviorPanel.value.refresh();
   else if (tab.value === "activity-config") await activityPanel.value.refresh();
+  else if (tab.value === "home-layout") await homePanel.value?.refresh();
+  else if (tab.value === "withdraw-rules") await withdrawRulesPanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -657,6 +666,18 @@ onMounted(load);
         <ActivityAdmin
           v-if="tab === 'activity-config'"
           ref="activityPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <HomeLayoutAdmin
+          v-if="tab === 'home-layout'"
+          ref="homePanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <WithdrawRulesAdmin
+          v-if="tab === 'withdraw-rules'"
+          ref="withdrawRulesPanel"
           :api="api"
           @unauthorized="fail"
         />
@@ -1291,12 +1312,8 @@ onMounted(load);
             </div>
             <div class="form-two-cols">
               <label
-                >最低提现金额（元）<input
-                  v-model.number="settings.min_withdraw_yuan"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required /></label
+                >提现门槛
+                <div class="readonly-input">在“资金管理 → 提现档位”设置</div></label
               ><label
                 >金币兑换比例
                 <div class="readonly-input">1,000 金币 = 1 元</div></label
