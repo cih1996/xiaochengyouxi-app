@@ -129,3 +129,11 @@ APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.16-19.apk
 服务端与网页先于 APK 部署：数据库备份 `/var/lib/orange-rewards/before-0317-20261117-191032.sqlite3`，旧程序与网页备份 `/opt/orange-rewards/backups/before-0317-20261117-191032.tgz`，旧网页目录保留为 `web/dist.old-20261117-191032`；通用下载入口旧文件保留为 `orange-rewards.apk.before-0317`。
 
 APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.17-20.apk`；18,398,972 字节，SHA256 `f3fabcf06a91a4f7eae5c4f6571355270d6aa24b447653a3723a06d1504f836e`。包名和固定签名保持不变，v2/v3 签名核验通过。元数据 `output/小橙有喜-0.3.17-更新发布.json`，`tools/verify-app-updates-live.py` 公网验收通过；服务端 58 项测试通过，Pixel 8a 正式包对线上完成登录、签到与 DeviceTrust 上报。
+
+## 0.3.18 注销申请可撤回
+
+2026-11-17 发布 0.3.18（versionCode 21），revision 23，最低支持版本 0。注销申请在审核中时，账号状态页新增“撤回注销申请”按钮，确认后服务端 `POST /api/account/deletion/cancel` 将申请标记为 `cancelled` 并写入审计，账号恢复正常使用；审核通过或驳回后的申请不受影响。其余内容同 0.3.17。
+
+服务端先部署：数据库备份 `/var/lib/orange-rewards/before-0318-20261117-205946.sqlite3`，旧程序备份 `/opt/orange-rewards/backups/before-0318-20261117-205946.tgz`；网页未变。通用下载入口旧文件保留为 `orange-rewards.apk.before-0318`。
+
+APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.18-21.apk`；18,398,960 字节，SHA256 `570ef508515dbeeffd6d3ab54f99509d41292849782f46d44b9fa8f7e0e3ec40`。包名和固定签名保持不变，v2/v3 签名核验通过；`tools/verify-app-updates-live.py` 公网验收通过，服务端 58 项测试通过，本地实机完成提交注销、撤回、重启回到大厅的流程。

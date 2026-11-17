@@ -12,7 +12,7 @@
 | 隐私政策 | https://orange.lingzidev.com/privacy |
 | 用户协议 | https://orange.lingzidev.com/terms |
 
-当前 Android 发布版为 `0.3.17`（versionCode 20），正式名称“小橙有喜”，固定包名 `com.lingzidev.xiaochengyouxi`。继续使用原发布证书。版本发布、在线公告与升级流程见 [APP 更新](APP-UPDATES.md)。
+当前 Android 发布版为 `0.3.18`（versionCode 21），正式名称“小橙有喜”，固定包名 `com.lingzidev.xiaochengyouxi`。继续使用原发布证书。版本发布、在线公告与升级流程见 [APP 更新](APP-UPDATES.md)。
 
 ## 私密资料
 
