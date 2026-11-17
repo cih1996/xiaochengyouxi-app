@@ -121,3 +121,11 @@ APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.14-17.apk
 APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.16-19.apk`；17,797,209 字节，SHA256 `8cde686e3adc7f3fd06c1b3436d162d8f673793eca05922d4d724bce2f027ce3`。包名和固定签名保持不变，v2/v3 签名核验通过。
 
 服务端新增注销申请、审核、结果查询与后台“注销审核”入口；隐私政策同步说明提交申请、客服审核和结果反馈流程。
+
+## 0.3.17 商店审核整改与界面重做
+
+2026-11-17 发布 0.3.17（versionCode 20），revision 22，最低支持版本 0。针对应用商店审核：删除开屏广告（穿山甲 SDK 改为后台静默初始化，激励视频与信息流照常），登录和注册页增加默认不勾选的《用户协议》《隐私政策》同意框。同时接入 DeviceTrust 0.7.6（开启 ANDROID_ID 与 Widevine 摘要、局域网信息，隐私政策 1.3、隐私同意 v4），重做登录、设置等页面，新增每日首次签到浮窗、全屏红包雨动效、首页入口与网页活动容器，提现改为后台配置的固定档位。
+
+服务端与网页先于 APK 部署：数据库备份 `/var/lib/orange-rewards/before-0317-20261117-191032.sqlite3`，旧程序与网页备份 `/opt/orange-rewards/backups/before-0317-20261117-191032.tgz`，旧网页目录保留为 `web/dist.old-20261117-191032`；通用下载入口旧文件保留为 `orange-rewards.apk.before-0317`。
+
+APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.17-20.apk`；18,398,972 字节，SHA256 `f3fabcf06a91a4f7eae5c4f6571355270d6aa24b447653a3723a06d1504f836e`。包名和固定签名保持不变，v2/v3 签名核验通过。元数据 `output/小橙有喜-0.3.17-更新发布.json`，`tools/verify-app-updates-live.py` 公网验收通过；服务端 58 项测试通过，Pixel 8a 正式包对线上完成登录、签到与 DeviceTrust 上报。
