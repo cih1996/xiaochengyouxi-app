@@ -764,6 +764,43 @@ async fn delete_account(
     })))
 }
 
+/// Lets the user withdraw their own request while it is still waiting for review.
+async fn cancel_account_deletion(
+    State(state): State<AppState>,
+    Extension(context): Extension<RequestContext>,
+    headers: HeaderMap,
+) -> ApiResult<Value> {
+    let mut db = open(&state)?;
+    let uid = account_auth(&db, &headers)?;
+    let tx = db.transaction()?;
+    let pending: Option<String> = tx
+        .query_row(
+            "SELECT id FROM account_deletion_requests WHERE user_id=?1 AND status='pending' ORDER BY created_at DESC LIMIT 1",
+            [uid],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let Some(id) = pending else {
+        return Err(conflict("没有审核中的注销申请"));
+    };
+    tx.execute(
+        "UPDATE account_deletion_requests SET status='cancelled',reviewed_at=?1,reviewer='user',review_note='用户撤回' WHERE id=?2 AND status='pending'",
+        params![now(), id],
+    )?;
+    user_admin::action_audit(
+        &tx,
+        &context,
+        Some(uid),
+        "account_delete_cancel",
+        &id,
+        "用户撤回注销申请",
+        json!({"status":"pending"}),
+        json!({"status":"cancelled"}),
+    )?;
+    tx.commit()?;
+    Ok(Json(json!({"status":"cancelled","request_id":id,"message":"已撤回注销申请"})))
+}
+
 async fn account_deletion_status(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -2314,6 +2351,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/auth/logout", post(logout))
         .route("/account/delete", post(delete_account))
         .route("/account/deletion-status", get(account_deletion_status))
+        .route("/account/deletion/cancel", post(cancel_account_deletion))
         .route("/me", get(me))
         .route("/tasks", get(tasks))
         .route("/check-in", post(check_in))

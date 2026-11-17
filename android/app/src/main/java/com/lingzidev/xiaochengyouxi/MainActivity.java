@@ -580,13 +580,40 @@ public final class MainActivity extends Activity {
     copy.setLineSpacing(dp(5), 1);
     add(card, copy, -1, -2);
     gap(card, 24);
-    add(card, button("刷新状态", this::refreshDeletionStatus), -1, 50);
+    if (state.equals("pending")) {
+      add(card, button("撤回注销申请", this::confirmCancelDeletion), -1, 50);
+      gap(card, 10);
+      TextView refresh = text("刷新状态", 14, RED, true);
+      refresh.setGravity(Gravity.CENTER);
+      refresh.setOnClickListener(v -> refreshDeletionStatus());
+      add(card, refresh, -1, 40);
+    } else add(card, button("刷新状态", this::refreshDeletionStatus), -1, 50);
     add(body, card, -1, -2);
     gap(body, 16);
     TextView backAccount = label("返回账号", 13, MUTED);
     backAccount.setGravity(Gravity.CENTER);
     backAccount.setOnClickListener(v -> enterAccountHome());
     add(body, backAccount, -1, 36);
+  }
+
+  void confirmCancelDeletion() {
+    new AlertDialog.Builder(this)
+        .setTitle("撤回注销申请")
+        .setMessage("撤回后账号恢复正常使用，金币和记录保持不变。如需注销可以以后重新提交。")
+        .setPositiveButton(
+            "确认撤回",
+            (dialog, which) ->
+                api.post(
+                    "/account/deletion/cancel",
+                    Api.object(),
+                    value -> {
+                      tip("已撤回注销申请");
+                      deletionPage = false;
+                      enterAccountHome();
+                    },
+                    this::error))
+        .setNegativeButton("再想想", null)
+        .show();
   }
 
   void finishDeletion() {
