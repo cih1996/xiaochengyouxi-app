@@ -3295,14 +3295,7 @@ public final class MainActivity extends Activity {
     settingsGroup(body, "账号与安全");
     LinearLayout account = col();
     account.setBackground(bg(WHITE, 18));
-    settingRow(
-        account,
-        "修改密码",
-        "",
-        () -> {
-          if (user.optString("phone").isEmpty()) tip("用户名账号暂不支持通过短信修改密码，请联系客服");
-          else auth("reset");
-        });
+    settingRow(account, "修改密码", "", () -> auth("reset"));
     line(account);
     settingRow(account, "注销账号", "需审核", this::confirmDeleteAccount);
     add(body, account, -1, -2);
