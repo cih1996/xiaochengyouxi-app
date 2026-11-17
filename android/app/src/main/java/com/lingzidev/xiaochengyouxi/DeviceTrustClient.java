@@ -11,7 +11,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 final class DeviceTrustClient {
-  static final String CONSENT = "device_trust_consent_v3";
+  static final String CONSENT = "device_trust_consent_v4";
   private final Activity activity;
   private final Api api;
   private boolean busy;
@@ -55,7 +55,7 @@ final class DeviceTrustClient {
                         startupCode = code(error);
                         startupError = detail(error, api.token);
                         android.util.Log.e(
-                            "DeviceTrust", "SDK 0.6 startup registration failed", error);
+                            "DeviceTrust", "SDK 0.7 startup registration failed", error);
                       }
                       activity.runOnUiThread(
                           () -> {
@@ -219,7 +219,7 @@ final class DeviceTrustClient {
                   JSONObject report =
                       DeviceTrust.collect(
                           activity.getApplicationContext(),
-                          new DeviceTrust.Options(appId, false),
+                          new DeviceTrust.Options(appId, true),
                           api.preferences.getBoolean(CONSENT, false));
                   stage = "resources";
                   ResourceCollector.collect(

@@ -40,7 +40,8 @@ final class HallStream implements Closeable {
       connection = request;
       if (closed) return;
       request.setConnectTimeout(7000);
-      request.setReadTimeout(0);
+      // Server sends a keep-alive every 15s; a silent socket (doze, network switch) is treated as dead.
+      request.setReadTimeout(45000);
       request.setRequestProperty("Accept", "text/event-stream");
       request.setRequestProperty("Authorization", "Bearer " + token);
       int status = request.getResponseCode();
@@ -78,7 +79,10 @@ final class HallStream implements Closeable {
       if (!closed) {
         activity.runOnUiThread(
             () -> {
-              if (!closed && !activity.isDestroyed()) onFailure.failed(failure.getMessage());
+              if (!closed && !activity.isDestroyed()) {
+                closed = true;
+                onFailure.failed(failure.getMessage());
+              }
             });
       }
     } finally {
@@ -112,6 +116,10 @@ final class HallStream implements Closeable {
         () -> {
           if (!closed && !activity.isDestroyed()) onMessage.received(message);
         });
+  }
+
+  boolean closed() {
+    return closed;
   }
 
   @Override

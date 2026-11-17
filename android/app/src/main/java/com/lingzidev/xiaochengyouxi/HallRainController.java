@@ -21,7 +21,11 @@ final class HallRainController {
   private final ArrayList<View> creditViews = new ArrayList<>();
   private FrameLayout surface, sky;
   private View collapse;
-  private TextView clock, countNumber;
+  private TextView clock, countNumber, hudTime, hudCoins;
+  private RainBackdrop backdrop;
+  private final ArrayList<Animator> skyAnimators = new ArrayList<>();
+  private int roundCoins, roundPackets;
+  private String summaryRound = "";
   private Dialog countdown;
   private long countdownSecond = -1;
   private JSONObject status, assignment;
@@ -186,11 +190,17 @@ final class HallRainController {
     closeCountdown();
     if (now() >= ends) {
       clock.setText("本场已结束");
+      boolean wasRaining = sky != null;
       clearSky();
+      if (wasRaining && !summaryRound.equals(roundId)) {
+        summaryRound = roundId;
+        showSummary();
+      }
       refreshBoundary("end:" + roundId);
       return;
     }
     clock.setText("本场剩余 " + RainTiming.remaining(ends - now()));
+    if (hudTime != null) hudTime.setText(Math.max(0, (ends - now() + 999) / 1000) + "s");
     if (assignment == null || !assignment.getJSONObject("round").getString("id").equals(roundId)) {
       if (!joinInFlight && !attemptedRound.equals(roundId))
         join(roundId, status.optBoolean("joined"));
@@ -273,6 +283,8 @@ final class HallRainController {
                   .optString("id")
                   .equals(incoming.optJSONObject("round").optString("id"))) clearSky();
           assignment = incoming;
+          roundCoins = 0;
+          roundPackets = 0;
           shown.clear();
           invalidPackets.clear();
           packetTimes.clear();
@@ -358,33 +370,81 @@ final class HallRainController {
     countdownSecond = -1;
   }
 
+  private FrameLayout host() {
+    return app.stage;
+  }
+
   private void ensureSky() throws JSONException {
     if (sky != null) return;
+    FrameLayout host = host();
     sky = new FrameLayout(app);
+    sky.setClipChildren(false);
     api.behavior.overlay(this, 9);
     sky.setClickable(true);
-    int alpha =
-        (int) Math.round(255 * assignment.getJSONObject("config").getDouble("overlay_opacity"));
-    sky.setBackgroundColor(Color.argb(alpha, 31, 14, 6));
+    backdrop = new RainBackdrop(app);
+    backdrop.setAnimated(enabledAnimations());
+    sky.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
+
+    // Top garland: edge to edge, slides in, then gently bobs and breathes.
+    int width = host.getWidth();
+    int garlandHeight = Math.round(width * 1024f / 1536f);
     ImageView clouds = app.art("rain_sky");
     clouds.setScaleType(ImageView.ScaleType.FIT_XY);
-    sky.addView(clouds, new FrameLayout.LayoutParams(-1, app.dp(200), Gravity.TOP));
-    TextView title = app.text("接住好运，小欢喜正在洒落", 15, 0xffffedc5, true);
-    title.setGravity(Gravity.CENTER);
-    FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, app.dp(45), Gravity.TOP);
-    tp.topMargin = app.dp(88);
-    sky.addView(title, tp);
-    surface.addView(sky, new FrameLayout.LayoutParams(-1, -1));
-    LineIcon close = new LineIcon(app, "close", 0xff9e512a);
+    clouds.setPivotY(0);
+    sky.addView(clouds, new FrameLayout.LayoutParams(-1, garlandHeight, Gravity.TOP));
+    if (enabledAnimations()) {
+      clouds.setTranslationY(-garlandHeight);
+      ObjectAnimator in = ObjectAnimator.ofFloat(clouds, View.TRANSLATION_Y, -garlandHeight, 0);
+      in.setDuration(650);
+      in.setInterpolator(new android.view.animation.OvershootInterpolator(1.1f));
+      ObjectAnimator bob = ObjectAnimator.ofFloat(clouds, View.TRANSLATION_Y, 0, app.dp(7), 0);
+      bob.setDuration(2600);
+      bob.setStartDelay(650);
+      bob.setRepeatCount(ValueAnimator.INFINITE);
+      ObjectAnimator breathe = ObjectAnimator.ofFloat(clouds, View.SCALE_X, 1f, 1.035f, 1f);
+      breathe.setDuration(3400);
+      breathe.setRepeatCount(ValueAnimator.INFINITE);
+      for (ObjectAnimator a : new ObjectAnimator[] {in, bob, breathe}) {
+        skyAnimators.add(a);
+        a.start();
+      }
+    }
+
+    // Compact HUD: time left and coins caught this round.
+    LinearLayout hud = app.row();
+    hud.setPadding(app.dp(12), 0, app.dp(14), 0);
+    hud.setBackground(app.bg(0x66400a07, 20));
+    app.add(hud, new LineIcon(app, "clock", 0xffffe3a3), 16, 16);
+    hudTime = app.text("", 14, 0xfffff1cf, true);
+    hudTime.setPadding(app.dp(5), 0, app.dp(12), 0);
+    app.add(hud, hudTime, -2, -2);
+    app.add(hud, new LineIcon(app, "coin", 0xffffd166), 16, 16);
+    hudCoins = app.text("+" + roundCoins, 14, 0xffffd166, true);
+    hudCoins.setPadding(app.dp(5), 0, 0, 0);
+    app.add(hud, hudCoins, -2, -2);
+    FrameLayout.LayoutParams hp = new FrameLayout.LayoutParams(-2, app.dp(36), Gravity.TOP | Gravity.LEFT);
+    hp.topMargin = app.dp(14);
+    hp.leftMargin = app.dp(16);
+    sky.addView(hud, hp);
+
+    host.addView(sky, new FrameLayout.LayoutParams(-1, -1));
+    app.rainChrome(true);
+    if (enabledAnimations()) {
+      sky.setAlpha(0);
+      sky.animate().alpha(1).setDuration(300).start();
+    }
+    LineIcon close = new LineIcon(app, "close", 0xfffff1cf);
     FrameLayout closeButton = new FrameLayout(app);
     closeButton.addView(
-        close, new FrameLayout.LayoutParams(app.dp(22), app.dp(22), Gravity.CENTER));
-    closeButton.setBackground(app.bg(0xe6fff4dd, 22));
+        close, new FrameLayout.LayoutParams(app.dp(18), app.dp(18), Gravity.CENTER));
+    android.graphics.drawable.GradientDrawable ring = app.bg(0x66400a07, 99);
+    ring.setStroke(app.dp(1.5f), 0x88fff1cf);
+    closeButton.setBackground(ring);
     closeButton.setContentDescription("收起本场红包雨");
     FrameLayout.LayoutParams cp =
-        new FrameLayout.LayoutParams(app.dp(44), app.dp(44), Gravity.TOP | Gravity.RIGHT);
-    cp.topMargin = app.dp(12);
-    cp.rightMargin = app.dp(12);
+        new FrameLayout.LayoutParams(app.dp(36), app.dp(36), Gravity.TOP | Gravity.RIGHT);
+    cp.topMargin = app.dp(14);
+    cp.rightMargin = app.dp(16);
     sky.addView(closeButton, cp);
     collapse = closeButton;
     closeButton.setOnClickListener(
@@ -393,6 +453,33 @@ final class HallRainController {
           hiddenRound = assignment.optJSONObject("round").optString("id");
           clearSky();
         });
+  }
+
+  private void showSummary() {
+    if (roundPackets == 0 || app.isDestroyed()) return;
+    FrameLayout host = host();
+    LinearLayout card = app.col();
+    card.setGravity(Gravity.CENTER_HORIZONTAL);
+    card.setPadding(app.dp(24), app.dp(18), app.dp(24), app.dp(20));
+    card.setBackground(app.grad(0xfffff3df, 0xffffdcbc, 26));
+    card.setElevation(app.dp(10));
+    app.add(card, app.art("packet"), 92, 92);
+    app.gap(card, 4);
+    app.add(card, app.text("本场接到 " + roundPackets + " 个红包", 15, MainActivity.INK, true), -2, -2);
+    app.gap(card, 4);
+    app.add(card, app.text("+" + roundCoins + " 金币", 30, MainActivity.RED, true), -2, -2);
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(app.dp(240), -2, Gravity.CENTER);
+    host.addView(card, lp);
+    card.setScaleX(.6f);
+    card.setScaleY(.6f);
+    card.setAlpha(0);
+    card.animate().scaleX(1).scaleY(1).alpha(1).setDuration(380)
+        .setInterpolator(new android.view.animation.OvershootInterpolator(1.4f)).start();
+    card.setOnClickListener(v -> host.removeView(card));
+    timer.postDelayed(
+        () -> card.animate().alpha(0).scaleX(.9f).scaleY(.9f).setDuration(250)
+            .withEndAction(() -> host.removeView(card)).start(),
+        2600);
   }
 
   private void clearSky() {
@@ -406,6 +493,13 @@ final class HallRainController {
     for (Drop drop : new ArrayList<>(falling.values())) drop.remove();
     falling.clear();
     shown.clear();
+    for (Animator a : skyAnimators) a.cancel();
+    skyAnimators.clear();
+    if (backdrop != null) backdrop.setAnimated(false);
+    backdrop = null;
+    hudTime = null;
+    hudCoins = null;
+    if (sky != null) app.rainChrome(false);
     if (sky != null && sky.getParent() instanceof FrameLayout)
       ((FrameLayout) sky.getParent()).removeView(sky);
     sky = null;
@@ -436,6 +530,7 @@ final class HallRainController {
     if (!claiming.add(id)) return;
     int epoch = generation;
     float x = drop.view.getX() + drop.size / 2f, y = drop.view.getY() + drop.size / 2f;
+    burst(x, y, drop.size);
     drop.remove();
     falling.remove(id);
     api.post(
@@ -452,6 +547,17 @@ final class HallRainController {
                 response.optJSONObject("user"),
                 credited ? response.optInt("reward") : 0,
                 active(epoch));
+            if (credited) {
+              roundCoins += response.optInt("reward");
+              roundPackets++;
+              if (hudCoins != null) {
+                hudCoins.setText("+" + roundCoins);
+                hudCoins.animate().cancel();
+                hudCoins.setScaleX(1.35f);
+                hudCoins.setScaleY(1.35f);
+                hudCoins.animate().scaleX(1).scaleY(1).setDuration(260).start();
+              }
+            }
             if (active(epoch) && credited) showCredit(response.optInt("reward"), x, y);
           } else {
             putStatus(drop.packet, "opened");
@@ -468,25 +574,73 @@ final class HallRainController {
         });
   }
 
+  private void burst(float x, float y, int size) {
+    if (sky == null || !enabledAnimations()) return;
+    // Opening flash plus a ring of gold sparks.
+    View flash = new View(app);
+    flash.setBackground(app.bg(0xccffe9a8, 999));
+    sky.addView(flash, new FrameLayout.LayoutParams(size, size));
+    flash.setX(x - size / 2f);
+    flash.setY(y - size / 2f);
+    creditViews.add(flash);
+    flash.animate().scaleX(1.9f).scaleY(1.9f).alpha(0).setDuration(380)
+        .withEndAction(() -> { sky_remove(flash); }).start();
+    for (int i = 0; i < 10; i++) {
+      View spark = new View(app);
+      int d = app.dp(i % 2 == 0 ? 10 : 7);
+      android.graphics.drawable.GradientDrawable g = app.grad(0xffffef9a, 0xffffb11f, 99);
+      spark.setBackground(g);
+      sky.addView(spark, new FrameLayout.LayoutParams(d, d));
+      spark.setX(x - d / 2f);
+      spark.setY(y - d / 2f);
+      creditViews.add(spark);
+      double a = Math.PI * 2 * i / 10 + Math.random() * .3;
+      float r = app.dp(55 + (float) Math.random() * 35);
+      spark.animate()
+          .translationXBy((float) Math.cos(a) * r)
+          .translationYBy((float) Math.sin(a) * r)
+          .alpha(0)
+          .scaleX(.4f)
+          .scaleY(.4f)
+          .setDuration(560)
+          .setInterpolator(new android.view.animation.DecelerateInterpolator())
+          .withEndAction(() -> sky_remove(spark))
+          .start();
+    }
+  }
+
+  private void sky_remove(View v) {
+    if (v.getParent() instanceof FrameLayout) ((FrameLayout) v.getParent()).removeView(v);
+    creditViews.remove(v);
+  }
+
   private void showCredit(int coins, float x, float y) {
     if (sky == null || coins <= 0) return;
-    TextView earned = app.text("+" + coins + " 金币", 24, 0xffffda80, true);
-    earned.setShadowLayer(app.dp(5), 0, app.dp(2), 0xff9c4420);
-    sky.addView(earned, new FrameLayout.LayoutParams(app.dp(135), app.dp(42)));
+    TextView earned = app.text("+" + coins, 30, 0xffffe08a, true);
+    earned.setGravity(Gravity.CENTER);
+    earned.setShadowLayer(app.dp(6), 0, app.dp(2), 0xffa3260f);
+    sky.addView(earned, new FrameLayout.LayoutParams(app.dp(120), app.dp(46)));
     creditViews.add(earned);
-    earned.setX(Math.max(0, Math.min(sky.getWidth() - app.dp(135), x - app.dp(50))));
-    earned.setY(y);
+    earned.setX(Math.max(0, Math.min(sky.getWidth() - app.dp(120), x - app.dp(60))));
+    earned.setY(y - app.dp(23));
+    earned.setScaleX(.4f);
+    earned.setScaleY(.4f);
     earned
         .animate()
-        .translationY(y - app.dp(70))
-        .alpha(0)
-        .setDuration(1000)
+        .scaleX(1.15f)
+        .scaleY(1.15f)
+        .translationYBy(-app.dp(60))
+        .setDuration(420)
+        .setInterpolator(new android.view.animation.OvershootInterpolator(2f))
         .withEndAction(
-            () -> {
-              if (earned.getParent() instanceof FrameLayout)
-                ((FrameLayout) earned.getParent()).removeView(earned);
-              creditViews.remove(earned);
-            })
+            () ->
+                earned
+                    .animate()
+                    .alpha(0)
+                    .translationYBy(-app.dp(25))
+                    .setDuration(380)
+                    .withEndAction(() -> sky_remove(earned))
+                    .start())
         .start();
   }
 
@@ -509,15 +663,49 @@ final class HallRainController {
       size = app.dp(large ? 104 : 62);
       view = new FrameLayout(app);
       view.setClipChildren(false);
+      int hash = packet.getString("id").hashCode() & 0x7fffffff;
+      if (large) {
+        View halo = new View(app);
+        android.graphics.drawable.GradientDrawable glow = new android.graphics.drawable.GradientDrawable();
+        glow.setGradientType(android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT);
+        glow.setColors(new int[] {0xaaffe27a, 0x00ffb12f});
+        glow.setGradientRadius(size * .62f);
+        halo.setBackground(glow);
+        FrameLayout.LayoutParams hl = new FrameLayout.LayoutParams(size + app.dp(36), size + app.dp(36), Gravity.CENTER);
+        view.addView(halo, hl);
+        if (enabledAnimations()) {
+          ObjectAnimator spinGlow = ObjectAnimator.ofFloat(halo, View.ALPHA, .55f, 1f, .55f);
+          spinGlow.setDuration(1000);
+          spinGlow.setRepeatCount(ValueAnimator.INFINITE);
+          animators.add(spinGlow);
+          spinGlow.start();
+        }
+      }
       ImageView image = app.art(large ? "rain_large" : "rain_small");
-      view.addView(image, new FrameLayout.LayoutParams(-1, -1));
+      view.addView(image, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
       view.setContentDescription(large ? "金喜大红包，观看视频领取奖励" : "小红包，点击领取金币");
       view.setOnClickListener(v -> claim(this));
       sky.addView(view, new FrameLayout.LayoutParams(size, size));
       collapse.bringToFront();
-      int hash = packet.getString("id").hashCode() & 0x7fffffff;
       float fraction = (hash % 10000) / 10000f;
       view.setX(fraction * Math.max(0, surface.getWidth() - size));
+      if (enabledAnimations()) {
+        // Swing like a falling envelope: tilt and drift side to side.
+        float tilt = 9f + (hash % 7);
+        ObjectAnimator swing = ObjectAnimator.ofFloat(image, View.ROTATION, -tilt, tilt);
+        swing.setDuration(900 + hash % 500);
+        swing.setRepeatMode(ValueAnimator.REVERSE);
+        swing.setRepeatCount(ValueAnimator.INFINITE);
+        swing.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        ObjectAnimator drift = ObjectAnimator.ofFloat(image, View.TRANSLATION_X, -app.dp(9), app.dp(9));
+        drift.setDuration(1300 + hash % 700);
+        drift.setRepeatMode(ValueAnimator.REVERSE);
+        drift.setRepeatCount(ValueAnimator.INFINITE);
+        for (ObjectAnimator a : new ObjectAnimator[] {swing, drift}) {
+          animators.add(a);
+          a.start();
+        }
+      }
       if (large && enabledAnimations()) {
         ObjectAnimator pulse = ObjectAnimator.ofFloat(image, View.SCALE_X, .92f, 1.08f, .92f);
         ObjectAnimator pulseY = ObjectAnimator.ofFloat(image, View.SCALE_Y, .92f, 1.08f, .92f);
@@ -531,7 +719,7 @@ final class HallRainController {
     }
 
     void start(long serverNow) {
-      float height = surface.getHeight(), distance = height + size * 2f;
+      float height = sky.getHeight() > 0 ? sky.getHeight() : host().getHeight(), distance = height + size * 2f;
       float progress = RainTiming.progress(reveal, expires, serverNow);
       float start = -size + distance * progress;
       if (!enabledAnimations()) {

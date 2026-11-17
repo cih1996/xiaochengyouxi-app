@@ -11,7 +11,6 @@ import java.util.Map;
 import org.json.JSONObject;
 
 final class PangleAds implements RewardedAdProvider {
-  private CSJSplashAd splash;
   private TTRewardVideoAd activeReward;
 
   void initialize(Activity activity, Runnable ready, Api.Failure failure) {
@@ -93,72 +92,6 @@ final class PangleAds implements RewardedAdProvider {
         });
   }
 
-  void showSplash(Activity activity, FrameLayout host, Runnable closed, Api.Failure failure) {
-    host.post(
-        () -> {
-          float density = activity.getResources().getDisplayMetrics().density;
-          AdSlot slot =
-              new AdSlot.Builder()
-                  .setCodeId(BuildConfig.CSJ_SPLASH_SLOT)
-                  .setExpressViewAcceptedSize(host.getWidth() / density, host.getHeight() / density)
-                  .setAdLoadType(TTAdLoadType.LOAD)
-                  .build();
-          TTAdSdk.getAdManager()
-              .createAdNative(activity)
-              .loadSplashAd(
-                  slot,
-                  new TTAdNative.CSJSplashAdListener() {
-                    @Override
-                    public void onSplashLoadSuccess(CSJSplashAd ad) {}
-
-                    @Override
-                    public void onSplashLoadFail(CSJAdError error) {
-                      ui(
-                          activity,
-                          () -> failure.failed(error("开屏加载", error.getCode(), error.getMsg())));
-                    }
-
-                    @Override
-                    public void onSplashRenderSuccess(CSJSplashAd ad) {
-                      ui(
-                          activity,
-                          () -> {
-                            splash = ad;
-                            ad.setSplashAdListener(
-                                new CSJSplashAd.SplashAdListener() {
-                                  @Override
-                                  public void onSplashAdShow(CSJSplashAd value) {}
-
-                                  @Override
-                                  public void onSplashAdClick(CSJSplashAd value) {}
-
-                                  @Override
-                                  public void onSplashAdClose(CSJSplashAd value, int type) {
-                                    ui(
-                                        activity,
-                                        () -> {
-                                          value.setSplashAdListener(null);
-                                          host.removeAllViews();
-                                          splash = null;
-                                          closed.run();
-                                        });
-                                  }
-                                });
-                            ad.showSplashView(host);
-                          });
-                    }
-
-                    @Override
-                    public void onSplashRenderFail(CSJSplashAd ad, CSJAdError error) {
-                      ui(
-                          activity,
-                          () -> failure.failed(error("开屏渲染", error.getCode(), error.getMsg())));
-                    }
-                  },
-                  5000);
-        });
-  }
-
   @Override
   public void show(
       Activity activity,
@@ -167,7 +100,8 @@ final class PangleAds implements RewardedAdProvider {
       Api.Result clientEvent,
       Api.Failure failure) {
     if (!TTAdSdk.isSdkReady()) {
-      failure.failed("穿山甲 SDK 尚未初始化成功");
+      // Startup init may still be running or have failed; try once more before giving up.
+      initialize(activity, () -> show(activity, session, closed, clientEvent, failure), failure);
       return;
     }
     AdSlot slot =
@@ -327,13 +261,6 @@ final class PangleAds implements RewardedAdProvider {
   }
 
   void dispose() {
-    if (splash != null) {
-      splash.setSplashAdListener(null);
-      View view = splash.getSplashView();
-      if (view != null && view.getParent() instanceof ViewGroup)
-        ((ViewGroup) view.getParent()).removeView(view);
-      splash = null;
-    }
     if (activeReward != null) {
       activeReward.setRewardAdInteractionListener(null);
       activeReward = null;

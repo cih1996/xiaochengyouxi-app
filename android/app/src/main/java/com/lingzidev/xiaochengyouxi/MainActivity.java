@@ -17,6 +17,7 @@ import android.view.*;
 import android.view.animation.*;
 import android.widget.*;
 import androidx.core.content.FileProvider;
+import com.device.trust.secure.TouchAudit;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -63,7 +64,7 @@ public final class MainActivity extends Activity {
   AlertDialog rewardStatusDialog;
   PendingReward pendingReward;
   AppUpdates updates;
-  boolean servicesReady, startupAdActive, rewardUiBusy;
+  boolean servicesReady, rewardUiBusy;
   TextView hallNotice;
   String hallNoticeText = "";
   long runtimeRevision = -1;
@@ -77,6 +78,7 @@ public final class MainActivity extends Activity {
   boolean deletionConfirmPage;
   String settingsReturn = "me";
   String deletionReturn = "hall";
+  Runnable authBack;
 
   @Override
   public void onCreate(Bundle state) {
@@ -211,7 +213,6 @@ public final class MainActivity extends Activity {
   }
 
   void launchApp() {
-    startupAdActive = false;
     if (api.token.isEmpty()) auth("login");
     else loadAccount();
   }
@@ -228,7 +229,7 @@ public final class MainActivity extends Activity {
             .setTitle("欢迎来到小橙有喜")
             .setMessage(
                 "广西奇易电子商务有限公司为你提供服务。请阅读隐私政策和用户协议。为提供福利、广告与账户安全服务，我们使用穿山甲广告 SDK 和知衡 DeviceTrust"
-                    + " SDK，处理必要的设备、系统组件、网络及广告互动信息。登录后记录本应用的页面访问、点击、停留与触点，用于账户安全和服务改进。不会采集输入内容、密码短信、屏幕画面或其他应用信息。")
+                    + " SDK，处理必要的设备、系统组件、网络及广告互动信息；安全核验会读取设备标识（ANDROID_ID 及 Widevine 设备标识的不可逆摘要，原值不上传），检测指定风险工具是否安装、无障碍服务状态及本机调试端口，读取当前局域网的内网地址、网关和 DNS，并按核验需要检测同一网段内其他设备是否在线或开启无线调试，不读取应用列表。登录后记录本应用的页面访问、点击、停留与触点，用于账户安全和服务改进。不会采集输入内容、密码短信、屏幕画面或其他应用的使用内容。")
             .setPositiveButton(
                 "同意并继续",
                 (dialog, which) -> {
@@ -272,8 +273,10 @@ public final class MainActivity extends Activity {
                   refreshRuntime();
                   updates.start(
                       () -> {
-                        if (BuildConfig.ADS_ENABLED) startSplash();
-                        else launchApp();
+                        // No splash ad (store review): start the ad SDK quietly for rewarded
+                        // videos and feed cards, and go straight into the app.
+                        if (BuildConfig.ADS_ENABLED) startAdSdk();
+                        launchApp();
                       });
                 });
           } catch (JSONException error) {
@@ -293,27 +296,11 @@ public final class MainActivity extends Activity {
         .show();
   }
 
-  void startSplash() {
-    startupAdActive = true;
-    loading();
+  void startAdSdk() {
     csjAds.initialize(
         this,
-        () -> {
-          FrameLayout host = new FrameLayout(this);
-          host.setBackgroundColor(CREAM);
-          stage.addView(host, new FrameLayout.LayoutParams(-1, -1));
-          csjAds.showSplash(this, host, this::launchApp, this::startupAdError);
-        },
-        this::startupAdError);
-  }
-
-  void startupAdError(String message) {
-    new AlertDialog.Builder(this)
-        .setTitle("广告加载失败")
-        .setMessage(message)
-        .setPositiveButton("继续", (dialog, which) -> launchApp())
-        .setCancelable(false)
-        .show();
+        () -> android.util.Log.i("PangleAds", "SDK ready"),
+        message -> android.util.Log.e("PangleAds", "SDK init failed: " + message));
   }
 
   void openPolicy(String path) {
@@ -470,6 +457,7 @@ public final class MainActivity extends Activity {
   }
 
   void acceptAuth(Object data) {
+    authBack = null;
     JSONObject j = (JSONObject) data;
     api.saveToken(j.optString("token"));
     user = j.optJSONObject("user");
@@ -485,6 +473,7 @@ public final class MainActivity extends Activity {
     if (current.equals("deletion")) current = deletionReturn.isEmpty() ? "hall" : deletionReturn;
     deletionPage = false;
     activities.load();
+    loadHome();
     refreshCheckinStatus();
     if (user.optBoolean("invitation_required")) {
       invitationBinding();
@@ -619,36 +608,52 @@ public final class MainActivity extends Activity {
         value -> {
           checkinStatus = (JSONObject) value;
           if (current.equals("hall") || current.equals("me")) render();
+          maybePromptCheckin();
         },
         message -> android.util.Log.e("CheckIn", "GET /api/check-in/status: " + message));
   }
 
   void invitationBinding() {
+    authBack = null;
     endHallSession();
     page = null;
     stage.removeAllViews();
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
+    scroll.setVerticalScrollBarEnabled(false);
     LinearLayout body = col();
-    body.setPadding(dp(28), dp(18), dp(28), dp(28));
+    body.setPadding(dp(24), dp(4), dp(24), dp(24));
     scroll.addView(body);
     stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
-    TextView back = label("‹  返回登录", 14, MUTED);
+    LinearLayout top = row();
+    LineIcon back = new LineIcon(this, "back", INK);
+    back.setContentDescription("退出并返回登录");
+    back.setPadding(dp(10), dp(10), dp(10), dp(10));
     back.setOnClickListener(v -> exitAccount());
-    add(body, back, -1, 42);
-    gap(body, 20);
-    ImageView mascot = art("mascot");
-    mascot.setBackground(grad(0xffffead8, CREAM, 30));
-    add(body, mascot, -1, 190);
-    gap(body, 28);
-    add(body, text("绑定邀请码", 29, INK, true), -1, -2);
+    LinearLayout.LayoutParams bp = lp(44, 44);
+    bp.leftMargin = -dp(10);
+    top.addView(back, bp);
+    add(body, top, -1, 44);
     gap(body, 12);
-    TextView subtitle = label("输入朋友的邀请码，一起开启今日福利", 14, MUTED);
-    subtitle.setLineSpacing(dp(4), 1);
+    ImageView mascot = art("mascot");
+    mascot.setBackground(bg(PALE, 18));
+    mascot.setPadding(dp(4), dp(4), dp(4), dp(4));
+    add(body, mascot, 56, 56);
+    gap(body, 28);
+    add(body, text("绑定邀请码", 26, INK, true), -1, -2);
+    gap(body, 8);
+    TextView subtitle = label("填写好友的邀请码，绑定后即可领取每日福利", 13, MUTED);
+    subtitle.setLineSpacing(dp(3), 1);
     add(body, subtitle, -1, -2);
-    gap(body, 30);
+    gap(body, 24);
+    // Visible-password variation makes Chinese IMEs open their Latin layout instead of pinyin.
     EditText code =
-        input("输入 6 位邀请码", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        input(
+            "请输入邀请码",
+            InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
     code.setFilters(
         new InputFilter[] {
           new InputFilter.AllCaps(),
@@ -656,13 +661,43 @@ public final class MainActivity extends Activity {
           (source, start, end, dest, dstart, dend) ->
               source.subSequence(start, end).toString().replaceAll("[^A-Z0-9]", "")
         });
-    code.setTextSize(22);
-    code.setLetterSpacing(.14f);
-    add(body, code, -1, 62);
-    gap(body, 20);
+    code.setTextSize(18);
+    code.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+    LinearLayout codeBox = fieldBox();
+    code.setBackground(null);
+    flex(codeBox, code);
+    focusRing(codeBox, code);
+    add(body, codeBox, -1, 54);
+    gap(body, 8);
+    add(body, label("邀请码由 6 位字母和数字组成，可向邀请你的好友索取", 12, 0xffbaa494), -1, -2);
+    gap(body, 24);
     TextView bind = button("确认绑定", () -> {});
-    bind.setOnClickListener(
-        v -> {
+    Runnable validate =
+        () -> {
+          // Typed characters get spacing for readability; the hint keeps normal spacing.
+          code.setLetterSpacing(code.length() > 0 ? .12f : 0);
+          bind.setAlpha(code.length() >= 6 ? 1 : .45f);
+        };
+    code.addTextChangedListener(
+        new android.text.TextWatcher() {
+          @Override
+          public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+
+          @Override
+          public void onTextChanged(CharSequence s, int a, int b, int c) {}
+
+          @Override
+          public void afterTextChanged(android.text.Editable s) {
+            validate.run();
+          }
+        });
+    Runnable submit =
+        () -> {
+          if (code.length() < 6) {
+            tip("请输入完整的邀请码");
+            return;
+          }
+          hideKeyboard(bind);
           bind.setEnabled(false);
           bind.setAlpha(.65f);
           api.post(
@@ -675,16 +710,29 @@ public final class MainActivity extends Activity {
               },
               message -> {
                 bind.setEnabled(true);
-                bind.setAlpha(1);
+                validate.run();
                 error(message);
               });
+        };
+    bind.setOnClickListener(
+        v -> {
+          press(v);
+          submit.run();
         });
-    add(body, bind, -1, 54);
-    gap(body, 16);
-    TextView leave = label("暂不绑定，返回登录", 13, MUTED);
+    code.setOnEditorActionListener(
+        (v, actionId, event) -> {
+          if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_DONE) return false;
+          submit.run();
+          return true;
+        });
+    add(body, bind, -1, 52);
+    gap(body, 18);
+    TextView leave = label("暂不绑定，退出登录", 14, MUTED);
     leave.setGravity(Gravity.CENTER);
+    leave.setPadding(0, dp(10), 0, dp(10));
     leave.setOnClickListener(v -> exitAccount());
-    add(body, leave, -1, 38);
+    add(body, leave, -1, -2);
+    validate.run();
   }
 
   void exitAccount() {
@@ -707,114 +755,217 @@ public final class MainActivity extends Activity {
     rememberHallScroll();
     hallScroll = null;
     hallMessages = null;
+    handler.removeCallbacksAndMessages(SMS_COUNTDOWN);
     stage.removeAllViews();
+    boolean login = mode.equals("login"), reset = mode.equals("reset");
+    // Password change is opened from settings while signed in; it returns there instead of login.
+    boolean fromSettings = reset && user != null && !api.token.isEmpty();
+    authBack =
+        login
+            ? null
+            : fromSettings
+                ? () -> {
+                  authBack = null;
+                  api.behavior.sensitive(false);
+                  current = settingsReturn;
+                  settings();
+                }
+                : () -> auth("login");
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
-    scroll.setClipToPadding(false);
+    scroll.setVerticalScrollBarEnabled(false);
     LinearLayout body = col();
-    body.setPadding(dp(24), dp(12), dp(24), dp(20));
+    body.setPadding(dp(24), dp(4), dp(24), dp(24));
     scroll.addView(body);
     stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+
+    // Sub-pages get a standard back affordance in the top-left; login is the root.
     LinearLayout top = row();
-    LineIcon brand = new LineIcon(this, "gift", RED);
-    add(top, brand, 24, 24);
-    TextView brandText = text("  小橙有喜", 19, INK, true);
-    flex(top, brandText);
-    TextView back = label(mode.equals("login") ? "自在生活 · 天天有礼" : "返回登录", 12, MUTED);
-    back.setOnClickListener(v -> auth("login"));
-    add(top, back, -2, 36);
-    add(body, top, -1, -2);
+    if (!login) {
+      LineIcon back = new LineIcon(this, "back", INK);
+      back.setContentDescription(fromSettings ? "返回设置" : "返回登录");
+      back.setPadding(dp(10), dp(10), dp(10), dp(10));
+      back.setOnClickListener(v -> authBack.run());
+      LinearLayout.LayoutParams bp = lp(44, 44);
+      bp.leftMargin = -dp(10);
+      top.addView(back, bp);
+    }
+    add(body, top, -1, 44);
     gap(body, 12);
-    FrameLayout hero = new FrameLayout(this);
-    hero.setBackground(grad(0xffffe8d0, 0xfffff0df, 25));
-    LinearLayout heroCopy = col();
-    heroCopy.setPadding(dp(17), dp(26), dp(110), dp(15));
-    add(heroCopy, text("小欢喜，正在发生", 19, INK, true), -1, -2);
-    gap(heroCopy, 10);
-    add(heroCopy, label("今天，也给自己一份期待", 11, 0xffad7e59), -1, -2);
-    hero.addView(heroCopy, new FrameLayout.LayoutParams(-1, -1));
+
+    LinearLayout brand = row();
     ImageView mascot = art("mascot");
-    FrameLayout.LayoutParams imageParams =
-        new FrameLayout.LayoutParams(dp(112), dp(112), Gravity.RIGHT | Gravity.BOTTOM);
-    imageParams.rightMargin = dp(2);
-    hero.addView(mascot, imageParams);
-    add(body, hero, -1, 112);
-    gap(body, 20);
-    String title =
-        mode.equals("register") ? "创建你的账号" : mode.equals("reset") ? "找回登录密码" : "登录，遇见小欢喜";
-    TextView heading = text(title, 24, INK, true);
-    add(body, heading, -1, -2);
+    mascot.setBackground(bg(PALE, 18));
+    mascot.setPadding(dp(4), dp(4), dp(4), dp(4));
+    add(brand, mascot, 56, 56);
+    LinearLayout name = col();
+    name.setPadding(dp(12), 0, 0, 0);
+    add(name, text("小橙有喜", 15, INK, true), -2, -2);
+    gap(name, 4);
+    add(name, label("自在生活 · 天天有礼", 12, MUTED), -2, -2);
+    flex(brand, name);
+    add(body, brand, -1, -2);
+    gap(body, 28);
+    add(
+        body,
+        text(
+            login ? "手机号登录" : fromSettings ? "修改密码" : reset ? "找回密码" : "注册新账号", 26, INK, true),
+        -1,
+        -2);
     gap(body, 8);
     add(
         body,
         label(
-            mode.equals("login")
-                ? "输入手机号和验证码即可登录"
-                : mode.equals("register") ? "用手机号，开启你的好福利" : "验证手机号，设置新密码",
+            login ? "未注册的手机号请先注册" : reset ? "验证手机号后设置新密码" : "注册后绑定好友邀请码，即可领取每日福利",
             13,
             MUTED),
         -1,
         -2);
-    gap(body, 20);
+    gap(body, 24);
+
     EditText phone = input("请输入手机号", InputType.TYPE_CLASS_PHONE);
-    phone.setText(BuildConfig.DEBUG && mode.equals("login") ? "13800138000" : "");
-    formField(body, "手机号", phone);
-    gap(body, 14);
-    EditText code = input("验证码", InputType.TYPE_CLASS_NUMBER);
-    LinearLayout codeRow = row();
-    codeRow.setBackground(bg(WHITE, 16));
-    flex(codeRow, code);
-    TextView send = text("获取验证码", 13, RED, true);
-    send.setPadding(dp(12), 0, dp(16), 0);
-    send.setOnClickListener(
-        v ->
-            api.post(
-                "/auth/sms",
-                Api.object(
-                    "phone",
-                    phone.getText().toString(),
-                    "purpose",
-                    mode.equals("login") ? "login" : mode.equals("reset") ? "reset" : "register"),
-                d -> {
-                  JSONObject r = (JSONObject) d;
-                  code.setText(r.optString("code"));
-                  tip("验证码已发送");
-                },
-                this::error));
-    add(codeRow, send, -2, 52);
-    formField(body, "验证码", codeRow);
-    gap(body, 14);
+    phone.setFilters(new InputFilter[] {new InputFilter.LengthFilter(11)});
+    phone.setBackground(null);
+    phone.setPadding(dp(12), 0, dp(12), 0);
+    phone.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NEXT);
+    if (BuildConfig.DEBUG && login) phone.setText("13800138000");
+    if (fromSettings) phone.setText(user.optString("phone"));
+    LinearLayout phoneBox = fieldBox();
+    TextView prefix = text("+86", 15, INK, true);
+    prefix.setPadding(dp(18), 0, dp(12), 0);
+    add(phoneBox, prefix, -2, -2);
+    View divider = new View(this);
+    divider.setBackgroundColor(0xffeee2d8);
+    add(phoneBox, divider, 1, 20);
+    flex(phoneBox, phone);
+    focusRing(phoneBox, phone);
+    add(body, phoneBox, -1, 54);
+    gap(body, 12);
+
+    EditText code = input("请输入验证码", InputType.TYPE_CLASS_NUMBER);
+    code.setFilters(new InputFilter[] {new InputFilter.LengthFilter(6)});
+    code.setBackground(null);
+    code.setImeOptions(
+        reset || !login
+            ? android.view.inputmethod.EditorInfo.IME_ACTION_NEXT
+            : android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+    LinearLayout codeBox = fieldBox();
+    flex(codeBox, code);
+    TextView send = text("获取验证码", 14, RED, true);
+    send.setGravity(Gravity.CENTER);
+    send.setPadding(dp(14), 0, dp(18), 0);
+    add(codeBox, send, -2, -1);
+    focusRing(codeBox, code);
+    add(body, codeBox, -1, 54);
+
     final EditText password;
-    if (!mode.equals("login")) {
+    if (!login) {
+      gap(body, 12);
       password =
           input(
-              mode.equals("reset") ? "设置新密码（至少 8 位）" : "请输入密码",
+              reset ? "设置新密码，至少 8 位" : "设置登录密码，至少 8 位",
               InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-      formField(body, mode.equals("reset") ? "新密码" : "登录密码", passwordField(password));
+      password.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+      View box = passwordField(password);
+      focusRing(box, password);
+      add(body, box, -1, 54);
     } else {
       password = null;
     }
-    gap(body, 10);
-    if (mode.equals("login")) {
-      TextView forgot = label("忘记密码？", 13, MUTED);
-      forgot.setGravity(Gravity.RIGHT);
-      forgot.setOnClickListener(v -> auth("reset"));
-      add(body, forgot, -1, 22);
-      gap(body, 12);
+    gap(body, 16);
+
+    CheckBox agree = new CheckBox(this);
+    LinearLayout agreement = null;
+    if (!reset) {
+      agreement = row();
+      agree.setButtonTintList(android.content.res.ColorStateList.valueOf(RED));
+      agree.setContentDescription("同意用户协议和隐私政策");
+      agree.setMinWidth(0);
+      agree.setMinHeight(0);
+      agree.setPadding(0, 0, 0, 0);
+      LinearLayout.LayoutParams ap = lp(-2, -2);
+      ap.leftMargin = -dp(5);
+      ap.rightMargin = dp(2);
+      agreement.addView(agree, ap);
+      TextView terms = label("", 12, MUTED);
+      terms.setLineSpacing(dp(3), 1);
+      android.text.SpannableStringBuilder copy =
+          new android.text.SpannableStringBuilder("我已阅读并同意");
+      policyLink(copy, "《用户协议》", "/terms");
+      copy.append("和");
+      policyLink(copy, "《隐私政策》", "/privacy");
+      terms.setText(copy);
+      terms.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+      terms.setHighlightColor(0);
+      terms.setOnClickListener(v -> agree.toggle());
+      flex(agreement, terms);
+      add(body, agreement, -1, -2);
+      gap(body, 18);
     }
+
     final String[] captchaId = {""};
     final String[] captchaAnswer = {""};
-    TextView submit =
-        button(
-            mode.equals("login") ? "登录，领取今日福利" : mode.equals("register") ? "注册并登录" : "保存新密码",
-            () -> {});
+    TextView submit = button(login ? "登录" : reset ? "保存新密码" : "注册并登录", () -> {});
+    Runnable validate =
+        () -> {
+          boolean ready =
+              phone.length() == 11
+                  && code.length() > 0
+                  && (password == null || password.length() >= 8);
+          submit.setAlpha(ready ? 1 : .45f);
+          submit.setTag(ready);
+          boolean canSend = phone.length() == 11 && send.getTag() == null;
+          send.setEnabled(canSend);
+          send.setTextColor(canSend ? RED : 0xffc9b4a6);
+        };
+    android.text.TextWatcher watcher =
+        new android.text.TextWatcher() {
+          @Override
+          public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+
+          @Override
+          public void onTextChanged(CharSequence s, int a, int b, int c) {}
+
+          @Override
+          public void afterTextChanged(android.text.Editable s) {
+            validate.run();
+          }
+        };
+    phone.addTextChangedListener(watcher);
+    code.addTextChangedListener(watcher);
+    if (password != null) password.addTextChangedListener(watcher);
+
+    send.setOnClickListener(
+        v -> {
+          if (send.getTag() != null) return;
+          send.setTag("sending");
+          validate.run();
+          api.post(
+              "/auth/sms",
+              Api.object(
+                  "phone",
+                  phone.getText().toString(),
+                  "purpose",
+                  login ? "login" : reset ? "reset" : "register"),
+              d -> {
+                JSONObject r = (JSONObject) d;
+                code.setText(r.optString("code"));
+                code.requestFocus();
+                code.setSelection(code.length());
+                tip("验证码已发送");
+                smsCountdown(send, 60, validate);
+              },
+              message -> {
+                send.setTag(null);
+                validate.run();
+                error(message);
+              });
+        });
+
     final Runnable[] submitRequest = new Runnable[1];
     submitRequest[0] =
         () -> {
-          String path =
-              mode.equals("login")
-                  ? "/auth/login"
-                  : mode.equals("register") ? "/auth/register" : "/auth/reset-password";
+          String path = login ? "/auth/login" : reset ? "/auth/reset-password" : "/auth/register";
           JSONObject request =
               Api.object(
                   "phone",
@@ -822,8 +973,8 @@ public final class MainActivity extends Activity {
                   "code",
                   code.getText().toString(),
                   "password",
-                  mode.equals("login") ? "" : password.getText().toString());
-          if (mode.equals("login") && !captchaId[0].isEmpty()) {
+                  login ? "" : password.getText().toString());
+          if (login && !captchaId[0].isEmpty()) {
             try {
               request.put("captcha_id", captchaId[0]);
               request.put("captcha_answer", captchaAnswer[0]);
@@ -836,13 +987,13 @@ public final class MainActivity extends Activity {
               request,
               d -> {
                 submit.setEnabled(true);
-                submit.setAlpha(1);
-                if (mode.equals("reset")) {
+                validate.run();
+                if (reset) {
                   endHallSession();
                   api.saveToken("");
                   user = null;
                   page = null;
-                  tip("密码已更新");
+                  tip("密码已更新，请重新登录");
                   auth("login");
                 } else acceptAuth(d);
               },
@@ -850,13 +1001,13 @@ public final class MainActivity extends Activity {
                 @Override
                 public void failed(String message) {
                   submit.setEnabled(true);
-                  submit.setAlpha(1);
+                  validate.run();
                   error(message);
                 }
 
                 @Override
                 public void failed(int status, String message, String errorCode) {
-                  if (mode.equals("login") && "LOGIN_CAPTCHA_REQUIRED".equals(errorCode)) {
+                  if (login && "LOGIN_CAPTCHA_REQUIRED".equals(errorCode)) {
                     requestLoginCaptcha(phone, submit, captchaId, captchaAnswer, submitRequest[0]);
                     return;
                   }
@@ -864,31 +1015,124 @@ public final class MainActivity extends Activity {
                 }
               });
         };
-    submit.setOnClickListener(
-        v -> {
+    LinearLayout agreementRow = agreement;
+    Runnable attempt =
+        () -> {
+          if (!Boolean.TRUE.equals(submit.getTag())) {
+            if (phone.length() != 11) tip("请输入 11 位手机号");
+            else if (code.length() == 0) tip("请输入验证码");
+            else tip("密码至少需要 8 位");
+            return;
+          }
+          if (agreementRow != null && !agree.isChecked()) {
+            tip("请先阅读并勾选同意用户协议和隐私政策");
+            agreementRow
+                .animate()
+                .translationX(dp(6))
+                .setDuration(60)
+                .withEndAction(
+                    () ->
+                        agreementRow
+                            .animate()
+                            .translationX(0)
+                            .setInterpolator(new OvershootInterpolator(4))
+                            .setDuration(240)
+                            .start())
+                .start();
+            return;
+          }
+          hideKeyboard(submit);
           submit.setEnabled(false);
           submit.setAlpha(.65f);
           submitRequest[0].run();
+        };
+    submit.setOnClickListener(
+        v -> {
+          press(v);
+          attempt.run();
         });
+    (password != null ? password : code)
+        .setOnEditorActionListener(
+            (v, actionId, event) -> {
+              if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_DONE) return false;
+              attempt.run();
+              return true;
+            });
     add(body, submit, -1, 52);
-    gap(body, 12);
-    TextView switchMode = text(mode.equals("login") ? "还没账号？立即注册" : "已有账号？去登录", 14, RED, false);
-    switchMode.setGravity(Gravity.CENTER);
-    switchMode.setOnClickListener(v -> auth(mode.equals("login") ? "register" : "login"));
-    add(body, switchMode, -1, 32);
-    gap(body, 2);
-    LinearLayout legal = row();
-    legal.setGravity(Gravity.CENTER);
-    TextView privacy = label("隐私政策", 11, MUTED), terms = label("用户协议", 11, MUTED);
-    privacy.setOnClickListener(v -> openPolicy("/privacy"));
-    terms.setOnClickListener(v -> openPolicy("/terms"));
-    add(legal, privacy, -2, 28);
-    add(legal, label("   ·   ", 11, 0xffcfb9aa), -2, -2);
-    add(legal, terms, -2, 28);
-    add(body, legal, -1, 28);
-    if (BuildConfig.DEBUG && mode.equals("login")) {
-      gap(body, 6);
+    gap(body, 18);
+
+    LinearLayout switchRow = row();
+    switchRow.setGravity(Gravity.CENTER);
+    add(switchRow, label(login ? "还没有账号？" : "已有账号？", 14, MUTED), -2, -2);
+    TextView switchMode = text(login ? "立即注册" : "去登录", 14, RED, true);
+    switchMode.setPadding(dp(4), dp(10), dp(4), dp(10));
+    switchMode.setOnClickListener(v -> auth(login ? "register" : "login"));
+    add(switchRow, switchMode, -2, -2);
+    if (!fromSettings) add(body, switchRow, -1, -2);
+    validate.run();
+  }
+
+  static final Object SMS_COUNTDOWN = new Object();
+
+  void smsCountdown(TextView send, int seconds, Runnable validate) {
+    if (!send.isAttachedToWindow()) return;
+    if (seconds <= 0) {
+      send.setTag(null);
+      send.setText("重新获取");
+      validate.run();
+      return;
     }
+    send.setTag("countdown");
+    send.setText(seconds + " 秒后重发");
+    validate.run();
+    handler.postAtTime(
+        () -> smsCountdown(send, seconds - 1, validate),
+        SMS_COUNTDOWN,
+        android.os.SystemClock.uptimeMillis() + 1000);
+  }
+
+  void policyLink(android.text.SpannableStringBuilder text, String title, String path) {
+    int start = text.length();
+    text.append(title);
+    text.setSpan(
+        new android.text.style.ClickableSpan() {
+          @Override
+          public void onClick(View widget) {
+            openPolicy(path);
+          }
+
+          @Override
+          public void updateDrawState(android.text.TextPaint paint) {
+            paint.setColor(0xffd9653f);
+            paint.setUnderlineText(false);
+          }
+        },
+        start,
+        text.length(),
+        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+  }
+
+  LinearLayout fieldBox() {
+    LinearLayout box = row();
+    box.setBackground(fieldBackground(false));
+    return box;
+  }
+
+  GradientDrawable fieldBackground(boolean focused) {
+    GradientDrawable d = bg(WHITE, 14);
+    d.setStroke(dp(focused ? 1.5f : 1), focused ? 0xffff9a6b : 0xfff1e4da);
+    return d;
+  }
+
+  void focusRing(View box, EditText field) {
+    box.setBackground(fieldBackground(false));
+    field.setOnFocusChangeListener((v, focused) -> box.setBackground(fieldBackground(focused)));
+  }
+
+  void hideKeyboard(View view) {
+    android.view.inputmethod.InputMethodManager keyboard =
+        (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+    if (keyboard != null) keyboard.hideSoftInputFromWindow(view.getWindowToken(), 0);
   }
 
   void requestLoginCaptcha(
@@ -955,12 +1199,6 @@ public final class MainActivity extends Activity {
         });
   }
 
-  void formField(LinearLayout parent, String name, View field) {
-    add(parent, text(name, 13, 0xff816759, true), -1, -2);
-    gap(parent, 6);
-    add(parent, field, -1, 52);
-  }
-
   View passwordField(EditText password) {
     FrameLayout wrapper = new FrameLayout(this);
     wrapper.setBackground(bg(WHITE, 16));
@@ -1006,6 +1244,7 @@ public final class MainActivity extends Activity {
   }
 
   void home() {
+    authBack = null;
     if (user != null && user.optBoolean("invitation_required")) {
       invitationBinding();
       return;
@@ -1031,7 +1270,7 @@ public final class MainActivity extends Activity {
         "/tasks",
         d -> {
           updateTasks((JSONArray) d);
-          if (current.equals("hall")) render();
+          refreshHallMessages();
         },
         this::error);
     refreshProducts();
@@ -1096,8 +1335,43 @@ public final class MainActivity extends Activity {
 
   void startHallSession() {
     endHallSession();
+    connectHallStream();
     if (current.equals("hall")) render();
-    hallStream = new HallStream(this, api.token, this::appendHallItem, this::error);
+  }
+
+  int hallRetry;
+  final Runnable hallReconnect = this::ensureHallStream;
+
+  void connectHallStream() {
+    handler.removeCallbacks(hallReconnect);
+    if (hallStream != null) hallStream.close();
+    String token = api.token;
+    hallStream =
+        new HallStream(
+            this,
+            token,
+            item -> {
+              hallRetry = 0;
+              appendHallItem(item);
+            },
+            message -> {
+              // Keep what is already on screen and reconnect quietly with backoff.
+              android.util.Log.w("HallStream", "disconnected: " + message);
+              if (!token.equals(api.token)) return;
+              hallRetry = Math.min(hallRetry + 1, 5);
+              handler.postDelayed(hallReconnect, 1000L << hallRetry);
+            });
+  }
+
+  // Restarts the hall stream if it died, without clearing the messages already shown.
+  void ensureHallStream() {
+    if (user == null
+        || api.token.isEmpty()
+        || user.optBoolean("invitation_required")
+        || page == null
+        || !foreground) return;
+    if (hallStream != null && !hallStream.closed()) return;
+    connectHallStream();
   }
 
   void endHallSession() {
@@ -1105,9 +1379,12 @@ public final class MainActivity extends Activity {
     closeRewardStatus();
     pendingReward = null;
     rain.reset();
+    handler.removeCallbacks(hallReconnect);
+    hallRetry = 0;
     if (hallStream != null) hallStream.close();
     hallStream = null;
     hallItems.clear();
+    hallAnimated.clear();
     hallScrollY = 0;
     hallScroll = null;
     hallMessages = null;
@@ -1124,8 +1401,22 @@ public final class MainActivity extends Activity {
   }
 
   void appendHallItem(JSONObject item) {
+    // A reconnected stream re-sends its greeting and first packet; skip what is already shown.
+    String kind = item.optString("kind");
+    for (JSONObject old : hallItems) {
+      if (!old.optString("kind").equals(kind)) continue;
+      if (kind.equals("text") && old.optString("text").equals(item.optString("text"))) return;
+      if (kind.equals("red_packet")) {
+        JSONObject a = old.optJSONObject("task"), b = item.optJSONObject("task");
+        if (a != null && b != null && a.optString("id").equals(b.optString("id"))) return;
+      }
+    }
     hallItems.add(item);
     if (hallMessages == null || hallScroll == null) return;
+    if (hallItems.size() == 1) {
+      render();
+      return;
+    }
     boolean nearBottom =
         hallScroll.getChildAt(0).getHeight() - hallScroll.getHeight() - hallScroll.getScrollY()
             <= dp(72);
@@ -1148,6 +1439,7 @@ public final class MainActivity extends Activity {
 
   void render() {
     if (page == null || user == null) return;
+    stopFloating();
     api.behavior.sensitive(false);
     api.behavior.page(current.equals("hall") ? 1 : current.equals("shop") ? 2 : 3);
     rain.detach();
@@ -1170,19 +1462,27 @@ public final class MainActivity extends Activity {
             true);
     flex(header, title);
     if (!current.equals("me")) {
-      balance = text("● " + number(user.optInt("coins")), 14, RED, true);
-      balance.setPadding(dp(13), dp(9), dp(13), dp(9));
-      balance.setBackground(bg(PALE, 20));
-      balance.setOnClickListener(
+      LinearLayout pill = row();
+      pill.setPadding(dp(10), 0, dp(13), 0);
+      pill.setBackground(bg(PALE, 18));
+      add(pill, new LineIcon(this, "coin", 0xffe08a2c), 18, 18);
+      balance = text(number(user.optInt("coins")), 15, RED, true);
+      balance.setPadding(dp(6), 0, 0, 0);
+      add(pill, balance, -2, -2);
+      pill.setContentDescription("我的金币 " + user.optInt("coins"));
+      pill.setOnClickListener(
           v -> {
             current = "me";
             render();
           });
-      add(header, balance, -2, -2);
+      add(header, pill, -2, 36);
     } else {
-      TextView settings = label("设置", 14, MUTED);
+      LinearLayout settings = row();
+      settings.setPadding(dp(12), 0, dp(4), 0);
+      add(settings, label("设置", 15, 0xff7d665a), -2, -2);
+      add(settings, new LineIcon(this, "arrow", 0xffcbb9ae), 14, 14);
       settings.setOnClickListener(v -> settings());
-      add(header, settings, -2, 40);
+      add(header, settings, -2, 44);
     }
     if (current.equals("hall")) hall();
     else if (current.equals("shop")) shop();
@@ -1258,7 +1558,8 @@ public final class MainActivity extends Activity {
     TextView rainLabel = text("  红包雨", 12, INK, true);
     flex(rainStatus, rainLabel);
     rainTime = text("正在迎接小欢喜", 12, RED, true);
-    add(rainStatus, rainTime, -2, 38);
+    rainTime.setGravity(Gravity.CENTER_VERTICAL);
+    add(rainStatus, rainTime, -2, -1);
     LinearLayout.LayoutParams clockParams = lp(-1, 40);
     clockParams.setMargins(dp(20), dp(4), dp(20), dp(8));
     page.addView(rainStatus, clockParams);
@@ -1291,6 +1592,7 @@ public final class MainActivity extends Activity {
     mp.rightMargin = dp(4);
     welcome.addView(mascot, mp);
     add(content, welcome, -1, 110);
+    addHomeEntries(content);
     gap(content, 8);
     TextView today = label("今天", 11, 0xffbda89b);
     today.setGravity(Gravity.CENTER);
@@ -1299,11 +1601,232 @@ public final class MainActivity extends Activity {
     hallMessages = col();
     add(content, hallMessages, -1, -2);
     for (int i = 0; i < hallItems.size(); i++) hallItem(hallMessages, hallItems.get(i), i);
+    if (hallItems.isEmpty()) {
+      chatText(hallMessages, "小橙正在赶来，马上就有惊喜…", true);
+      ensureHallStream();
+    }
     hallScroll = (ScrollView) content.getParent();
     ScrollView scroll = hallScroll;
     int savedScroll = hallScrollY;
     scroll.post(() -> scroll.scrollTo(0, savedScroll));
+    addFloatingEntry();
     if (foreground) rain.attach(hallSurface, rainTime);
+  }
+
+  // ---- Server-controlled home entries (icon grid + floating entry) ----
+  JSONObject homeLayout;
+  String floatingDismissed = "";
+  final ArrayList<Animator> floatingAnimators = new ArrayList<>();
+
+  void loadHome() {
+    api.get(
+        "/app/home",
+        value -> {
+          JSONObject next = (JSONObject) value;
+          boolean changed = homeLayout == null || !homeLayout.toString().equals(next.toString());
+          homeLayout = next;
+          if (changed && current.equals("hall") && page != null && !rewardUiBusy) render();
+        },
+        message -> android.util.Log.w("HomeLayout", "GET /api/app/home: " + message));
+  }
+
+  void addHomeEntries(LinearLayout content) {
+    JSONArray entries = homeLayout == null ? null : homeLayout.optJSONArray("entries");
+    if (entries == null || entries.length() == 0) return;
+    gap(content, 10);
+    LinearLayout grid = col();
+    grid.setPadding(dp(6), dp(12), dp(6), dp(8));
+    grid.setBackground(bg(WHITE, 20));
+    int columns = entries.length() <= 4 ? 4 : 5;
+    LinearLayout row = null;
+    for (int i = 0; i < entries.length(); i++) {
+      if (i % columns == 0) {
+        row = row();
+        add(grid, row, -1, -2);
+      }
+      JSONObject entry = entries.optJSONObject(i);
+      if (entry != null) row.addView(homeEntry(entry), new LinearLayout.LayoutParams(0, -2, 1));
+    }
+    int rest = entries.length() % columns;
+    if (rest != 0) for (int i = rest; i < columns; i++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+    add(content, grid, -1, -2);
+  }
+
+  View homeEntry(JSONObject entry) {
+    LinearLayout cell = col();
+    cell.setGravity(Gravity.CENTER_HORIZONTAL);
+    cell.setPadding(0, 0, 0, dp(6));
+    FrameLayout tile = new FrameLayout(this);
+    tile.setClipChildren(false);
+    FrameLayout face = new FrameLayout(this);
+    face.setBackground(grad(0xffffefe0, 0xffffdcc2, 16));
+    String image = entry.optString("image_url");
+    if (!image.isEmpty()) {
+      ProductImage photo = new ProductImage(this, image, entry.optString("title"), ImageView.ScaleType.CENTER_CROP);
+      photo.setBackgroundColor(0);
+      face.setClipToOutline(true);
+      face.addView(photo, new FrameLayout.LayoutParams(-1, -1));
+    } else {
+      LineIcon icon = new LineIcon(this, entry.optString("icon", "gift"), 0xffe0702c);
+      face.addView(icon, new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
+    }
+    tile.addView(face, new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER));
+    String badge = entry.optString("badge");
+    if (!badge.isEmpty()) {
+      TextView tag = text(badge, 9, WHITE, true);
+      tag.setPadding(dp(5), 0, dp(5), dp(1));
+      tag.setBackground(bg(RED, 8));
+      FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.RIGHT);
+      tile.addView(tag, tl);
+    }
+    add(cell, tile, 60, 50);
+    gap(cell, 5);
+    TextView name = label(entry.optString("title"), 12, INK);
+    name.setGravity(Gravity.CENTER);
+    name.setSingleLine(true);
+    add(cell, name, -1, -2);
+    cell.setContentDescription(entry.optString("title"));
+    cell.setOnClickListener(
+        v -> {
+          press(face);
+          api.behavior.click(0, "home:" + entry.optString("id"));
+          openEntry(entry.optString("action"), entry.optString("target"), entry.optString("title"));
+        });
+    return cell;
+  }
+
+  void stopFloating() {
+    for (Animator a : floatingAnimators) a.cancel();
+    floatingAnimators.clear();
+  }
+
+  void addFloatingEntry() {
+    JSONObject f = homeLayout == null ? null : homeLayout.optJSONObject("floating");
+    if (f == null || hallSurface == null) return;
+    String key = homeLayout.optLong("revision") + ":" + f.optString("target");
+    if (key.equals(floatingDismissed)) return;
+    FrameLayout box = new FrameLayout(this);
+    box.setClipChildren(false);
+    LinearLayout body = col();
+    body.setGravity(Gravity.CENTER_HORIZONTAL);
+    String image = f.optString("image_url");
+    View face;
+    if (!image.isEmpty()) {
+      ProductImage photo = new ProductImage(this, image, f.optString("title"), ImageView.ScaleType.FIT_CENTER);
+      photo.setBackgroundColor(0);
+      face = photo;
+    } else {
+      FrameLayout disc = new FrameLayout(this);
+      GradientDrawable g = grad(0xffffb25a, 0xfff2452b, 99);
+      g.setStroke(dp(3), 0xffffe9c4);
+      disc.setBackground(g);
+      disc.setElevation(dp(6));
+      disc.addView(new LineIcon(this, f.optString("icon", "gift"), WHITE), new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER));
+      face = disc;
+    }
+    body.addView(face, new LinearLayout.LayoutParams(dp(60), dp(60)));
+    String title = f.optString("title");
+    if (!title.isEmpty()) {
+      TextView pill = text(title, 10, WHITE, true);
+      pill.setPadding(dp(8), dp(2), dp(8), dp(3));
+      pill.setBackground(grad(0xffff8a3d, 0xfff2452b, 10));
+      pill.setElevation(dp(7));
+      LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2);
+      pl.topMargin = -dp(8);
+      body.addView(pill, pl);
+    }
+    box.addView(body, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+    TextView close = text("×", 12, WHITE, true);
+    close.setGravity(Gravity.CENTER);
+    close.setBackground(bg(0x66392923, 99));
+    close.setContentDescription("关闭悬浮入口");
+    box.addView(close, new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.TOP | Gravity.RIGHT));
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(84), dp(88), Gravity.BOTTOM | Gravity.RIGHT);
+    lp.rightMargin = dp(8);
+    lp.bottomMargin = dp(18);
+    hallSurface.addView(box, lp);
+    close.setOnClickListener(
+        v -> {
+          floatingDismissed = key;
+          stopFloating();
+          hallSurface.removeView(box);
+        });
+    body.setOnClickListener(
+        v -> {
+          api.behavior.click(0, "home:floating");
+          openEntry(f.optString("action"), f.optString("target"), title);
+        });
+    String animation = f.optString("animation", "float");
+    if (ValueAnimator.areAnimatorsEnabled() && !animation.equals("none")) {
+      ObjectAnimator a;
+      if (animation.equals("bounce")) {
+        PropertyValuesHolder sx = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.14f, .96f, 1f);
+        PropertyValuesHolder sy = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.14f, .96f, 1f);
+        a = ObjectAnimator.ofPropertyValuesHolder(body, sx, sy);
+        a.setDuration(900);
+        a.setRepeatCount(ValueAnimator.INFINITE);
+        a.setRepeatMode(ValueAnimator.RESTART);
+        a.setStartDelay(400);
+      } else if (animation.equals("shake")) {
+        a = ObjectAnimator.ofFloat(body, View.ROTATION, 0, -12, 12, -8, 8, 0, 0, 0, 0, 0);
+        a.setDuration(1800);
+        a.setRepeatCount(ValueAnimator.INFINITE);
+      } else {
+        a = ObjectAnimator.ofFloat(body, View.TRANSLATION_Y, 0, -dp(8));
+        a.setDuration(1300);
+        a.setRepeatCount(ValueAnimator.INFINITE);
+        a.setRepeatMode(ValueAnimator.REVERSE);
+        a.setInterpolator(new AccelerateDecelerateInterpolator());
+      }
+      floatingAnimators.add(a);
+      a.start();
+    }
+  }
+
+  void openEntry(String action, String target, String title) {
+    if (action.equals("web")) {
+      String url = WebActivity.resolve(target);
+      if (url == null) {
+        tip("活动地址无效");
+        return;
+      }
+      startActivityForResult(
+          new Intent(this, WebActivity.class).putExtra(WebActivity.EXTRA_URL, url).putExtra(WebActivity.EXTRA_TITLE, title),
+          WebActivity.REQUEST);
+    } else openNative(target);
+  }
+
+  void openNative(String target) {
+    if (user == null || page == null) return;
+    switch (target) {
+      case "checkin":
+        openCheckin();
+        break;
+      case "invite":
+        inviteFriends();
+        break;
+      case "activity":
+        if (activities.config != null) openActivity();
+        else tip("活动暂未开始");
+        break;
+      case "withdraw":
+        withdraw();
+        break;
+      case "ledger":
+        ledger();
+        break;
+      case "shop":
+      case "me":
+        current = target;
+        if (target.equals("shop")) {
+          refreshProducts();
+          refreshProductPromo();
+        }
+        render();
+        break;
+      default:
+        tip("请升级到最新版本后使用");
+    }
   }
 
   void addActivityEntry() {
@@ -1416,7 +1939,23 @@ public final class MainActivity extends Activity {
         .show();
   }
 
+  final Set<String> hallAnimated = new HashSet<>();
+  boolean freshHallItem;
+
+  // Rebuilds only the message list (no page rebuild, no replayed entrance animations).
+  void refreshHallMessages() {
+    if (!current.equals("hall")) return;
+    if (hallMessages == null || hallScroll == null) {
+      render();
+      return;
+    }
+    hallMessages.removeAllViews();
+    for (int i = 0; i < hallItems.size(); i++) hallItem(hallMessages, hallItems.get(i), i);
+    if (hallItems.isEmpty()) chatText(hallMessages, "小橙正在赶来，马上就有惊喜…", true);
+  }
+
   void hallItem(LinearLayout content, JSONObject item, int index) {
+    freshHallItem = hallAnimated.add(item.optString("id"));
     if (index > 0) gap(content, 14);
     String kind = item.optString("kind");
     String message = item.optString("text");
@@ -1518,9 +2057,11 @@ public final class MainActivity extends Activity {
     r.addView(card, new LinearLayout.LayoutParams(0, -2, 1));
     add(content, r, -1, -2);
     card.setOnClickListener(v -> openPacket(task));
-    card.setAlpha(0);
-    card.setTranslationY(dp(10));
-    card.animate().alpha(1).translationY(0).setDuration(300).setStartDelay(index * 70L).start();
+    if (freshHallItem) {
+      card.setAlpha(0);
+      card.setTranslationY(dp(10));
+      card.animate().alpha(1).translationY(0).setDuration(300).setStartDelay(70L).start();
+    }
   }
 
   Dialog sheet(LinearLayout content) {
@@ -1568,7 +2109,7 @@ public final class MainActivity extends Activity {
                 updated = true;
               }
             }
-            if (updated && current.equals("hall")) render();
+            if (updated) refreshHallMessages();
             showPacket(quotedTask, quoteId, reward);
           } catch (JSONException error) {
             rewardError(error.getMessage());
@@ -1842,7 +2383,7 @@ public final class MainActivity extends Activity {
               updated -> {
                 if (isDestroyed() || !token.equals(api.token)) return;
                 updateTasks((JSONArray) updated);
-                if (current.equals("hall")) render();
+                refreshHallMessages();
               },
               this::error);
         },
@@ -1908,7 +2449,7 @@ public final class MainActivity extends Activity {
   void rainCredited(JSONObject updated, int coins, boolean animate) {
     user = updated;
     if (current.equals("hall") && balance != null)
-      balance.setText("● " + number(user.optInt("coins")));
+      balance.setText(number(user.optInt("coins")));
     else if (page != null) render();
     if (animate && coins > 0) playCoinArrival();
   }
@@ -1966,52 +2507,230 @@ public final class MainActivity extends Activity {
   }
 
   void showCheckinDialog(JSONObject status) {
-    LinearLayout card = col();
-    card.setPadding(dp(22), dp(20), dp(22), dp(18));
-    card.setBackground(bg(CREAM, 22));
-    add(card, text("连续签到", 22, INK, true), -1, -2);
-    gap(card, 5);
-    add(card, label("连续 7 天，每天打开都能领取一份金币", 12, MUTED), -1, -2);
-    gap(card, 14);
+    showCheckinDialog(status, false);
+  }
+
+  void showCheckinDialog(JSONObject status, boolean auto) {
+    if (checkinDialog != null && checkinDialog.isShowing()) checkinDialog.dismiss();
+    boolean done = user != null && user.optBoolean("checked_in_today");
+    int todayReward = 0, total = 0;
     JSONArray days = status.optJSONArray("days");
-    if (days != null) {
+    List<JSONObject> items = new ArrayList<>();
+    if (days != null)
       for (int i = 0; i < days.length(); i++) {
         JSONObject item = days.optJSONObject(i);
         if (item == null) continue;
-        int dayNumber = item.optInt("day");
-        String state = item.optString("status");
-        LinearLayout row = row();
-        row.setPadding(dp(12), dp(8), dp(8), dp(8));
-        row.setBackground(bg(WHITE, 12));
-        add(row, text("第" + dayNumber + "天", 14, INK, true), 60, 34);
-        flex(row, label(item.optInt("reward") + " 金币", 12, MUTED));
-        String action =
-            state.equals("checked") || state.equals("makeup")
-                ? "已完成"
-                : state.equals("today") ? "签到" : state.equals("missed") ? "补签" : "待解锁";
-        TextView actionView =
-            text(action, 11, state.equals("today") || state.equals("missed") ? RED : MUTED, true);
-        actionView.setGravity(Gravity.CENTER);
-        actionView.setBackground(
-            bg(state.equals("today") || state.equals("missed") ? 0xffffead8 : 0xfff3eee8, 12));
-        row.addView(actionView, new LinearLayout.LayoutParams(dp(64), dp(32)));
-        if (state.equals("today"))
-          actionView.setOnClickListener(
-              v -> {
-                dialogCloseAndCheck(v);
-              });
-        else if (state.equals("missed")) actionView.setOnClickListener(v -> makeup(dayNumber));
-        add(card, row, -1, 50);
-        gap(card, 7);
+        items.add(item);
+        total += item.optInt("reward");
+        if (item.optString("status").equals("today")) todayReward = item.optInt("reward");
       }
+
+    LinearLayout root = col();
+    root.setGravity(Gravity.CENTER_HORIZONTAL);
+    FrameLayout stack = new FrameLayout(this);
+    root.addView(stack, new LinearLayout.LayoutParams(-1, -2));
+
+    LinearLayout card = col();
+    card.setBackground(bg(0xfffffaf5, 26));
+    card.setClipToOutline(true);
+    FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(-1, -2);
+    cardLp.topMargin = dp(58);
+    stack.addView(card, cardLp);
+
+    // Header band
+    LinearLayout band = col();
+    band.setGravity(Gravity.CENTER_HORIZONTAL);
+    band.setPadding(dp(18), dp(52), dp(18), dp(20));
+    GradientDrawable bandBg =
+        new GradientDrawable(
+            GradientDrawable.Orientation.TL_BR, new int[] {0xffffa25a, 0xffff6a3d, 0xfff4492c});
+    band.setBackground(bandBg);
+    TextView title = text(done ? "今日已签到" : "每日签到", 26, WHITE, true);
+    title.setGravity(Gravity.CENTER);
+    title.setShadowLayer(dp(3), 0, dp(1), 0x33a02a10);
+    add(band, title, -1, -2);
+    gap(band, 6);
+    int streak = status.optInt("streak");
+    String streakText = "已连续签到 " + streak + " 天";
+    android.text.SpannableString sub = new android.text.SpannableString(streakText + "  ·  7 天共 " + total + " 金币");
+    int ns = streakText.indexOf(String.valueOf(streak));
+    sub.setSpan(new android.text.style.ForegroundColorSpan(0xfffff1a8), ns, ns + String.valueOf(streak).length(), 0);
+    sub.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), ns, ns + String.valueOf(streak).length(), 0);
+    TextView subView = label("", 13, 0xf2ffffff);
+    subView.setText(sub);
+    subView.setGravity(Gravity.CENTER);
+    subView.setPadding(dp(14), dp(5), dp(14), dp(5));
+    subView.setBackground(bg(0x26ffffff, 14));
+    add(band, subView, -2, -2);
+    add(card, band, -1, -2);
+
+    // Day grid: 4 on top, 3 below with day 7 as the wide grand prize.
+    LinearLayout body = col();
+    body.setPadding(dp(14), dp(16), dp(14), dp(18));
+    add(card, body, -1, -2);
+    LinearLayout row1 = row(), row2 = row();
+    for (int i = 0; i < items.size(); i++) {
+      boolean last = i == items.size() - 1 && items.size() == 7;
+      View cell = checkinCell(items.get(i), last);
+      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(84), last ? 2.1f : 1);
+      LinearLayout target = i < 4 ? row1 : row2;
+      if (target.getChildCount() > 0) lp.leftMargin = dp(7);
+      target.addView(cell, lp);
     }
-    add(card, label("补签会按当天档位发放金币，签到到账后会播放金币动画。", 10, 0xffb39583), -1, -2);
-    Dialog dialog = sheet(card, 3);
+    add(body, row1, -1, -2);
+    gap(body, 7);
+    add(body, row2, -1, -2);
+
+    int makeups = status.optInt("makeup_available");
+    if (makeups > 0) {
+      gap(body, 12);
+      TextView hint = label("有 " + makeups + " 天漏签，点击“补签”按当天档位补领", 11, 0xffb39583);
+      hint.setGravity(Gravity.CENTER);
+      add(body, hint, -1, -2);
+    }
+    gap(body, 16);
+    TextView action;
+    if (done) {
+      action = text("今日已领取，明天再来", 16, 0xffb39583, true);
+      action.setGravity(Gravity.CENTER);
+      action.setBackground(bg(0xfff3ebe4, 26));
+      action.setOnClickListener(v -> checkinDialog.dismiss());
+    } else {
+      action =
+          button(
+              todayReward > 0 ? "立即签到 · 领 " + todayReward + " 金币" : "立即签到",
+              () -> dialogCloseAndCheck(null));
+      action.setTextSize(17);
+      action.setBackground(grad(0xffff8a3d, 0xfff2452b, 26));
+      action.setElevation(dp(4));
+    }
+    add(body, action, -1, 54);
+    if (auto && !done) {
+      gap(body, 10);
+      TextView later = label("关闭后可在大厅「签到领金币」再次打开", 11, 0xffc2ab9d);
+      later.setGravity(Gravity.CENTER);
+      add(body, later, -1, -2);
+    }
+
+    ImageView mascot = art("mascot");
+    FrameLayout.LayoutParams mascotLp = new FrameLayout.LayoutParams(dp(112), dp(112));
+    mascotLp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+    mascot.setElevation(dp(6));
+    stack.addView(mascot, mascotLp);
+
+    LineIcon close = new LineIcon(this, "close", WHITE);
+    close.setPadding(dp(9), dp(9), dp(9), dp(9));
+    GradientDrawable ring = bg(0x33000000, 99);
+    ring.setStroke(dp(1.5f), 0xccffffff);
+    close.setBackground(ring);
+    close.setContentDescription("关闭");
+    LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dp(38), dp(38));
+    closeLp.topMargin = dp(18);
+    root.addView(close, closeLp);
+
+    Dialog dialog = sheet(root, 3);
+    close.setOnClickListener(v -> dialog.dismiss());
     dialog.show();
     dialog
         .getWindow()
-        .setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(40), dp(390)), -2);
+        .setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(40), dp(380)), -2);
     checkinDialog = dialog;
+
+    root.setScaleX(.75f);
+    root.setScaleY(.75f);
+    root.setAlpha(0);
+    root.animate().scaleX(1).scaleY(1).alpha(1).setDuration(420)
+        .setInterpolator(new OvershootInterpolator(1.3f)).start();
+    mascot.setTranslationY(dp(14));
+    mascot.animate().translationY(0).setStartDelay(180).setDuration(500)
+        .setInterpolator(new OvershootInterpolator(2f)).start();
+    if (!done) {
+      android.animation.ObjectAnimator pulseX = android.animation.ObjectAnimator.ofFloat(action, "scaleX", 1f, 1.04f, 1f);
+      android.animation.ObjectAnimator pulseY = android.animation.ObjectAnimator.ofFloat(action, "scaleY", 1f, 1.04f, 1f);
+      for (android.animation.ObjectAnimator a : new android.animation.ObjectAnimator[] {pulseX, pulseY}) {
+        a.setDuration(1100);
+        a.setStartDelay(600);
+        a.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        a.start();
+      }
+      dialog.setOnDismissListener(ignored -> { pulseX.cancel(); pulseY.cancel(); });
+    }
+  }
+
+  View checkinCell(JSONObject item, boolean grand) {
+    int dayNumber = item.optInt("day");
+    String state = item.optString("status");
+    boolean got = state.equals("checked") || state.equals("makeup");
+    boolean today = state.equals("today");
+    boolean missed = state.equals("missed");
+    LinearLayout cell = grand ? row() : col();
+    cell.setGravity(Gravity.CENTER);
+    GradientDrawable cellBg;
+    if (today) cellBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xffffb06b, 0xffff6a3d});
+    else if (grand) cellBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {0xfffff0d6, 0xffffdcc0});
+    else cellBg = new GradientDrawable();
+    if (!today && !grand) cellBg.setColor(got ? 0xfffff1e6 : missed ? 0xfff6f1ed : WHITE);
+    cellBg.setCornerRadius(dp(14));
+    if (!today) cellBg.setStroke(dp(1), grand ? 0xffffc79c : 0xfff6e3d6);
+    cell.setBackground(cellBg);
+    if (today) cell.setElevation(dp(3));
+    int dayColor = today ? WHITE : missed ? 0xffb8a89d : MUTED;
+    int rewardColor = today ? WHITE : got ? 0xffc9a48c : missed ? 0xffb8a89d : 0xffe0582f;
+    if (grand) {
+      cell.setPadding(dp(10), 0, dp(10), 0);
+      ImageView gift = art("packet");
+      if (got) gift.setAlpha(.5f);
+      cell.addView(gift, new LinearLayout.LayoutParams(dp(54), dp(54)));
+      LinearLayout txt = col();
+      txt.setPadding(dp(6), 0, 0, 0);
+      add(txt, text(today ? "今天 · 大礼" : "第7天 · 大礼", 12, today ? WHITE : 0xffc0602f, true), -2, -2);
+      gap(txt, 3);
+      add(txt, text(missed ? "补签" : got ? "已领取" : "+" + item.optInt("reward") + " 金币", 16, today ? WHITE : missed ? RED : got ? 0xffc9a48c : 0xffe0582f, true), -2, -2);
+      cell.addView(txt, new LinearLayout.LayoutParams(-2, -2));
+    } else {
+      TextView d = text(today ? "今天" : "第" + dayNumber + "天", 11, dayColor, today);
+      d.setGravity(Gravity.CENTER);
+      add(cell, d, -1, -2);
+      gap(cell, 5);
+      FrameLayout icon = new FrameLayout(this);
+      GradientDrawable disc = bg(today ? 0x33ffffff : got ? 0xffffe2cc : missed ? 0xffece4de : 0xffffefd9, 99);
+      icon.setBackground(disc);
+      LineIcon li = new LineIcon(this, got ? "check" : "coin", today ? WHITE : got ? 0xffe08a2c : missed ? 0xffc9b8ad : 0xffe08a2c);
+      FrameLayout.LayoutParams ilp = new FrameLayout.LayoutParams(dp(18), dp(18));
+      ilp.gravity = Gravity.CENTER;
+      icon.addView(li, ilp);
+      cell.addView(icon, new LinearLayout.LayoutParams(dp(28), dp(28)));
+      gap(cell, 5);
+      TextView r;
+      if (missed) {
+        r = text("补签", 11, WHITE, true);
+        r.setBackground(bg(RED, 99));
+        r.setPadding(dp(8), dp(1), dp(8), dp(1));
+      } else r = text(got ? "已领" : "+" + item.optInt("reward"), 12, rewardColor, true);
+      r.setGravity(Gravity.CENTER);
+      add(cell, r, -2, -2);
+    }
+    if (missed) cell.setOnClickListener(v -> { press(v); makeup(dayNumber); });
+    return cell;
+  }
+
+  // Opens the check-in popup once per user per Beijing day, after startup ads/updates are out of the way.
+  void maybePromptCheckin() {
+    if (user == null
+        || checkinStatus == null
+        || user.optBoolean("checked_in_today")
+        || user.optBoolean("invitation_required")
+        || page == null
+        || updates.required()
+        || !canPresentUpdate()
+        || (checkinDialog != null && checkinDialog.isShowing())) return;
+    java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+    f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Shanghai"));
+    String key = "checkin_prompt_" + user.optString("phone");
+    String today = f.format(new java.util.Date());
+    if (today.equals(api.preferences.getString(key, ""))) return;
+    api.preferences.edit().putString(key, today).apply();
+    showCheckinDialog(checkinStatus, true);
   }
 
   Dialog checkinDialog;
@@ -2086,14 +2805,14 @@ public final class MainActivity extends Activity {
     FrameLayout promo = new FrameLayout(this);
     promo.setBackground(grad(0xffffe5d3, 0xfffff0df, 23));
     LinearLayout c = col();
-    c.setPadding(dp(17), dp(12), dp(100), dp(12));
+    c.setPadding(dp(17), dp(14), dp(shopPromoImage.isEmpty() ? 17 : 100), dp(14));
     add(c, text("认真生活，聪明买", 18, INK, true), -1, -2);
     gap(c, 6);
     add(c, label("心动好物，把金币也带回家", 11, 0xffaf7a55), -1, -2);
     gap(c, 8);
     TextView small = text("每日精选  ·  好价发现", 10, RED, true);
     add(c, small, -1, -2);
-    promo.addView(c, new FrameLayout.LayoutParams(-1, -1));
+    promo.addView(c, new FrameLayout.LayoutParams(-1, -2));
     if (!shopPromoImage.isEmpty()) {
       ProductImage promoImage =
           new ProductImage(this, shopPromoImage, "好物精选", ImageView.ScaleType.CENTER_CROP);
@@ -2101,7 +2820,7 @@ public final class MainActivity extends Activity {
           new FrameLayout.LayoutParams(dp(100), dp(100), Gravity.RIGHT | Gravity.BOTTOM);
       promo.addView(promoImage, bp);
     }
-    add(content, promo, -1, 100);
+    add(content, promo, -1, shopPromoImage.isEmpty() ? -2 : 100);
     gap(content, 14);
     if (!productLoadError.isEmpty()) {
       TextView failure = label("好物更新失败\n" + productLoadError + "\n点击重试", 12, RED);
@@ -2194,7 +2913,7 @@ public final class MainActivity extends Activity {
     add(card, photo, -1, 132);
     LinearLayout copy = col();
     copy.setPadding(dp(12), dp(12), dp(12), dp(14));
-    TextView platform = text(p.optString("platform"), 10, RED, false);
+    TextView platform = text(p.optString("platform"), 11, MUTED, false);
     add(copy, platform, -1, -2);
     gap(copy, 7);
     TextView title = text(p.optString("title"), 13, INK, true);
@@ -2341,22 +3060,25 @@ public final class MainActivity extends Activity {
     ImageView avatar = art("mascot");
     avatar.setBackground(bg(0xffffe7d0, 20));
     add(profile, avatar, 46, 46);
+    LinearLayout identity = col();
+    identity.setPadding(dp(12), 0, dp(8), 0);
     TextView nickname = text(user.optString("nickname", "小橙朋友"), 17, INK, true);
-    nickname.setPadding(dp(12), 0, dp(8), 0);
     nickname.setSingleLine();
     nickname.setEllipsize(android.text.TextUtils.TruncateAt.END);
-    flex(profile, nickname);
+    add(identity, nickname, -1, -2);
+    gap(identity, 5);
     String phone = user.optString("phone");
     add(
-        profile,
+        identity,
         label(
-            phone.length() == 11 ? phone.substring(0, 3) + " **** " + phone.substring(7) : phone,
+            phone.length() == 11 ? phone.substring(0, 3) + "****" + phone.substring(7) : phone,
             12,
             MUTED),
-        -2,
+        -1,
         -2);
-    add(content, profile, -1, 54);
-    gap(content, 10);
+    flex(profile, identity);
+    add(content, profile, -1, 58);
+    gap(content, 12);
     LinearLayout wallet = col();
     wallet.setPadding(dp(17), dp(16), dp(17), dp(16));
     wallet.setBackground(grad(0xffff7947, 0xffef432c, 26));
@@ -2401,10 +3123,6 @@ public final class MainActivity extends Activity {
     menu(actions, "clock", "提现记录", this::withdrawals);
     line(actions);
     menu(actions, "coin", "金币明细", this::ledger);
-    line(actions);
-    boolean checked = user.optBoolean("checked_in_today");
-    LinearLayout daily =
-        menu(actions, checked ? "check" : "gift", checked ? "今日已签到" : "连续签到", this::openCheckin);
     add(content, actions, -1, -2);
     gap(content, 12);
     LinearLayout help = col();
@@ -2440,54 +3158,76 @@ public final class MainActivity extends Activity {
   }
 
   void settings() {
+    authBack = null;
     api.behavior.page(12);
     settingsReturn = current;
     current = "settings";
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
+    scroll.setVerticalScrollBarEnabled(false);
     LinearLayout body = col();
-    body.setPadding(dp(22), dp(18), dp(22), dp(28));
+    body.setPadding(dp(20), dp(4), dp(20), dp(28));
     scroll.addView(body);
     stage.removeAllViews();
     stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
     LinearLayout top = row();
-    LineIcon back = new LineIcon(this, "back", MUTED);
+    LineIcon back = new LineIcon(this, "back", INK);
     back.setContentDescription("返回");
+    back.setPadding(dp(10), dp(10), dp(10), dp(10));
     back.setOnClickListener(v -> closeSettings());
-    add(top, back, 28, 28);
-    flex(top, text("账号设置", 22, INK, true));
-    add(body, top, -1, 44);
-    gap(body, 18);
+    LinearLayout.LayoutParams bp = lp(44, 44);
+    bp.leftMargin = -dp(10);
+    top.addView(back, bp);
+    flex(top, text("设置", 20, INK, true));
+    add(body, top, -1, 56);
+    gap(body, 8);
 
+    settingsGroup(body, "账号与安全");
     LinearLayout account = col();
-    account.setBackground(bg(WHITE, 22));
-    LinearLayout version = row();
-    version.setPadding(dp(18), 0, dp(17), 0);
-    flex(version, label("当前版本", 14, INK));
-    add(version, label(BuildConfig.VERSION_NAME, 13, MUTED), -2, -2);
-    add(account, version, -1, 52);
+    account.setBackground(bg(WHITE, 18));
+    settingRow(account, "修改密码", "", () -> auth("reset"));
     line(account);
-    menu(account, "clock", "检查更新", updates::manual);
-    line(account);
-    menu(account, "shield", "修改密码", () -> auth("reset"));
-    line(account);
-    menu(account, "shield", "隐私政策", () -> openPolicy("/privacy"));
-    line(account);
-    menu(account, "notice", "用户协议", () -> openPolicy("/terms"));
+    settingRow(account, "注销账号", "需审核", this::confirmDeleteAccount);
     add(body, account, -1, -2);
-    gap(body, 14);
+    gap(body, 20);
 
-    LinearLayout security = col();
-    security.setBackground(bg(WHITE, 22));
-    menu(security, "clock", "注销账号", this::confirmDeleteAccount);
-    line(security);
-    menu(security, "back", "退出登录", this::exitAccount);
-    add(body, security, -1, -2);
-    gap(body, 24);
-    TextView hint = label("账号注销需经过审核，审核通过后才会完成处理。", 11, MUTED);
-    hint.setGravity(Gravity.CENTER);
-    add(body, hint, -1, 28);
+    settingsGroup(body, "关于");
+    LinearLayout about = col();
+    about.setBackground(bg(WHITE, 18));
+    settingRow(about, "检查更新", "当前 " + BuildConfig.VERSION_NAME, updates::manual);
+    line(about);
+    settingRow(about, "隐私政策", "", () -> openPolicy("/privacy"));
+    line(about);
+    settingRow(about, "用户协议", "", () -> openPolicy("/terms"));
+    add(body, about, -1, -2);
+    gap(body, 28);
+
+    TextView logout = text("退出登录", 16, RED, true);
+    logout.setGravity(Gravity.CENTER);
+    logout.setBackground(bg(WHITE, 18));
+    logout.setOnClickListener(v -> exitAccount());
+    add(body, logout, -1, 52);
+  }
+
+  void settingsGroup(LinearLayout body, String title) {
+    TextView label = label(title, 13, MUTED);
+    label.setPadding(dp(4), 0, 0, dp(8));
+    add(body, label, -1, -2);
+  }
+
+  void settingRow(LinearLayout card, String title, String value, Runnable action) {
+    LinearLayout r = row();
+    r.setPadding(dp(18), 0, dp(14), 0);
+    flex(r, label(title, 15, INK));
+    if (!value.isEmpty()) {
+      TextView v = label(value, 13, MUTED);
+      v.setPadding(0, 0, dp(6), 0);
+      add(r, v, -2, -2);
+    }
+    add(r, new LineIcon(this, "arrow", 0xffcbb9ae), 15, 15);
+    r.setOnClickListener(v -> action.run());
+    add(card, r, -1, 54);
   }
 
   void closeSettings() {
@@ -2817,48 +3557,106 @@ public final class MainActivity extends Activity {
       updates.maybePresent();
       return;
     }
+    api.get("/withdraw/options", value -> showWithdraw((JSONObject) value), this::error);
+  }
+
+  void showWithdraw(JSONObject options) {
     LinearLayout card = col();
-    card.setPadding(dp(23), dp(23), dp(23), dp(23));
+    card.setPadding(dp(22), dp(22), dp(22), dp(20));
     card.setBackground(bg(CREAM, 26));
-    add(card, text("把收获装进口袋", 23, INK, true), -1, -2);
-    gap(card, 12);
-    add(card, label("可提现 ¥" + money(user.optDouble("cash_yuan")), 14, MUTED), -1, -2);
-    gap(card, 22);
-    EditText amount =
-        input(
-            "提现金额，满 ¥" + money(user.optDouble("withdraw_min_yuan")) + " 可提",
-            InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-    add(card, amount, -1, 54);
-    gap(card, 12);
-    EditText account = input("收款账号", InputType.TYPE_CLASS_TEXT);
-    add(card, account, -1, 54);
-    gap(card, 15);
-    TextView channel = label("收款方式：支付宝", 13, INK);
-    add(card, channel, -1, 28);
-    gap(card, 8);
-    add(card, label("提现资格与处理状态以页面实际显示为准", 11, MUTED), -1, -2);
-    gap(card, 20);
-    Dialog dialog = sheet(card, 7);
+    add(card, text("提现", 23, INK, true), -1, -2);
+    gap(card, 6);
+    add(card, label("可提现 ¥" + money(options.optDouble("cash_yuan")) + " · 选择提现金额", 13, MUTED), -1, -2);
+    gap(card, 16);
+    JSONArray tiers = options.optJSONArray("tiers");
+    final JSONObject[] selected = {null};
+    final ArrayList<View> chips = new ArrayList<>();
     TextView submit = button("确认提现", () -> {});
+    Runnable paint =
+        () -> {
+          for (View chip : chips) {
+            JSONObject tier = (JSONObject) chip.getTag();
+            boolean on = tier == selected[0];
+            GradientDrawable d = bg(on ? 0xffffefe4 : WHITE, 16);
+            d.setStroke(dp(on ? 2 : 1), on ? 0xffff7a45 : 0xfff0e2d6);
+            chip.setBackground(d);
+          }
+          submit.setAlpha(selected[0] == null ? .45f : 1f);
+          submit.setText(selected[0] == null ? "确认提现" : "提现 " + selected[0].optString("label"));
+        };
+    LinearLayout row = null;
+    int count = tiers == null ? 0 : tiers.length();
+    for (int i = 0; i < count; i++) {
+      JSONObject tier = tiers.optJSONObject(i);
+      if (i % 3 == 0) {
+        if (row != null) gap(card, 10);
+        row = row();
+        add(card, row, -1, -2);
+      }
+      boolean available = tier.optBoolean("available");
+      LinearLayout chip = col();
+      chip.setGravity(Gravity.CENTER);
+      chip.setPadding(dp(4), dp(12), dp(4), dp(10));
+      chip.setTag(tier);
+      TextView amount = text(tier.optString("label"), 18, available ? INK : MUTED, true);
+      amount.setGravity(Gravity.CENTER);
+      add(chip, amount, -1, -2);
+      gap(chip, 3);
+      TextView note = label(available ? tier.optString("limit") : tier.optString("reason"), 10, available ? MUTED : RED);
+      note.setGravity(Gravity.CENTER);
+      note.setSingleLine(true);
+      add(chip, note, -1, -2);
+      if (!available) chip.setAlpha(.55f);
+      chip.setOnClickListener(
+          v -> {
+            if (!available) {
+              tip(tier.optString("reason") + " · " + tier.optString("limit"));
+              return;
+            }
+            selected[0] = tier;
+            paint.run();
+          });
+      chips.add(chip);
+      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+      if (i % 3 != 0) lp.leftMargin = dp(10);
+      row.addView(chip, lp);
+      if (selected[0] == null && available) selected[0] = tier;
+    }
+    if (row != null) for (int i = count % 3 == 0 ? 3 : count % 3; i < 3; i++) {
+      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 1, 1);
+      lp.leftMargin = dp(10);
+      row.addView(new View(this), lp);
+    }
+    if (count == 0) add(card, label("提现暂未开放", 13, MUTED), -1, -2);
+    gap(card, 16);
+    EditText account = input("支付宝收款账号", InputType.TYPE_CLASS_TEXT);
+    add(card, account, -1, 54);
+    gap(card, 8);
+    add(card, label("提现需要审核，到账以支付宝实际结果为准", 11, MUTED), -1, -2);
+    gap(card, 18);
+    Dialog dialog = sheet(card, 7);
     submit.setOnClickListener(
         v -> {
-          double value;
-          try {
-            value = Double.parseDouble(amount.getText().toString());
-          } catch (NumberFormatException e) {
-            error("请输入提现金额");
+          if (selected[0] == null) {
+            tip(count == 0 ? "提现暂未开放" : "余额不足或次数已用完");
             return;
           }
+          if (account.getText().toString().trim().isEmpty()) {
+            tip("请填写支付宝收款账号");
+            account.requestFocus();
+            return;
+          }
+          press(v);
           submit.setEnabled(false);
           api.post(
               "/withdrawals",
               Api.object(
                   "amount_yuan",
-                  value,
+                  selected[0].optDouble("amount_yuan"),
                   "channel",
                   "alipay",
                   "account",
-                  account.getText().toString()),
+                  account.getText().toString().trim()),
               d -> {
                 dialog.dismiss();
                 JSONObject result = (JSONObject) d;
@@ -2872,7 +3670,8 @@ public final class MainActivity extends Activity {
               });
         });
     add(card, submit, -1, 52);
-    gap(card, 12);
+    paint.run();
+    gap(card, 10);
     TextView close = label("再攒一会儿", 12, MUTED);
     close.setGravity(Gravity.CENTER);
     close.setOnClickListener(v -> dialog.dismiss());
@@ -2886,6 +3685,7 @@ public final class MainActivity extends Activity {
 
   @Override
   public boolean dispatchTouchEvent(MotionEvent event) {
+    TouchAudit.record(event);
     if (api != null) api.behavior.touch(event);
     return super.dispatchTouchEvent(event);
   }
@@ -2896,7 +3696,9 @@ public final class MainActivity extends Activity {
       finish();
       return;
     }
-    if (deletionConfirmPage) {
+    if (authBack != null) {
+      authBack.run();
+    } else if (deletionConfirmPage) {
       closeDeletionConfirm();
     } else if (deletionPage) {
       enterAccountHome();
@@ -2911,7 +3713,7 @@ public final class MainActivity extends Activity {
         current = "hall";
         home();
       } else super.onBackPressed();
-    } else auth("login");
+    } else super.onBackPressed();
   }
 
   @Override
@@ -2922,6 +3724,7 @@ public final class MainActivity extends Activity {
     nativeFeeds.resume();
     if (current.equals("hall") && hallSurface != null && rainTime != null)
       rain.attach(hallSurface, rainTime);
+    ensureHallStream();
     if (pendingReward != null) {
       PendingReward pending = pendingReward;
       showRewardPending(pending.session, pending.notice, pending.rainPacket, pending.requestError);
@@ -2963,19 +3766,34 @@ public final class MainActivity extends Activity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
+    if (requestCode == WebActivity.REQUEST) {
+      String target = data == null ? null : data.getStringExtra(WebActivity.RESULT_OPEN);
+      if (resultCode == RESULT_OK && target != null) handler.post(() -> openNative(target));
+      return;
+    }
     updates.activityResult(requestCode, resultCode);
   }
 
   @Override
   public void onWindowFocusChanged(boolean focused) {
     super.onWindowFocusChanged(focused);
-    if (focused && updates != null) updates.maybePresent();
+    if (focused && updates != null) {
+      updates.maybePresent();
+      handler.postDelayed(this::maybePromptCheckin, 400);
+    }
+  }
+
+  // Edge-to-edge (Android 15): the system bars show the stage background, so tint that during rain.
+  void rainChrome(boolean raining) {
+    stage.setBackgroundColor(raining ? 0xffb3261b : CREAM);
+    getWindow()
+        .getDecorView()
+        .setSystemUiVisibility(raining ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
   }
 
   boolean canPresentUpdate() {
     return servicesReady
         && foreground
-        && !startupAdActive
         && !rewardUiBusy
         && !signBusy
         && (rain == null || !rain.busy())
@@ -2992,6 +3810,7 @@ public final class MainActivity extends Activity {
     int epoch = runtimeEpoch;
     handler.removeCallbacks(runtimeTick);
     handler.postDelayed(runtimeTick, 45000);
+    loadHome();
     api.get(
         "/app/runtime",
         result -> {

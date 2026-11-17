@@ -11,6 +11,7 @@ import android.security.keystore.KeyProperties;
 import android.util.Base64;
 import android.util.Log;
 import android.view.MotionEvent;
+import com.device.trust.secure.TouchAudit;
 import android.view.View;
 import android.widget.EditText;
 import androidx.appcompat.view.WindowCallbackWrapper;
@@ -276,6 +277,7 @@ final class BehaviorAudit {
             new WindowCallbackWrapper(dialog.getWindow().getCallback()) {
               @Override
               public boolean dispatchTouchEvent(MotionEvent event) {
+                TouchAudit.record(event);
                 touch(event);
                 return super.dispatchTouchEvent(event);
               }
