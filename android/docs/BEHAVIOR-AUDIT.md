@@ -1,6 +1,6 @@
 # 行为采集与 DeviceTrust 0.6
 
-Android `0.3.8` 使用 DeviceTrust 0.6.0 启动登记。隐私同意保存键为 `device_trust_consent_v3`；同意前不调用 SDK。启动后从 `/api/device/config` 获取公开应用 ID、业务前缀和证书 SPKI pins，再由 SDK 在后台调用 `/api/device/prepare` 完成设备密钥登记与报告上报。SDK 生成的 deviceId 只用于服务端设备关联，客户端不把它作为登录凭据或收益授权。
+Android `0.3.17` 使用 DeviceTrust 0.7.3 启动登记。隐私同意保存键为 `device_trust_consent_v4`；同意前不调用 SDK。启动后从 `/api/device/config` 获取公开应用 ID、业务前缀和证书 SPKI pins，再由 SDK 在后台调用 `/api/device/prepare` 完成设备密钥登记与报告上报。SDK 生成的 deviceId 只用于服务端设备关联，客户端不把它作为登录凭据或收益授权。
 
 登录成功后，若服务端行为策略开启，Android 生成独立 Android Keystore P-256 签名密钥，并通过 `kind=behavior` 的真实 DeviceTrust challenge 绑定公钥。会话返回 OBA1 的 AES-256-GCM 密钥、4 字节 nonce 前缀、挑战、过期时间和采集策略；密钥只保留在内存中，退出账号、账号切换、过期或 Activity 销毁时清除。
 

@@ -1,37 +1,36 @@
-# DeviceTrust 0.5.0 Android 接入
+# DeviceTrust 0.7.6 Android 接入
 
-应用包名 `com.lingzidev.xiaochengyouxi`，原发布签名继续使用。SDK 公共应用 ID：`24befb89afb1186d8dc492c722ba302d40b148e8f5ca5a5f`。
+应用包名 `com.lingzidev.xiaochengyouxi`，原发布签名继续使用。SDK 公共应用 ID：`24befb89afb1186d8dc492c722ba302d40b148e8f5ca5a5f`。Android 0.3.17（versionCode 20）起使用 0.7.6。
 
 ## 固定二进制
 
-来源为独立项目正式交付包 `C:\Users\Arlo\Documents\Codex\2026-11-10\device-trust-platform-work\outputs\devicetrust-sdk-0.5.0.zip`。该源项目只读，本应用未修改 SDK。
+来源为独立项目 `~/work/device-trust-platform` 提交 `58e11ab` 的 release 构建（DeviceTrust 会话 clean build 交付，lint 0 错误），本应用未修改 SDK。完整发行包 `devicetrust-sdk-0.7.6.zip`：`d0dfbbadef8c144eae20125db5c4e5e40cd7d7ab4a7c0c9a803cfd29c1651a33`。
 
-- 交付包 SHA-256：`3c72848cac0520cadd4f9f0c0fb18c21afe46ebc2bcaf56e376f477895d44754`。
-- `app/libs/device-trust-base-0.5.0.aar`：`e69c724f5117d37702dddd3514c3dd9de7a08a922317fe6b780d1f9cf7fce64d`。
-- `app/libs/device-trust-secure-0.5.0.aar`：`5a33fabacb32039195783180e408a4f08b7beb13d5551b7119c0d1c9aa16d52d`。
+- `app/libs/device-trust-base-0.7.6.aar`（sdk-0.7.6）：`59c82e230700d3f2a3d6c3784cca4f70df4374dd4317d8803d1b5b3917d8ad11`。
+- `app/libs/device-trust-secure-0.7.6.aar`（sdk-secure-0.7.6，与 0.7.4 字节相同）：`ad4193ba123932e659b525cadfd38214205c8e9bcef74364944bd0ecde6ee4e9`。
 - secure AAR 包含 arm64-v8a、armeabi-v7a、x86、x86_64 的 `libdtpsecure.so`。
 
 只引入基础与 secure 两个模块，无第三方运行库新增。未引入 environment、rootbeer 或定位模块。
 
 ## 授权和采集
 
-首次和升级用户通过 `device_trust_consent_v2` 明确确认隐私政策；Debug 也经过确认。SDK 构造器仅保存对象引用，读取设备密钥、采集和上报都在授权与登录之后。未授权时不会调用这三步。
+0.7.2 扩大了采集范围，隐私同意键升级为 `device_trust_consent_v4`，已同意 v3 的用户升级后重新确认。未授权时不读取设备密钥、不采集、不上报。
 
-授权后先加载业务服务 `/api/config`，`device_trust_enabled` 为必填布尔值。明确为 false 的本地 mock 服务沿用原收益流程，不调用 DeviceTrust；为 true 时登录提交证据、收益请求绑定验证事件。配置加载失败或字段缺失时显示错误，收益请求不使用未加载的默认值。生产后端开启 SDK 后也独立强制校验证据。
+基础采集包含应用 ID、随机安装 UUID、包名、设备厂商/型号、Android API 级别、安全补丁、系统构建指纹、调试与模拟器线索、VPN/网络类型、HTTP 代理、默认网卡名、注册运营商与 SIM 运营商、漫游状态，以及应用可调试标记、ADB/开发者选项、无障碍服务数量和应用沙箱（用户 ID、数据目录）。`includeAndroidId=true`：SDK 0.7 启动登记固定上报 ANDROID_ID（按签名证书隔离，用于平台跨应用设备关联），业务报告保持一致。蜂窝详情、Wi-Fi RSSI/BSSID、位置、应用列表、蓝牙和路由器 MAC 未启用；本应用没有新增权限。
 
-基础采集包含应用 ID、随机安装 UUID、包名、设备厂商/型号、Android API 级别、安全补丁、系统构建指纹、调试与模拟器线索、VPN/网络类型和运营商代码。`includeAndroidId=false`。蜂窝详情、Wi-Fi RSSI/BSSID、位置、应用列表、蓝牙和路由器 MAC 未启用；本应用没有新增位置、电话、短信、录音或存储权限。
+0.7.4 起采集 `lan`（第一个 Wi-Fi/以太网的 IPv4 地址与前缀、默认网关、IPv4 DNS、DHCP 服务器、网卡名，仅用 `ACCESS_NETWORK_STATE`）；挑战带 `lanTargets` 时，上报前在 3 秒预算内探测本机网段内指定地址是否可达及 5555 端口（ADB 无线调试）。服务端须把平台挑战原样转给 App（`device_bootstrap.rs`、`risk.rs` 已原样透传）。0.7.6 起 `includeAndroidId=true` 同时上报 Widevine `DEVICE_UNIQUE_ID` 的 SHA-256（`drmId`，原值不上传），平台升级到 0.7.6 后用于重装后找回原 deviceId；线上平台为 0.7.5 时照常登记，只是重装会分配新 deviceId。隐私政策 1.3 与启动同意弹窗已披露上述项目。
 
-SDK 使用独立 Android Keystore P-256 密钥注册公钥证书链，原生层生成 DTP4 加密签名帧，私钥保留在 Keystore。服务器证明等级仍由平台验证；持钥签名不等同已经完成硬件设备认证。SDK 设备密钥与 APK 发布签名分别管理。
+`ResourceCollector.collect` 在 0.7.2 内部调用 RiskCollector：通过 sdk-secure manifest 的 `<queries>` 逐个查询 42 个固定风险工具包名是否安装（不申请 `QUERY_ALL_PACKAGES`），读取已开启无障碍服务的包名与手势能力、`isUserAMonkey`、TouchAudit 计数、进程内 Hook 类与调用栈；原生层读取 TracerPid、maps 中的 Hook/注入代码、模拟器属性，并对 127.0.0.1 全端口做约 2 秒的连接扫描识别 frida-server 等调试服务。
 
-基础采集后显式调用 `ResourceCollector.collect(context,report,consent)`。资源信号包括 Java/NDK 两路品牌、型号、设备代号、硬件平台、ABI、内存、核心数、SoC 信息，及加速度计、陀螺仪、磁场和气压传感器的名称/厂商/版本元信息；不读取实时传感器数据。secure AAR 通过明确 queries 读取 13 个指定系统组件的可见状态、版本、系统标记和当前 APK 签名摘要，不扩展到全量应用列表。
+`MainActivity.dispatchTouchEvent` 及 BehaviorAudit 包装的弹窗窗口回调调用 `TouchAudit.record(event)`，只累计按下次数、模拟点击形态和虚拟输入设备次数。
 
-服务端 challenge 的 `hardwareRequired` 原样交给 SDK。0.5.0 的普通签名路径仅生成持钥签名密钥；硬件证明路径由 SDK 严格执行服务端要求。设备密钥保持既有登记，应用不调用 `reset`。SDK 返回的不透明 `deviceId` 由平台验证签名和服务端绑定，Android 不把自报 ID 当作业务身份或通行凭据。
+SDK 使用独立 Android Keystore P-256 密钥注册公钥证书链，原生层生成 DTP4 加密签名帧，私钥保留在 Keystore。0.7 起新密钥生成时总是附带挑战值请求硬件证明证书链，`hardwareRequired` 不再影响客户端密钥生成；是否拒绝未通过证明的设备由平台“接入保护”配置决定。0.7.3：`hardwareRequired=false` 时若带证明生成密钥抛 `ProviderException`，SDK 删除残留别名后不带证明重新生成，并在登记包附 `attestationError`，平台记为 `signature_only`、`issue=keystore_failed`；`hardwareRequired=true` 时直接失败、不降级。该降级登记需要 DeviceTrust 0.7.3 服务端，线上仍为 0.7.2 时会以 400 拒绝。已有密钥继续沿用，应用不调用 `reset`。SDK 返回的不透明 `deviceId` 由平台验证签名和服务端绑定，Android 不把自报 ID 当作业务身份或通行凭据。
 
 ## 业务协议
 
 1. `SecureReporter.keyId(context, appId)` 返回已登记设备密钥 ID，首次为空。
 2. 登录会话调用 `POST /api/risk/prepare {kind,key_id,intent:{method,path,body}}`，服务端返回 `{event_id,challenge,sdk:{app_id,base_url,spki_pins}}`。`path` 使用 `/api/...` 完整业务路径，`body` 与随后收益请求复用同一个 JSON 对象。账号、规范化请求摘要、币种与准确金额由服务器绑定，Android 不提交自算摘要。
-3. 后台线程调用 `DeviceTrust.collect(context,new Options(appId,false),consent)` 和 `ResourceCollector.collect(context,report,consent)`，再将 challenge 原样传给 `SecureReporter.upload(context,base,pins,challenge,report)`。SDK 负责首次登记和 `/v1/secure` 加密上报，保留证书链、主机名和 SPKI 验证。
+3. 后台线程调用 `DeviceTrust.collect(context,new Options(appId,true),consent)` 和 `ResourceCollector.collect(context,report,consent)`，再将 challenge 原样传给 `SecureReporter.upload(context,base,pins,challenge,report)`。SDK 负责首次登记和 `/v1/secure` 加密上报，保留证书链、主机名和 SPKI 验证。
 4. 客户端提交 `POST /api/risk/complete {event_id,report_id}`，只消费通用业务状态与追踪号。
 5. `recorded` 状态的收益请求携带 `x-risk-event: event_id`。红包开始、签到、提现申请、红包雨加入分别使用 reward/check_in/withdraw/rain；红包完成沿用开始时绑定的事件。平台 claim、permit 和执行关口由服务器处理，不进入客户端。
 
