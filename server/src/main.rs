@@ -304,10 +304,21 @@ async fn sms(State(state): State<AppState>, Json(input): Json<SmsInput>) -> ApiR
         "reset" | "reset-password" => "reset",
         _ => return Err(invalid("验证码用途应为 register 或 reset")),
     };
-    open(&state)?.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,?2,'123456',?3) ON CONFLICT(phone,purpose) DO UPDATE SET code='123456',expires_at=excluded.expires_at", params![input.phone,purpose,now()+300])?;
-    Ok(Json(
-        json!({"code":"123456","expires_in":300,"mode":"mock"}),
-    ))
+    // Local development keeps a fixed, returned code. Production never returns or logs the code:
+    // it is random per request and is delivered only by the SMS channel (to be connected here).
+    let local = !state.config.production;
+    let code = if local {
+        "123456".to_string()
+    } else {
+        use rand_core::RngCore;
+        format!("{:06}", OsRng.next_u32() % 1_000_000)
+    };
+    open(&state)?.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,?2,?3,?4) ON CONFLICT(phone,purpose) DO UPDATE SET code=excluded.code,expires_at=excluded.expires_at", params![input.phone,purpose,code,now()+300])?;
+    if local {
+        return Ok(Json(json!({"code":code,"expires_in":300,"mode":"mock"})));
+    }
+    eprintln!("短信通道尚未接入：{purpose} 验证码已生成但未实际下发");
+    Ok(Json(json!({"expires_in":300,"sent":true})))
 }
 #[derive(Deserialize)]
 struct RegisterInput {

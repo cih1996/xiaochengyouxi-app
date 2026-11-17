@@ -374,7 +374,8 @@ async function sms() {
         purpose: authMode.value === "reset" ? "reset" : "register",
       },
     });
-    code.value = data.code;
+    // Only the local test server returns the code; production delivers it by SMS.
+    if (data.code) code.value = data.code;
     smsSent.value = true;
     notify("验证码已发送");
   } catch (e) {

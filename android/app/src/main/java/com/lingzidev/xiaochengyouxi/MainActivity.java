@@ -417,6 +417,12 @@ public final class MainActivity extends Activity {
     return v;
   }
 
+  // The login risk report runs in the background after sign-in; a review decision there is kept
+  // server-side and enforced on rewards/withdrawals, so it must not interrupt the user.
+  void loginReportFailed(String message) {
+    android.util.Log.w("LoginReport", "login risk report not accepted: " + message);
+  }
+
   void error(String message) {
     new AlertDialog.Builder(this)
         .setTitle("操作未完成")
@@ -447,7 +453,7 @@ public final class MainActivity extends Activity {
         data -> {
           user = (JSONObject) data;
           enterAccount();
-          api.reportLogin(this::error);
+          api.reportLogin(this::loginReportFailed);
         },
         m -> {
           api.saveToken("");
@@ -462,7 +468,7 @@ public final class MainActivity extends Activity {
     api.saveToken(j.optString("token"));
     user = j.optJSONObject("user");
     enterAccount();
-    api.reportLogin(this::error);
+    api.reportLogin(this::loginReportFailed);
   }
 
   void enterAccount() {
@@ -976,7 +982,8 @@ public final class MainActivity extends Activity {
                   login ? "login" : reset ? "reset" : "register"),
               d -> {
                 JSONObject r = (JSONObject) d;
-                code.setText(r.optString("code"));
+                // Only the local test server returns the code; production delivers it by SMS.
+                if (r.has("code")) code.setText(r.optString("code"));
                 code.requestFocus();
                 code.setSelection(code.length());
                 tip("验证码已发送");
