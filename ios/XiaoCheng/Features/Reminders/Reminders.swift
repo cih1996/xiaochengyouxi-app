@@ -115,6 +115,11 @@ final class Reminders: NSObject, ObservableObject, UNUserNotificationCenterDeleg
 
     private func schedule() {
         cancelAll()
+        #if DEBUG
+        NSLog("[Reminders] schedule auth=%d user=%d config=%d rain=%@ checked=%d wheel=%d",
+              authorization.rawValue, userEnabled ? 1 : 0, config == nil ? 0 : 1,
+              nextRainStart?.description ?? "nil", checkedInToday ? 1 : 0, wheelAvailable)
+        #endif
         guard userEnabled, APIClient.shared.token != nil, let c = config, c.enabled,
               authorization == .authorized || authorization == .provisional || authorization == .ephemeral
         else { return }
@@ -147,6 +152,9 @@ final class Reminders: NSObject, ObservableObject, UNUserNotificationCenterDeleg
         content.interruptionLevel = .active
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, date.timeIntervalSinceNow), repeats: false)
         center.add(UNNotificationRequest(identifier: "orange.reminder.\(id)", content: content, trigger: trigger))
+        #if DEBUG
+        NSLog("[Reminders] scheduled %@ at %@ (%@)", id, date.description, body)
+        #endif
     }
 
     // MARK: - 北京时间
