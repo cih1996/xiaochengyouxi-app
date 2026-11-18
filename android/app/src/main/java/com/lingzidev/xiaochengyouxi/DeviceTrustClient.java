@@ -107,14 +107,27 @@ final class DeviceTrustClient {
   }
 
   /** Runs on a worker thread. Returns true when a fresh key is registered. */
-  private long lastKeyReset;
+  private static final String KEY_RESETS = "device_trust_key_resets";
 
   private synchronized boolean resetKey() {
     if (sdkPins == null || sdkBase.isEmpty()) return false;
-    // At most once a minute, so a key that keeps failing can never loop.
+    // At most twice per 24 hours per installation (kept across restarts): an environment that
+    // keeps invalidating keys (sandboxes, cloud phones) must not be able to rotate keys freely.
     long now = System.currentTimeMillis();
-    if (now - lastKeyReset < 60_000) return false;
-    lastKeyReset = now;
+    StringBuilder kept = new StringBuilder();
+    int recent = 0;
+    for (String part : api.preferences.getString(KEY_RESETS, "").split(",")) {
+      try {
+        long at = Long.parseLong(part.trim());
+        if (now - at < 86_400_000L) {
+          recent++;
+          kept.append(at).append(',');
+        }
+      } catch (NumberFormatException ignored) {
+      }
+    }
+    if (recent >= 2) return false;
+    api.preferences.edit().putString(KEY_RESETS, kept.append(now).toString()).apply();
     try {
       SecureReporter.reset(activity.getApplicationContext(), BuildConfig.DEVICE_TRUST_APP_ID);
       com.device.trust.secure.DeviceTrustClient.initialize(

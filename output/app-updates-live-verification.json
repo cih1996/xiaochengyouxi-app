@@ -1,7 +1,7 @@
 {
-  "version": "0.3.20",
-  "version_code": 23,
-  "apk_sha256": "96bbf73fe5dfaa977237f3b326c774c88e8593710119294330ae7970ff2a0f76",
-  "apk_size_bytes": 18398961,
+  "version": "0.3.22",
+  "version_code": 25,
+  "apk_sha256": "bed03c1c0337cc4dbdb25d69f5402e788ae24613e54ec270c2b8caf60602c8d3",
+  "apk_size_bytes": 27117354,
   "public_checks_passed": true
 }
