@@ -6,12 +6,19 @@ struct HallView: View {
     @State private var activity: ActivityLink?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        VStack(spacing: 0) {
+            // 固定区：标题 + 金币、红包雨条，不随消息滚动
+            VStack(spacing: 10) {
+                PageHeader(title: "小橙有喜") { CoinBadge(coins: session.user?.coins) }
+                RainBar(model: model).padding(.horizontal, 14)
+            }
+            .padding(.bottom, 10)
+            .background(Theme.background)
+            .zIndex(1)
+
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
-                        PageHeader(title: "小橙有喜") { CoinBadge(coins: session.user?.coins) }
-                        RainBar(model: model)
                         CheckinCard(model: model)
                         Text("今天").font(.caption).foregroundColor(Theme.hint).padding(.top, 2)
                         if model.items.isEmpty {
@@ -24,18 +31,24 @@ struct HallView: View {
                         Color.clear.frame(height: 12).id("bottom")
                     }
                     .padding(.horizontal, 14)
+                    .padding(.top, 2)
                 }
                 .onChange(of: model.items.count) { _ in
                     withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
-            FloatingEntries(open: { activity = $0 })
-                .padding(.top, 150).padding(.trailing, 6)
+            .overlay(alignment: .topTrailing) {
+                // 悬浮入口固定在屏幕上（不随列表滚动），位置与 Android 相同：签到卡右侧
+                FloatingEntries(newbieBadge: model.newbieBadge, wheelBadge: model.wheelBadge, open: { activity = $0 })
+                    .padding(.top, 6).padding(.trailing, 10)
+            }
         }
         .background(Theme.background.ignoresSafeArea())
         .onAppear { model.start() }
         .onDisappear { model.stop() }
-        .fullScreenCover(item: $activity) { link in ActivityScreen(link: link) }
+        .fullScreenCover(item: $activity, onDismiss: { Task { await model.refreshBadges() } }) { link in
+            ActivityScreen(link: link)
+        }
     }
 }
 
@@ -113,43 +126,138 @@ private struct CheckinCard: View {
     }
 }
 
-/// 右侧悬浮的新人礼包、幸运转盘入口（Android 大厅右上角）
+/// 右侧悬浮的新人礼包、幸运转盘入口（Android 大厅右上角）。
+/// 比 Android 0.3.24 缩小约 1/3；红包每隔几秒轻晃、转盘慢转、整体轻浮动，有可领次数时显示呼吸角标。
 private struct FloatingEntries: View {
+    let newbieBadge: Int
+    let wheelBadge: Int
     let open: (ActivityLink) -> Void
+    @State private var float = false
+
     var body: some View {
-        VStack(spacing: 14) {
-            Button { open(.newbie) } label: {
-                VStack(spacing: -6) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10).fill(LinearGradient(
-                            colors: [Color(hex: 0xF4504A), Color(hex: 0xC8202A)], startPoint: .top, endPoint: .bottom))
-                            .frame(width: 66, height: 74)
-                            .shadow(color: .red.opacity(0.3), radius: 6, y: 3)
-                        Circle().fill(Theme.goldButton).frame(width: 34, height: 34)
-                            .overlay(Text("開").font(.system(size: 17, weight: .heavy)).foregroundColor(Color(hex: 0x8A3B0A)))
-                            .offset(y: -8)
-                    }
-                    EntryLabel(text: "新人礼包")
-                }
-            }
-            Button { open(.wheel) } label: {
-                VStack(spacing: -8) {
-                    WheelGlyph().frame(width: 80, height: 80)
-                    EntryLabel(text: "幸运转盘")
-                }
+        VStack(spacing: 10) {
+            EntryButton(label: "新人礼包", badge: newbieBadge) { open(.newbie) } art: { NewbieGlyph() }
+                .offset(y: float ? -3 : 3)
+            EntryButton(label: "幸运转盘", badge: wheelBadge) { open(.wheel) } art: { SpinningWheel() }
+                .offset(y: float ? 3 : -3)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) { float = true }
+        }
+    }
+}
+
+private struct EntryButton<Art: View>: View {
+    let label: String
+    let badge: Int
+    let action: () -> Void
+    @ViewBuilder var art: Art
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: -5) {
+                art.frame(width: 54, height: 54)
+                    .overlay(alignment: .topTrailing) { if badge > 0 { BadgeDot(count: badge).offset(x: 6, y: -4) } }
+                EntryLabel(text: label)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScale())
+        .accessibilityLabel(badge > 0 ? "\(label)，\(badge) 次可领" : label)
+    }
+}
+
+private struct PressScale: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+private struct BadgeDot: View {
+    let count: Int
+    @State private var pulse = false
+    var body: some View {
+        Text(count > 9 ? "9+" : "\(count)")
+            .font(.system(size: 10, weight: .bold)).foregroundColor(.white)
+            .frame(minWidth: 17, minHeight: 17)
+            .background(Color(hex: 0xE8343A), in: Capsule())
+            .overlay(Capsule().stroke(Color.white, lineWidth: 1.5))
+            .scaleEffect(pulse ? 1.12 : 0.95)
+            .onAppear { withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pulse = true } }
+    }
+}
+
+/// 红包：每 3 秒左右晃一下，带一道扫光
+private struct NewbieGlyph: View {
+    @State private var angle: Double = 0
+    @State private var shine = false
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(LinearGradient(colors: [Color(hex: 0xF4504A), Color(hex: 0xC8202A)], startPoint: .top, endPoint: .bottom))
+                .frame(width: 44, height: 50)
+                .overlay(
+                    LinearGradient(colors: [.clear, .white.opacity(0.45), .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: 14).rotationEffect(.degrees(20))
+                        .offset(x: shine ? 34 : -34)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .shadow(color: .red.opacity(0.3), radius: 4, y: 2)
+            Circle().fill(Theme.goldButton).frame(width: 22, height: 22)
+                .overlay(Text("開").font(.system(size: 11, weight: .heavy)).foregroundColor(Color(hex: 0x8A3B0A)))
+                .offset(y: -6)
+        }
+        .rotationEffect(.degrees(angle), anchor: .bottom)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_600_000_000)
+                for a in [-9.0, 8, -6, 4, 0] {
+                    withAnimation(.easeInOut(duration: 0.09)) { angle = a }
+                    try? await Task.sleep(nanoseconds: 90_000_000)
+                }
+                shine = false
+                withAnimation(.easeInOut(duration: 0.7)) { shine = true }
+            }
+        }
+    }
+}
+
+/// 转盘：慢速持续旋转，中心金色指针不动
+private struct SpinningWheel: View {
+    @State private var spin = false
+    var body: some View {
+        ZStack {
+            WheelGlyph()
+                .rotationEffect(.degrees(spin ? 360 : 0))
+                .animation(.linear(duration: 8).repeatForever(autoreverses: false), value: spin)
+            Circle().fill(Theme.goldButton).frame(width: 14, height: 14)
+                .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+            Triangle().fill(Theme.goldButton).frame(width: 10, height: 9).offset(y: -27)
+        }
+        .onAppear { spin = true }
+    }
+}
+
+private struct Triangle: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.midX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        p.closeSubpath()
+        return p
     }
 }
 
 private struct EntryLabel: View {
     let text: String
     var body: some View {
-        Text(text).font(.system(size: 14, weight: .heavy)).foregroundColor(Color(hex: 0x7A2E05))
-            .padding(.horizontal, 10).padding(.vertical, 5)
+        Text(text).font(.system(size: 11, weight: .heavy)).foregroundColor(Color(hex: 0x7A2E05))
+            .padding(.horizontal, 7).padding(.vertical, 3)
             .background(Theme.goldButton, in: Capsule())
-            .overlay(Capsule().stroke(Color.white, lineWidth: 1.5))
+            .overlay(Capsule().stroke(Color.white, lineWidth: 1.2))
     }
 }
 
@@ -160,11 +268,10 @@ private struct WheelGlyph: View {
             ForEach(0..<8) { i in
                 Wedge(start: .degrees(Double(i) * 45), end: .degrees(Double(i + 1) * 45))
                     .fill(i % 2 == 0 ? Color(hex: 0xE8343A) : .white)
-                    .padding(7)
+                    .padding(5)
             }
-            Circle().fill(Theme.goldButton).frame(width: 20, height: 20)
-                .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
         }
+        .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
     }
 }
 

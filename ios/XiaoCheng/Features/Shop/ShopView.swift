@@ -14,9 +14,13 @@ struct ShopView: View {
     private var shown: [Product] { category == "全部" ? products : products.filter { $0.category == category } }
 
     var body: some View {
+        VStack(spacing: 0) {
+        // 固定标题栏
+        PageHeader(title: "捡漏好物") { CoinBadge(coins: session.user?.coins) }
+            .padding(.bottom, 8)
+            .background(Theme.background)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                PageHeader(title: "捡漏好物") { CoinBadge(coins: session.user?.coins) }
                 VStack(alignment: .leading, spacing: 6) {
                     Text("认真生活，聪明买").font(.system(size: 22, weight: .heavy)).foregroundColor(Theme.text)
                     Text("心动好物，把金币也带回家").font(.footnote).foregroundColor(Theme.secondary)
@@ -48,6 +52,7 @@ struct ShopView: View {
                 }
             }
             .padding(.bottom, 16)
+        }
         }
         .background(Theme.background.ignoresSafeArea())
         .refreshable { await load() }

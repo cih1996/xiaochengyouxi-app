@@ -9,12 +9,15 @@ final class HallModel: ObservableObject {
     @Published var checkin: CheckinStatus?
     @Published var rain: RainStatus?
     @Published var rainOffset: TimeInterval = 0   // 服务器时间 - 本机时间
+    @Published var newbieBadge = 0
+    @Published var wheelBadge = 0
     private var streamTask: Task<Void, Never>?
 
     func start() {
         guard streamTask == nil else { return }
         streamTask = Task { [weak self] in await self?.runStream() }
         Task { await refreshCheckin() }
+        Task { await refreshBadges() }
         Task { await pollRain() }
     }
 
@@ -25,6 +28,12 @@ final class HallModel: ObservableObject {
 
     func refreshCheckin() async {
         checkin = try? await APIClient.shared.get("/check-in/status")
+    }
+
+    func refreshBadges() async {
+        struct Badge: Decodable { let available: Int?; let enabled: Bool? }
+        if let n: Badge = try? await APIClient.shared.get("/newbie") { newbieBadge = (n.enabled ?? true) ? (n.available ?? 0) : 0 }
+        if let w: Badge = try? await APIClient.shared.get("/wheel/badge") { wheelBadge = (w.enabled ?? true) ? (w.available ?? 0) : 0 }
     }
 
     private func pollRain() async {
