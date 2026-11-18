@@ -49,12 +49,16 @@ final class DeviceTrustClient {
   }
 
   private void collectEnvironment(Context context, JSONObject report, boolean consent) {
-    if (!consent || !locationGranted(context)) return;
+    // Always called once the user agreed: without location permission the SDK itself records
+    // "permission_denied" (the platform then leaves those rules out of scoring). Skipping the
+    // call left the default "not enabled", which looks like a missing integration.
+    // WIFI (BSSID/RSSI) is not requested: the privacy policy says Wi-Fi details are not read.
+    if (!consent) return;
     try {
       EnvironmentCollector.collect(
           context,
           report,
-          true,
+          consent,
           EnvironmentCollector.Collection.CELL,
           EnvironmentCollector.Collection.LOCATION);
     } catch (Exception | LinkageError error) {
