@@ -37,7 +37,16 @@ struct MainTabView: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.biometricOffer != nil)
-        .task { await session.refreshMe() }
+        .task {
+            #if DEBUG
+            switch DebugLaunch.screen {
+            case "shop": tab = 1
+            case "me", "settings", "ledger": tab = 2
+            default: break
+            }
+            #endif
+            await session.refreshMe()
+        }
     }
 }
 

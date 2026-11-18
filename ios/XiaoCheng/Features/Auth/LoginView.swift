@@ -13,10 +13,16 @@ struct LoginView: View {
     @State private var error: String?
     @State private var triedAuto = false
     @State private var shakeAgreement = 0
+    @State private var codeMode = false
+    @State private var code = ""
+    @State private var countdown = 0
     @FocusState private var focus: Field?
-    enum Field { case account, password }
+    enum Field { case account, password, code }
 
-    private var canSubmit: Bool { !account.trimmingCharacters(in: .whitespaces).isEmpty && password.count >= 8 }
+    private var trimmed: String { account.trimmingCharacters(in: .whitespaces) }
+    private var canSubmit: Bool {
+        codeMode ? (trimmed.count == 11 && code.count >= 4) : (!trimmed.isEmpty && password.count >= 6)
+    }
 
     var body: some View {
         ScrollView {
@@ -31,32 +37,52 @@ struct LoginView: View {
                 }
                 .padding(.top, 50)
 
-                Text("账号登录").font(.system(size: 32, weight: .heavy)).foregroundColor(Theme.text).padding(.top, 34)
-                Text("手机号或用户名均可登录").font(.subheadline).foregroundColor(Theme.secondary).padding(.top, 8)
+                Text(codeMode ? "验证码登录" : "账号登录").font(.system(size: 32, weight: .heavy)).foregroundColor(Theme.text).padding(.top, 34)
+                Text(codeMode ? "未注册的手机号请先注册" : "手机号或用户名均可登录").font(.subheadline).foregroundColor(Theme.secondary).padding(.top, 8)
 
                 VStack(spacing: 16) {
                     InputBox(focused: focus == .account) {
-                        TextField("手机号 / 用户名", text: $account)
-                            .textContentType(.username)
-                            .keyboardType(.asciiCapable)
+                        TextField(codeMode ? "请输入手机号" : "手机号 / 用户名", text: $account)
+                            .textContentType(codeMode ? .telephoneNumber : .username)
+                            .keyboardType(codeMode ? .numberPad : .asciiCapable)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .focused($focus, equals: .account)
                             .submitLabel(.next)
-                            .onSubmit { focus = .password }
+                            .onSubmit { focus = codeMode ? .code : .password }
                     }
-                    InputBox(focused: focus == .password) {
-                        HStack {
-                            Group {
-                                if showPassword { TextField("请输入密码", text: $password) }
-                                else { SecureField("请输入密码", text: $password) }
+                    if codeMode {
+                        InputBox(focused: focus == .code) {
+                            HStack {
+                                // iOS 收到短信后键盘上方直接出现验证码，一点即填
+                                TextField("请输入验证码", text: $code)
+                                    .textContentType(.oneTimeCode)
+                                    .keyboardType(.numberPad)
+                                    .focused($focus, equals: .code)
+                                    .onChange(of: code) { v in if v.count == 6 { submit() } }
+                                Button(action: sendCode) {
+                                    Text(countdown > 0 ? "\(countdown)s 后重发" : "获取验证码")
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(countdown > 0 || trimmed.count != 11 ? Theme.hint : Theme.orange)
+                                        .monospacedDigit()
+                                }
+                                .disabled(countdown > 0 || trimmed.count != 11)
                             }
-                            .textContentType(.password)
-                            .focused($focus, equals: .password)
-                            .submitLabel(.go)
-                            .onSubmit(submit)
-                            Button { showPassword.toggle() } label: {
-                                Image(systemName: showPassword ? "eye" : "eye.slash").foregroundColor(Theme.hint)
+                        }
+                    } else {
+                        InputBox(focused: focus == .password) {
+                            HStack {
+                                Group {
+                                    if showPassword { TextField("请输入密码", text: $password) }
+                                    else { SecureField("请输入密码", text: $password) }
+                                }
+                                .textContentType(.password)
+                                .focused($focus, equals: .password)
+                                .submitLabel(.go)
+                                .onSubmit(submit)
+                                Button { showPassword.toggle() } label: {
+                                    Image(systemName: showPassword ? "eye" : "eye.slash").foregroundColor(Theme.hint)
+                                }
                             }
                         }
                     }
@@ -82,7 +108,7 @@ struct LoginView: View {
                 .disabled(busy || !canSubmit)
                 .padding(.top, 22)
 
-                if session.biometricEnabled {
+                if session.biometricEnabled && !codeMode {
                     Button(action: biometricLogin) {
                         Label("\(BiometricVault.name)登录", systemImage: BiometricVault.symbol)
                             .font(.body.weight(.semibold)).foregroundColor(Theme.orange)
@@ -94,7 +120,9 @@ struct LoginView: View {
                 }
 
                 HStack {
-                    Button("验证码登录") { Toast.shared.show("iOS 版正在赶来") }
+                    Button(codeMode ? "密码登录" : "验证码登录") {
+                        withAnimation(.easeOut(duration: 0.2)) { codeMode.toggle(); error = nil }
+                    }
                         .font(.body.bold()).foregroundColor(Theme.orange)
                     Spacer()
                     Button("忘记密码？") { Toast.shared.show("iOS 版正在赶来") }
@@ -113,6 +141,9 @@ struct LoginView: View {
         .scrollDismissesKeyboardCompat()
         .background(Theme.background.ignoresSafeArea())
         .task {
+            #if DEBUG
+            if DebugLaunch.screen == "login-code" { codeMode = true }
+            #endif
             // 冷启动或 token 过期时自动弹面容识别；主动退出后只显示按钮
             if session.biometricEnabled && !session.explicitLogout && !triedAuto {
                 triedAuto = true
@@ -157,8 +188,29 @@ struct LoginView: View {
         focus = nil
         Task {
             defer { busy = false }
-            do { try await session.login(phone: account.trimmingCharacters(in: .whitespaces), password: password) }
-            catch { self.error = error.localizedDescription }
+            do {
+                if codeMode { try await session.login(phone: trimmed, code: code) }
+                else { try await session.login(phone: trimmed, password: password) }
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
+    private func sendCode() {
+        countdown = 60
+        error = nil
+        focus = .code
+        Task {
+            do {
+                try await session.sendLoginCode(phone: trimmed)
+                Toast.shared.show("验证码已发送")
+                while countdown > 0 {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    countdown -= 1
+                }
+            } catch {
+                countdown = 0
+                self.error = error.localizedDescription
+            }
         }
     }
 

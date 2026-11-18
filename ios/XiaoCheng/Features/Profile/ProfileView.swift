@@ -43,8 +43,19 @@ struct ProfileView: View {
             .background(Theme.background.ignoresSafeArea())
             .navigationBarHidden(true)
             .refreshable { await session.refreshMe() }
+            .background(debugLinks)
         }
         .navigationViewStyle(.stack)
+    }
+}
+
+extension ProfileView {
+    /// Debug 启动参数直达二级页（截图用）
+    @ViewBuilder var debugLinks: some View {
+        #if DEBUG
+        NavigationLink(destination: SettingsView(), isActive: .constant(DebugLaunch.screen == "settings")) { EmptyView() }
+        NavigationLink(destination: LedgerView(), isActive: .constant(DebugLaunch.screen == "ledger")) { EmptyView() }
+        #endif
     }
 }
 

@@ -26,6 +26,11 @@ struct RootView: View {
                 MainTabView()
             }
         }
-        .task { await session.bootstrap() }
+        .task {
+            #if DEBUG
+            await DebugLaunch.run(session)
+            #endif
+            await session.bootstrap()
+        }
     }
 }

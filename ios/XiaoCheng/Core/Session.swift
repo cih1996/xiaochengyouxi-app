@@ -21,6 +21,21 @@ final class Session: ObservableObject {
         await refreshMe()
     }
 
+    /// 验证码登录：服务端 LoginInput 要求 password 字段存在，传空串。
+    /// 这种登录没有密码可存，所以不提示开启面容 ID。
+    func login(phone: String, code: String) async throws {
+        let r: AuthResponse = try await APIClient.shared.post(
+            "/auth/login", ["phone": phone, "password": "", "code": code])
+        save(token: r.token)
+        user = r.user
+        explicitLogout = false
+    }
+
+    func sendLoginCode(phone: String) async throws {
+        struct R: Decodable { let code: String? }
+        let _: R = try await APIClient.shared.post("/auth/sms", ["phone": phone, "purpose": "login"])
+    }
+
     func login(phone: String, password: String) async throws {
         let r: AuthResponse = try await APIClient.shared.post(
             "/auth/login", ["phone": phone, "password": password])
