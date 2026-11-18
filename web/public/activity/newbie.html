@@ -66,7 +66,7 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
 .headline .sub b{color:var(--gold-2);font-size:20px;font-weight:900;margin:0 2px}
 
 .envelope-wrap{position:relative;width:min(70vw,290px);aspect-ratio:320/420;perspective:1200px}
-.envelope{position:absolute;inset:0;transform-style:preserve-3d;transform:translateY(-110vh) rotate(-12deg) scale(.6)}
+.envelope{position:absolute;inset:0;transform-style:flat;perspective:1200px;transform:translateY(-110vh) rotate(-12deg) scale(.6)}
 .envelope.drop{animation:drop 1s cubic-bezier(.22,1.25,.36,1) forwards}
 .envelope.idle{animation:idle 2.6s ease-in-out infinite}
 @keyframes drop{0%{transform:translateY(-110vh) rotate(-12deg) scale(.6)}70%{transform:translateY(12px) rotate(2deg) scale(1.04)}85%{transform:translateY(-6px) rotate(-1deg) scale(.99)}100%{transform:none}}
@@ -220,7 +220,6 @@ button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
       <svg class="finger" id="finger" viewBox="0 0 48 48"><path d="M20 6a4 4 0 0 1 8 0v16l8.5 1.7a5 5 0 0 1 4 5.6L39 40a6 6 0 0 1-6 5H22a6 6 0 0 1-4.6-2.2L9 33a3.5 3.5 0 0 1 5-4.9L20 32z" fill="#fff" stroke="#8a2a00" stroke-width="2"/></svg>
     </div>
   </div>
-  <button class="cta" id="cta">继续拆下一个</button>
   <button class="counter" id="counter"></button>
   <div class="scroll-hint" id="scrollHint">上滑邀请好友<i></i></div>
 </section>
@@ -393,7 +392,7 @@ function headlineFor(p) {
   if (!p) return { kicker: "邀请好友", title: "再拆更多大红包", sub: "每邀请 1 人得 1 个，最高 <b>" + fmt(state.invite_max) + "</b> 金币" };
   if (p.kind === "welcome") return { kicker: state.invited ? "好友邀请 · 专属加成" : "新人专享", title: "送你一个新人大红包", sub: "最高可得 <b>" + fmt(state.welcome_max) + "</b> 金币" };
   if (p.kind === "video") {
-    if (p.status !== "ready") return { kicker: "红包已拆开", title: "看完视频立即到账", sub: "本个红包 <b>" + fmt(p.coins) + "</b> 金币" };
+    if (p.status !== "ready") return { kicker: "红包已拆开 · 待领取", title: "看视频领取红包", sub: "本个红包 <b>" + fmt(p.coins) + "</b> 金币，看完立即到账" };
     return { kicker: "看视频拆红包 · 剩 " + state.video_left + " 个", title: "再拆一个大红包", sub: "最高可得 <b>" + fmt(state.video_max) + "</b> 金币" };
   }
   return { kicker: "邀请奖励", title: "好友助力大红包", sub: "最高可得 <b>" + fmt(state.invite_max) + "</b> 金币" };
@@ -409,7 +408,7 @@ function resetEnvelope(drop) {
   coin.className = "coin-btn pulse"; coin.style.display = "";
   $("flap").classList.remove("open"); $("result").className = "result";
   $("tapHint").style.display = ""; $("finger").style.display = "";
-  $("cta").className = "cta"; $("resultTag").classList.add("hidden");
+  $("resultTag").classList.add("hidden");
   document.querySelector(".backdrop").classList.remove("hot");
   if (drop) { void env.offsetWidth; env.classList.add("drop"); setTimeout(() => { if (env.classList.contains("drop")) { env.classList.remove("drop"); env.style.transform = "none"; env.classList.add("idle"); } }, 1050); }
   else { env.style.transform = "none"; env.classList.add("idle"); }
@@ -423,10 +422,17 @@ function showNext(drop) {
   const coinText = $("coinText"), coin = $("coin");
   coin.classList.remove("video");
   if (!current) { coinText.textContent = "邀"; $("tapHint").textContent = "邀请好友 再拆红包"; }
-  else if (current.kind === "video") { coinText.textContent = "開"; $("tapHint").textContent = current.status === "ready" ? "点击拆开，看视频领取" : "看完视频立即到账"; }
+  else if (current.kind === "video" && current.status !== "ready") { coinText.textContent = "领"; $("tapHint").textContent = "看视频领取 " + fmt(current.coins) + " 金币"; }
+  else if (current.kind === "video") { coinText.textContent = "開"; $("tapHint").textContent = "点击拆开，看视频领取"; }
   else { coinText.textContent = "開"; $("tapHint").textContent = "点击「開」拆红包"; }
   renderCounter();
-  if (current && current.kind === "video" && current.status !== "ready") showVideoClaim(current.coins, false);
+}
+// After every opening the stage goes back to a closed packet by itself: the next one if any is
+// left, otherwise the 邀 packet (tapping it scrolls to the invite section).
+let backTimer = 0;
+function backToStage(delay) {
+  clearTimeout(backTimer);
+  backTimer = setTimeout(() => { if (mode !== "closed") showNext(true); }, delay);
 }
 function burstFromEnvelope(big) {
   const r = $("envWrap").getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height * 0.38;
@@ -452,21 +458,11 @@ async function showAmount(coins, label, sub, tag, animate) {
     res.classList.add("pop"); vibrate(25);
   } else { $("amount").textContent = fmt(coins); res.classList.add("shown"); }
 }
-function setCta(text, video) {
-  const cta = $("cta"); cta.textContent = text; cta.classList.toggle("video", !!video); cta.classList.remove("in"); void cta.offsetWidth; cta.classList.add("in");
-}
-function showVideoClaim(coins, fresh) {
-  mode = "video";
-  const env = $("envelope"); env.classList.remove("idle", "drop"); env.style.transform = "none";
-  $("coin").style.display = "none"; $("tapHint").style.display = "none"; $("finger").style.display = "none";
-  $("flap").classList.add("open");
-  showAmount(coins, "红包已拆开", "看完视频立即到账 · 约合 " + (coins / 1000).toFixed(2) + " 元", "", fresh).then(() => setCta("看视频领取 " + fmt(coins) + " 金币", true));
-  if (!fresh) setCta("看视频领取 " + fmt(coins) + " 金币", true);
-}
-
 async function onTapEnvelope() {
-  if (busy || mode !== "closed") return;
+  if (busy) return;
+  if (mode !== "closed") { showNext(true); return; } // tap during the result: skip ahead
   if (!current) { goInvite(); return; }
+  if (current.kind === "video" && current.status !== "ready") { sfxTap(); vibrate(20); watchVideo(); return; }
   busy = true; ac(); sfxTap(); vibrate(20);
   const env = $("envelope"), coin = $("coin");
   env.classList.remove("idle", "drop"); env.style.transform = "none";
@@ -481,29 +477,23 @@ async function onTapEnvelope() {
   coin.style.display = "none";
   impact();
   if (result.state) state = result.state;
+  mode = "result";
   if (result.needs_video) {
     burstFromEnvelope(false);
-    showVideoClaim(result.coins, true);
-    current = { id: current.id, kind: "video", status: "revealed", coins: result.coins };
+    await showAmount(result.coins, "红包已拆开", "看完视频立即到账 · 约合 " + (result.coins / 1000).toFixed(2) + " 元", "", true);
   } else {
     burstFromEnvelope(true);
-    mode = "result";
     const tag = result.kind === "welcome" && state.bonus_percent > 0 ? "好友邀请加成 +" + state.bonus_percent + "%" : "";
     await showAmount(result.coins, result.kind === "welcome" ? "恭喜获得新人红包" : "恭喜获得邀请红包", "约合 " + (result.coins / 1000).toFixed(2) + " 元 · 已存入账户", tag, true);
-    setCta(state.available > 0 ? "继续拆下一个（还剩 " + state.available + " 个）" : "邀请好友 再拆大红包");
     render();
   }
   renderCounter();
   busy = false;
+  backToStage(2000);
 }
 $("coin").addEventListener("click", onTapEnvelope);
-$("envelope").addEventListener("click", (e) => { if (e.target.closest(".env-body,.env-flap")) onTapEnvelope(); });
-$("counter").addEventListener("click", () => { if ((state.available || 0) === 0) goInvite(); else if (mode !== "closed") $("cta").click(); else onTapEnvelope(); });
-$("cta").addEventListener("click", () => {
-  vibrate(10);
-  if (mode === "video") { watchVideo(); return; }
-  if ((state.available || 0) > 0) showNext(true); else { showNext(false); goInvite(); }
-});
+$("envelope").addEventListener("click", (e) => { if (e.target.closest(".env-body,.env-flap,.result")) onTapEnvelope(); });
+$("counter").addEventListener("click", () => { if ((state.available || 0) === 0) goInvite(); else onTapEnvelope(); });
 function watchVideo() {
   if (!current) return;
   if (!app || typeof app.sharePoster !== "function") { toast("请更新到最新版 App 后领取"); return; }
@@ -636,7 +626,7 @@ async function load() {
     $("kicker").textContent = h.kicker; $("stageTitle").textContent = h.title; $("stageSub").innerHTML = "";
     $("headline").classList.add("in");
     resetEnvelope(false); $("coin").style.display = "none"; $("tapHint").style.display = "none"; $("finger").style.display = "none";
-    setTimeout(() => { impact(); burstFromEnvelope(true); showAmount(claimed, "恭喜到账", "约合 " + (claimed / 1000).toFixed(2) + " 元 · 已存入账户", "", true).then(() => setCta(state.available > 0 ? "继续拆下一个（还剩 " + state.available + " 个）" : "邀请好友 再拆大红包")); renderCounter(); }, 350);
+    setTimeout(() => { impact(); burstFromEnvelope(true); showAmount(claimed, "恭喜到账", "约合 " + (claimed / 1000).toFixed(2) + " 元 · 已存入账户", "", true).then(() => backToStage(2000)); renderCounter(); }, 350);
   } else showNext(true);
   ticker();
 }

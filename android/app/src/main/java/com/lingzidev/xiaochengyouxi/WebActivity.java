@@ -104,7 +104,14 @@ public final class WebActivity extends Activity {
     LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
     root.setBackgroundColor(immersive ? RED_DARK : CREAM);
-    if (!immersive)
+    if (immersive)
+      // Under the status bar (the page pads itself), but never under the navigation bar.
+      root.setOnApplyWindowInsetsListener(
+          (v, insets) -> {
+            v.setPadding(0, 0, 0, insets.getSystemWindowInsetBottom());
+            return insets;
+          });
+    else
     root.setOnApplyWindowInsetsListener(
         (v, insets) -> {
           v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
