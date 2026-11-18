@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject private var session: Session
     @EnvironmentObject private var reminders: Reminders
+    @StateObject private var rain = RainController()
     @State private var tab = 0
 
     init() {
@@ -38,11 +39,16 @@ struct MainTabView: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.biometricOffer != nil)
+        .environmentObject(rain)
+        .overlay { RainLayer(rain: rain, inHall: tab == 0) }
+        .onAppear { rain.session = session; rain.start() }
+        .onDisappear { rain.stop() }
         .task {
             #if DEBUG
             switch DebugLaunch.screen {
             case "shop": tab = 1
             case "me", "settings", "ledger", "withdraw", "payout", "invite", "records", "deletion": tab = 2
+            case "rain": rain.startPreview()
             default: break
             }
             #endif
@@ -127,6 +133,31 @@ struct EnableBiometricSheet: View {
             } catch {
                 self.error = error.localizedDescription
             }
+        }
+    }
+}
+
+/// 红包雨各层：雨层（仅大厅）、开场倒计时、本场结算
+private struct RainLayer: View {
+    @ObservedObject var rain: RainController
+    let inHall: Bool
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
+            ZStack {
+                if inHall && rain.skyVisible(at: ctx.date) {
+                    RainSkyView(rain: rain).transition(.opacity)
+                }
+                if inHall, let n = rain.countdown(at: ctx.date) {
+                    Color.black.opacity(0.35).ignoresSafeArea().onTapGesture { rain.dismissCountdown() }
+                    RainCountdownCard(seconds: n) { withAnimation { rain.dismissCountdown() } }
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
+                if let s = rain.summary {
+                    RainSummaryCard(packets: s.packets, coins: s.coins) { rain.summary = nil }
+                }
+            }
+            .animation(.easeOut(duration: 0.3), value: rain.skyVisible(at: ctx.date))
         }
     }
 }

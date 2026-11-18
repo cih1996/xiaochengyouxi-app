@@ -23,7 +23,6 @@ final class HallModel: ObservableObject {
         Task { await refreshCheckin() }
         Task { await refreshBadges() }
         Task { await pollRuntime() }
-        Task { await pollRain() }
     }
 
     func stop() {

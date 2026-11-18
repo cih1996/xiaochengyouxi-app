@@ -14,7 +14,7 @@ struct HallView: View {
             // 固定区：标题 + 金币、红包雨条，不随消息滚动
             VStack(spacing: 10) {
                 PageHeader(title: "小橙有喜") { CoinBadge(coins: session.user?.coins) }
-                RainBar(model: model).padding(.horizontal, 14)
+                RainBar().padding(.horizontal, 14)
                 if !model.notice.isEmpty {
                     HStack(alignment: .top, spacing: 6) {
                         Image(systemName: "megaphone").font(.caption)
@@ -134,17 +134,23 @@ struct CoinBadge: View {
 }
 
 private struct RainBar: View {
-    @ObservedObject var model: HallModel
+    @EnvironmentObject private var rain: RainController
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            HStack(spacing: 8) {
-                Image(systemName: "gift").foregroundColor(Color(hex: 0xC98A4B))
-                Text("红包雨").font(.subheadline.weight(.semibold)).foregroundColor(Theme.text)
-                Spacer()
-                Text(model.rainText(now: ctx.date)).font(.subheadline.weight(.semibold))
-                    .foregroundColor(Theme.orange).monospacedDigit()
+            let state = rain.bar(at: ctx.date)
+            Button { state.action?() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "gift").foregroundColor(Color(hex: 0xC98A4B))
+                    Text("红包雨").font(.subheadline.weight(.semibold)).foregroundColor(Theme.text)
+                    Spacer()
+                    Text(state.text).font(.subheadline.weight(.semibold))
+                        .foregroundColor(Theme.orange).monospacedDigit()
+                    if state.action != nil { Image(systemName: "chevron.right").font(.caption.bold()).foregroundColor(Theme.orange) }
+                }
+                .padding(.horizontal, 16).frame(height: 54).card(radius: 16)
             }
-            .padding(.horizontal, 16).frame(height: 54).card(radius: 16)
+            .buttonStyle(.plain)
+            .disabled(state.action == nil)
         }
     }
 }
