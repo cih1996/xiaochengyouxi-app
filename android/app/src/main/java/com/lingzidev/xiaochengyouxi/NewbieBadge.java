@@ -33,9 +33,16 @@ final class NewbieBadge extends FrameLayout {
   private final ArrayList<Animator> animators = new ArrayList<>();
   private final TextView label, count;
   private final View rays, envelope;
+  private final boolean wheel;
 
   NewbieBadge(Context context, String text) {
+    this(context, text, false);
+  }
+
+  /** wheel=true: a spinning mini lucky wheel instead of the red envelope (幸运转盘). */
+  NewbieBadge(Context context, String text, boolean wheel) {
     super(context);
+    this.wheel = wheel;
     setClipChildren(false);
     setClipToPadding(false);
     setContentDescription(text);
@@ -45,10 +52,19 @@ final class NewbieBadge extends FrameLayout {
     LayoutParams rp = (LayoutParams) rays.getLayoutParams();
     rp.topMargin = -dp(14);
 
-    envelope = new Envelope(context);
-    LayoutParams ep = new LayoutParams(dp(50), dp(62), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+    envelope = wheel ? new MiniWheel(context) : new Envelope(context);
+    LayoutParams ep =
+        wheel
+            ? new LayoutParams(dp(62), dp(62), Gravity.TOP | Gravity.CENTER_HORIZONTAL)
+            : new LayoutParams(dp(50), dp(62), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
     ep.topMargin = dp(4);
     addView(envelope, ep);
+    if (wheel) {
+      View pointer = new Pointer(context);
+      LayoutParams pp = new LayoutParams(dp(16), dp(20), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+      pp.topMargin = 0;
+      addView(pointer, pp);
+    }
 
     label = new TextView(context);
     label.setText(text);
@@ -118,6 +134,15 @@ final class NewbieBadge extends FrameLayout {
     glow.setRepeatCount(ValueAnimator.INFINITE);
     play(glow);
 
+    if (wheel) {
+      // Spins up, slows down, rests — like someone just gave it a go.
+      ObjectAnimator turn = ObjectAnimator.ofFloat(envelope, ROTATION, 0f, 1080f);
+      turn.setDuration(3200);
+      turn.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+      turn.setRepeatCount(ValueAnimator.INFINITE);
+      turn.setStartDelay(300);
+      play(turn);
+    } else {
     // Shake + hop every ~2.2s: still most of the time, then a burst of motion.
     ObjectAnimator shake =
         ObjectAnimator.ofPropertyValuesHolder(
@@ -129,6 +154,7 @@ final class NewbieBadge extends FrameLayout {
     shake.setDuration(2200);
     shake.setRepeatCount(ValueAnimator.INFINITE);
     play(shake);
+    }
 
     ObjectAnimator pulse =
         ObjectAnimator.ofPropertyValuesHolder(
@@ -236,6 +262,73 @@ final class NewbieBadge extends FrameLayout {
       path.quadTo(x, y, x - s, y);
       path.quadTo(x, y, x, y - s);
       c.drawPath(path, star);
+    }
+  }
+
+  /** Mini lucky wheel: gold rim, alternating red/cream slices, gold hub. */
+  private static final class MiniWheel extends View {
+    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF oval = new RectF();
+
+    MiniWheel(Context c) {
+      super(c);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+      float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy);
+      p.setColor(0xff000000);
+      p.setShader(new RadialGradient(cx, cy, r, new int[] {0xffb86a00, 0xffffd34d, 0xfffff1a8, 0xffc27300}, new float[] {.78f, .86f, .93f, 1f}, Shader.TileMode.CLAMP));
+      canvas.drawCircle(cx, cy, r, p);
+      p.setShader(null);
+      float ir = r * .82f;
+      oval.set(cx - ir, cy - ir, cx + ir, cy + ir);
+      for (int i = 0; i < 8; i++) {
+        p.setColor(i % 2 == 0 ? 0xffe8262b : 0xfffff1d0);
+        canvas.drawArc(oval, i * 45f - 112.5f, 45f, true, p);
+      }
+      p.setColor(0x66ffd27a);
+      p.setStyle(Paint.Style.STROKE);
+      p.setStrokeWidth(r * .04f);
+      canvas.drawCircle(cx, cy, ir, p);
+      p.setStyle(Paint.Style.FILL);
+      p.setColor(0xff000000);
+      p.setShader(new RadialGradient(cx - r * .08f, cy - r * .08f, r * .3f, new int[] {0xfffff6c8, 0xffffc531, 0xffc27300}, new float[] {0f, .5f, 1f}, Shader.TileMode.CLAMP));
+      canvas.drawCircle(cx, cy, r * .24f, p);
+      p.setShader(null);
+      // rim bulbs
+      p.setColor(0xfffff6c8);
+      for (int i = 0; i < 12; i++) {
+        double a = Math.PI * 2 * i / 12;
+        canvas.drawCircle(cx + (float) Math.cos(a) * r * .91f, cy + (float) Math.sin(a) * r * .91f, r * .045f, p);
+      }
+    }
+  }
+
+  /** The red pointer that sits above the mini wheel (does not spin). */
+  private static final class Pointer extends View {
+    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path path = new Path();
+
+    Pointer(Context c) {
+      super(c);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+      float w = getWidth(), h = getHeight();
+      path.reset();
+      path.moveTo(w / 2, h);
+      path.lineTo(w * .08f, h * .35f);
+      path.quadTo(w / 2, -h * .15f, w * .92f, h * .35f);
+      path.close();
+      p.setColor(0xffffd96a);
+      canvas.drawPath(path, p);
+      canvas.save();
+      canvas.scale(.72f, .72f, w / 2, h * .5f);
+      p.setColor(0xffe8262b);
+      canvas.drawPath(path, p);
+      canvas.restore();
     }
   }
 

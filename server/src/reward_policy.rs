@@ -357,6 +357,8 @@ async fn quote(
     let grand = rain::grand_task(&state, &tx, uid, &input.task_id)?;
     let title = if input.task_id.starts_with("newbie:") {
         "新人礼包红包"
+    } else if input.task_id.starts_with("wheel:") {
+        "幸运转盘"
     } else if grand.is_some() {
         "红包雨大奖"
     } else {
@@ -367,7 +369,7 @@ async fn quote(
             "fixed".into(),
             grand.coins,
             grand.coins,
-            json!({"scope":if input.task_id.starts_with("newbie:") {"newbie_video"} else {"rain_large"},"device_identity":identity,"allocation_count_before":0,"policy_version":p.policy_version}),
+            json!({"scope":if input.task_id.starts_with("newbie:") {"newbie_video"} else if input.task_id.starts_with("wheel:") {"wheel_video"} else {"rain_large"},"device_identity":identity,"allocation_count_before":0,"policy_version":p.policy_version}),
         )
     } else {
         selection(&tx, &p, &identity, &key)?
@@ -442,7 +444,7 @@ pub(super) fn quote_intent(db: &Connection, uid: i64, body: &Value) -> Result<Va
 /// Quotes with a fixed, server-decided amount (rain grand prize, 新人礼包 video packet): the
 /// device tier policy does not re-price them.
 fn fixed_task(task: &str) -> bool {
-    task.starts_with("rain:") || task.starts_with("newbie:")
+    task.starts_with("rain:") || task.starts_with("newbie:") || task.starts_with("wheel:")
 }
 pub(super) fn attach(
     db: &Connection,

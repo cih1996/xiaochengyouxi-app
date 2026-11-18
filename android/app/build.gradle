@@ -42,6 +42,7 @@ android {
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
 dependencies {
+    implementation files('libs/zxing-core-3.5.3.jar')
     implementation files('libs/device-trust-base-0.7.8.aar', 'libs/device-trust-secure-0.7.8.aar', 'libs/device-trust-environment-0.7.8.aar')
     // Ad networks (official AARs, unmodified; hashes in android/docs/AD-NETWORKS.md).
     implementation files('libs/open_ad_sdk_7.8.1.4.aar')

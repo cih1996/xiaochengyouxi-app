@@ -186,7 +186,7 @@ fn config(db: &Connection) -> Result<Config, ApiError> {
 }
 
 /// Latest DeviceTrust score for a user; restricted accounts count as the worst score.
-fn score_of(db: &Connection, uid: i64, c: &Config) -> Result<(i64, bool), ApiError> {
+pub(super) fn score_of(db: &Connection, uid: i64, c: &Config) -> Result<(i64, bool), ApiError> {
     if risk::check_account(db, uid).is_err() {
         return Ok((100, true));
     }
@@ -756,7 +756,7 @@ pub(super) fn finish_video(db: &Connection, uid: i64, pid: &str, sid: &str, coin
 // ---------- winners board (cached: one query per 5 minutes per round) ----------
 static BOARD: std::sync::Mutex<Option<(i64, i64, Value)>> = std::sync::Mutex::new(None);
 
-fn mask_phone(phone: &str) -> String {
+pub(super) fn mask_phone(phone: &str) -> String {
     if phone.len() >= 11 {
         format!("{}****{}", &phone[..3], &phone[phone.len() - 2..])
     } else {

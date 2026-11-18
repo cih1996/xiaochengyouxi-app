@@ -43,6 +43,8 @@ mod reward_policy;
 mod risk;
 mod human_check;
 mod newbie;
+mod payout;
+mod wheel;
 mod sms_channel;
 mod trace_lookup;
 mod user_admin;
@@ -1300,6 +1302,8 @@ async fn reward_start(
         "红包雨大奖"
     } else if input.task_id.starts_with("newbie:") {
         "新人礼包红包"
+    } else if input.task_id.starts_with("wheel:") {
+        "幸运转盘"
     } else {
         task_info(&input.task_id)?.1
     };
@@ -1353,11 +1357,11 @@ async fn reward_start(
     let event = business_guard::validate_local(&state, &tx, &headers, uid, "reward", actual)?;
     // 新人礼包 video packets are separate from the hall's daily packet limit.
     let claimed: i64 = tx.query_row(
-        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2 AND task_id NOT LIKE 'newbie:%'",
+        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2 AND task_id NOT LIKE 'newbie:%' AND task_id NOT LIKE 'wheel:%'",
         params![uid, today_start()],
         |r| r.get(0),
     )?;
-    if !input.task_id.starts_with("newbie:") && claimed >= setting(&tx, "daily_reward_limit")? as i64 {
+    if !input.task_id.starts_with("newbie:") && !input.task_id.starts_with("wheel:") && claimed >= setting(&tx, "daily_reward_limit")? as i64 {
         return Err(invalid("今日红包已领完，明天再来吧"));
     }
     let sid = business_guard::operation(&tx, &event)?.unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -1552,11 +1556,11 @@ async fn reward_complete(
     }
     // 新人礼包 video packets are separate from the hall's daily packet limit.
     let claimed: i64 = tx.query_row(
-        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2 AND task_id NOT LIKE 'newbie:%'",
+        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2 AND task_id NOT LIKE 'newbie:%' AND task_id NOT LIKE 'wheel:%'",
         params![uid, today_start()],
         |r| r.get(0),
     )?;
-    if !task_id.starts_with("newbie:") && claimed >= setting(&tx, "daily_reward_limit")? as i64 {
+    if !task_id.starts_with("newbie:") && !task_id.starts_with("wheel:") && claimed >= setting(&tx, "daily_reward_limit")? as i64 {
         return Err(invalid("今日红包已领完，明天再来吧"));
     }
     tx.execute(
@@ -1565,8 +1569,12 @@ async fn reward_complete(
     )?;
     let packet = rain::completion_packet(&tx, uid, &task_id, &id)?;
     let newbie_task = task_id.starts_with("newbie:");
+    let wheel_task = task_id.starts_with("wheel:");
+    let wheel_title = wheel::title(&tx);
     let title = if newbie_task {
         "新人礼包红包"
+    } else if wheel_task {
+        wheel_title.as_str()
     } else if packet.is_some() {
         "红包雨大奖"
     } else {
@@ -1574,6 +1582,7 @@ async fn reward_complete(
     };
     let source = match &packet {
         Some(pid) if newbie_task => format!("newbie:{pid}"),
+        Some(pid) if wheel_task => format!("wheel:{pid}"),
         Some(pid) => format!("rain:{pid}"),
         None => format!("reward:{id}"),
     };
@@ -1581,6 +1590,8 @@ async fn reward_complete(
     if let Some(pid) = &packet {
         if newbie_task {
             newbie::finish_video(&tx, uid, pid, &id, reward)?;
+        } else if wheel_task {
+            wheel::finish_video(&tx, uid, pid, &id, reward)?;
         } else {
             rain::finish_grand(&tx, uid, pid, &id, reward)?;
         }
@@ -1911,8 +1922,9 @@ async fn withdraw(
             return Err(invalid("请选择提现金额"));
         }
         withdraw_rules::check(&db, uid, input.amount_yuan)?;
+        // 0.3.24+: no account in the request; it comes from the bound payout account.
         if input.account.is_empty() {
-            return Err(invalid("请填写收款账号"));
+            payout::for_withdrawal(&db, uid, &input.channel)?;
         }
         if ((input.amount_yuan * 100.0).round() - input.amount_yuan * 100.0).abs() > 0.001 {
             return Err(invalid("提现金额最多保留两位小数"));
@@ -1934,7 +1946,13 @@ async fn withdraw(
         return Err(invalid("可提现余额不足"));
     }
     let id = business_guard::operation(&tx, &event)?.unwrap_or_else(|| Uuid::new_v4().to_string());
-    tx.execute("INSERT INTO withdrawals(id,user_id,amount_yuan,coins,channel,account,status,created_at) VALUES(?1,?2,?3,?4,?5,?6,'模拟申请',?7)",params![id,uid,input.amount_yuan,coins,input.channel,input.account,now()])?;
+    let (account, payout_ref) = if input.account.is_empty() {
+        let bound = payout::for_withdrawal(&tx, uid, &input.channel)?;
+        (bound.account, bound.payout_ref)
+    } else {
+        (input.account.clone(), None)
+    };
+    tx.execute("INSERT INTO withdrawals(id,user_id,amount_yuan,coins,channel,account,status,created_at,payout_ref) VALUES(?1,?2,?3,?4,?5,?6,'模拟申请',?7,?8)",params![id,uid,input.amount_yuan,coins,input.channel,account,now(),payout_ref])?;
     credit(&tx, uid, -coins, "提现申请", &format!("withdraw:{id}"))?;
     risk::consume(&tx, &event, &id)?;
     business_guard::record_receipt(&tx, uid, &id)?;
@@ -1952,7 +1970,7 @@ async fn withdraw(
     tx.commit()?;
     business_guard::dispatch(state.clone(), id.clone());
     Ok(Json(
-        json!({"id":id,"operation_id":id,"amount_yuan":input.amount_yuan,"channel":input.channel,"account":input.account,"status":"审核中","created_at":iso(now()),"mode":"mock","user":user(&db,uid)?}),
+        json!({"id":id,"operation_id":id,"amount_yuan":input.amount_yuan,"channel":input.channel,"account":account,"status":"审核中","created_at":iso(now()),"mode":"mock","user":user(&db,uid)?}),
     ))
 }
 fn withdraw_retry(
@@ -1980,8 +1998,8 @@ fn withdraw_retry(
     Ok(Some(result))
 }
 fn withdrawal_rows(db: &Connection, uid: Option<i64>) -> Result<Vec<Value>, ApiError> {
-    let mut stmt=db.prepare("SELECT w.id,w.user_id,u.phone,w.amount_yuan,w.channel,w.account,w.status,w.created_at FROM withdrawals w JOIN users u ON u.id=w.user_id WHERE (?1 IS NULL OR w.user_id=?1) ORDER BY w.created_at DESC LIMIT 200")?;
-    Ok(stmt.query_map([uid],|r|Ok(json!({"id":r.get::<_,String>(0)?,"user_id":r.get::<_,i64>(1)?,"phone":r.get::<_,String>(2)?,"amount_yuan":r.get::<_,f64>(3)?,"channel":r.get::<_,String>(4)?,"account":r.get::<_,String>(5)?,"status":r.get::<_,String>(6)?,"created_at":iso(r.get(7)?)})))?.collect::<Result<Vec<_>,_>>()?)
+    let mut stmt=db.prepare("SELECT w.id,w.user_id,u.phone,w.amount_yuan,w.channel,w.account,w.status,w.created_at,w.payout_ref FROM withdrawals w JOIN users u ON u.id=w.user_id WHERE (?1 IS NULL OR w.user_id=?1) ORDER BY w.created_at DESC LIMIT 200")?;
+    Ok(stmt.query_map([uid],|r|Ok(json!({"id":r.get::<_,String>(0)?,"user_id":r.get::<_,i64>(1)?,"phone":r.get::<_,String>(2)?,"amount_yuan":r.get::<_,f64>(3)?,"channel":r.get::<_,String>(4)?,"account":r.get::<_,String>(5)?,"status":r.get::<_,String>(6)?,"created_at":iso(r.get(7)?),"payout_qr":r.get::<_,Option<String>>(8)?})))?.collect::<Result<Vec<_>,_>>()?)
 }
 /// The stored statuses carry the payment mode ("模拟…" while payouts are manual); users only
 /// see what the request means for them. `status` is replaced so older apps show it too.
@@ -2024,6 +2042,7 @@ fn user_withdrawal_view(mut row: Value, coins: i64) -> Value {
     if let Some(obj) = row.as_object_mut() {
         obj.remove("phone");
         obj.remove("user_id");
+        obj.remove("payout_qr");
     }
     row
 }
@@ -2591,6 +2610,8 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     business_guard::initialize(&db).map_err(|e| e.1)?;
     campaign::initialize(&db).map_err(|e| e.1)?;
     newbie::initialize(&db).map_err(|e| e.1)?;
+    wheel::initialize(&db).map_err(|e| e.1)?;
+    payout::initialize(&db).map_err(|e| e.1)?;
     human_check::initialize(&db).map_err(|e| e.1)?;
     let has_attempts: bool = db
         .query_row("SELECT COUNT(*) FROM pragma_table_info('sms_codes') WHERE name='attempts'", [], |r| r.get::<_, i64>(0))
@@ -2635,6 +2656,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())
         .merge(newbie::admin_routes())
+        .merge(wheel::admin_routes())
+        .merge(payout::admin_routes())
         .merge(human_check::admin_routes())
         .merge(rain::admin_routes())
         .merge(hall_requests::admin_routes())
@@ -2680,6 +2703,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(risk::routes())
         .merge(campaign::routes())
         .merge(newbie::routes())
+        .merge(wheel::routes())
+        .merge(payout::routes())
         .merge(device_bootstrap::routes())
         .merge(behavior_audit::public_routes())
         .route("/health", get(|| async { Json(json!({"ok":true})) }))

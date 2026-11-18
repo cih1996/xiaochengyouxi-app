@@ -458,6 +458,9 @@ pub(super) fn grand_task(
     if let Some(pid) = task.strip_prefix("newbie:") {
         return newbie::video_task(state, db, uid, pid).map(Some);
     }
+    if let Some(id) = task.strip_prefix("wheel:") {
+        return wheel::video_task(state, db, uid, id).map(Some);
+    }
     let Some(pid) = task.strip_prefix("rain:") else {
         return Ok(None);
     };
@@ -486,7 +489,7 @@ pub(super) fn attach_session(
     packet: &str,
     sid: &str,
 ) -> Result<(), ApiError> {
-    if newbie::attach_session(db, uid, packet, sid)? {
+    if newbie::attach_session(db, uid, packet, sid)? || wheel::attach_session(db, uid, packet, sid)? {
         return Ok(());
     }
     let changed=db.execute("UPDATE rain_packets SET status='ad_started',session_id=?1 WHERE id=?2 AND user_id=?3 AND kind='large' AND status='opened' AND session_id IS NULL",params![sid,packet,uid])?;
@@ -503,6 +506,9 @@ pub(super) fn completion_packet(
 ) -> Result<Option<String>, ApiError> {
     if let Some(pid) = task.strip_prefix("newbie:") {
         return newbie::completion_packet(db, uid, pid, sid).map(Some);
+    }
+    if let Some(id) = task.strip_prefix("wheel:") {
+        return wheel::completion_packet(db, uid, id, sid).map(Some);
     }
     let Some(pid) = task.strip_prefix("rain:") else {
         return Ok(None);

@@ -19,9 +19,24 @@ import SmsAdmin from "./SmsAdmin.vue";
 import TraceLookup from "./TraceLookup.vue";
 import CosAdmin from "./CosAdmin.vue";
 import NewbieAdmin from "./NewbieAdmin.vue";
+import WheelAdmin from "./WheelAdmin.vue";
 import CaptchaAdmin from "./CaptchaAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
+// WeChat 收款码 for a withdrawal: re-rendered from its decoded content (no image is stored).
+const qrImage = ref(""), qrCode = ref("");
+async function showQr(code) {
+  try {
+    const m = await props.api("/admin/payout-qr", { method: "POST", body: { code } });
+    const quiet = 3, n = m.size + quiet * 2;
+    let cells = "";
+    m.modules.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "1") cells += `M${x + quiet} ${y + quiet}h1v1h-1z`; });
+    qrImage.value = "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/><path d="${cells}" fill="#000"/></svg>`);
+    qrCode.value = code;
+  } catch (e) {
+    alert(e.message);
+  }
+}
 defineEmits(["back"]);
 const locked = ref(
     props.config.admin_auth_required &&
@@ -70,6 +85,7 @@ const adStatsPanel = ref(null);
 const smsPanel = ref(null);
 const cosPanel = ref(null);
 const newbiePanel = ref(null);
+const wheelPanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -95,7 +111,8 @@ const items = [
   { id: "products", label: "商品库", icon: "bag" },
   { id: "strategy", label: "推送策略", icon: "bell" },
   { id: "rain", label: "红包雨", icon: "gift" },
-  { id: "activity-config", label: "活动配置", icon: "spark" },
+  { id: "activity-config", label: "旧版转盘", icon: "spark" },
+  { id: "wheel", label: "幸运转盘", icon: "spark" },
   { id: "newbie", label: "新人礼包", icon: "gift" },
   { id: "home-layout", label: "首页入口", icon: "grid" },
   { id: "withdraw-rules", label: "提现档位", icon: "wallet" },
@@ -134,6 +151,7 @@ const groups = [
       "rain",
       "activity-config",
       "newbie",
+      "wheel",
       "home-layout",
       "invitations",
     ],
@@ -312,6 +330,7 @@ async function refreshCurrent() {
   else if (tab.value === "sms") await smsPanel.value?.refresh();
   else if (tab.value === "cos") await cosPanel.value?.refresh();
   else if (tab.value === "newbie") await newbiePanel.value?.refresh();
+  else if (tab.value === "wheel") await wheelPanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -720,6 +739,12 @@ onMounted(load);
           :api="api"
           @unauthorized="fail"
         />
+        <WheelAdmin
+          v-if="tab === 'wheel'"
+          ref="wheelPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
         <NewbieAdmin
           v-if="tab === 'newbie'"
           ref="newbiePanel"
@@ -1117,7 +1142,10 @@ onMounted(load);
                   <td>{{ w.phone }}</td>
                   <td class="accent">¥{{ money(w.amount_yuan) }}</td>
                   <td>{{ channelLabel(w.channel) }}</td>
-                  <td>{{ w.account }}</td>
+                  <td>
+                    {{ w.account }}
+                    <button v-if="w.payout_qr" type="button" class="qr-link" @click="showQr(w.payout_qr)">查看收款码</button>
+                  </td>
                   <td>
                     <span class="status-tag">{{ w.status }}</span>
                   </td>
@@ -1405,8 +1433,19 @@ onMounted(load);
       <Icon name="check" :size="17" />{{ toast }}
     </div>
   </div>
+  <div v-if="qrImage" class="qr-modal" @click="qrImage = ''">
+    <div class="qr-box" @click.stop><img :src="qrImage" alt="微信收款码" /><small class="qr-text">{{ qrCode }}</small><small>用微信“扫一扫”识别后向其转账</small><button type="button" class="outline" @click="qrImage = ''">关闭</button></div>
+  </div>
 </template>
 <style scoped>
+.qr-link { margin-left: 6px; border: 0; background: #eefaf1; color: #07a35a; border-radius: 8px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+.qr-modal { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.55); display: grid; place-items: center; }
+.qr-box { background: #fff; border-radius: 16px; padding: 16px; display: grid; gap: 12px; justify-items: center; }
+.qr-box img { width: min(70vw, 300px); height: auto; image-rendering: pixelated; }
+.qr-box small { color: #8a6f61; font-size: 12px; }
+.qr-box .qr-text { font-family: ui-monospace, monospace; word-break: break-all; max-width: 300px; text-align: center; }
+.qr-box .outline { width: auto; padding: 8px 22px; margin: 0; }
+
 .user-graph-open {
   display: inline-flex;
   align-items: center;

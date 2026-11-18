@@ -529,6 +529,7 @@ public final class MainActivity extends Activity {
     activities.load();
     loadHome();
     loadNewbie();
+    loadWheel();
     refreshCheckinStatus();
     if (user.optBoolean("invitation_required")) {
       invitationBinding();
@@ -679,6 +680,7 @@ public final class MainActivity extends Activity {
     api.saveToken("");
     user = null;
     newbie = null;
+    wheelInfo = null;
     page = null;
     current = "hall";
     tip("账号已注销");
@@ -825,6 +827,7 @@ public final class MainActivity extends Activity {
     endHallSession();
     user = null;
     newbie = null;
+    wheelInfo = null;
     page = null;
     current = "hall";
     auth("login");
@@ -1129,6 +1132,7 @@ public final class MainActivity extends Activity {
                   api.saveToken("");
                   user = null;
     newbie = null;
+    wheelInfo = null;
                   page = null;
                   tip("密码已更新，请重新登录");
                   auth("login");
@@ -1746,7 +1750,7 @@ public final class MainActivity extends Activity {
     welcome.addView(copy, new FrameLayout.LayoutParams(-1, -2));
     ImageView mascot = art("mascot");
     // During 新人礼包 the floating badge takes the mascot's corner.
-    if (newbieOn()) mascot.setVisibility(View.INVISIBLE);
+    if (newbieOn() || wheelOn()) mascot.setVisibility(View.INVISIBLE);
     FrameLayout.LayoutParams mp =
         new FrameLayout.LayoutParams(dp(112), dp(112), Gravity.RIGHT | Gravity.BOTTOM);
     mp.rightMargin = dp(4);
@@ -1771,6 +1775,7 @@ public final class MainActivity extends Activity {
     scroll.post(() -> scroll.scrollTo(0, savedScroll));
     addFloatingEntry();
     addNewbieBadge();
+    addWheelBadge();
     if (foreground) rain.attach(hallSurface, rainTime);
   }
 
@@ -1875,6 +1880,60 @@ public final class MainActivity extends Activity {
           maybePopupNewbie();
         });
     return true;
+  }
+
+  // ---- 幸运转盘 (activity page web/public/activity/wheel.html) ----
+  JSONObject wheelInfo;
+  boolean wheelLoading;
+
+  boolean wheelOn() {
+    return wheelInfo != null && wheelInfo.optBoolean("enabled");
+  }
+
+  void loadWheel() {
+    if (user == null || user.optBoolean("invitation_required") || api.token.isEmpty() || wheelLoading) return;
+    wheelLoading = true;
+    String token = api.token;
+    api.get(
+        "/wheel/badge",
+        value -> {
+          wheelLoading = false;
+          if (!token.equals(api.token) || isDestroyed()) return;
+          JSONObject next = (JSONObject) value;
+          boolean changed = wheelInfo == null || !wheelInfo.toString().equals(next.toString());
+          wheelInfo = next;
+          if (changed && current.equals("hall") && page != null && !rewardUiBusy) render();
+        },
+        message -> wheelLoading = false);
+  }
+
+  void openWheel(String query) {
+    String url = WebActivity.resolve("/activity/wheel.html" + (query.isEmpty() ? "" : "?" + query));
+    if (url == null) return;
+    api.behavior.click(0, "home:wheel");
+    startActivityForResult(
+        new Intent(this, WebActivity.class)
+            .putExtra(WebActivity.EXTRA_URL, url)
+            .putExtra(WebActivity.EXTRA_TITLE, "幸运转盘")
+            .putExtra(WebActivity.EXTRA_IMMERSIVE, true),
+        WebActivity.REQUEST);
+    overridePendingTransition(android.R.anim.fade_in, 0);
+  }
+
+  void addWheelBadge() {
+    if (!wheelOn() || hallSurface == null) return;
+    NewbieBadge badge = new NewbieBadge(this, wheelInfo.optString("entry_label", "幸运转盘"), true);
+    badge.setCount(wheelInfo.optInt("available"));
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(92), dp(100), Gravity.TOP | Gravity.RIGHT);
+    lp.topMargin = newbieOn() ? dp(10 + 100 + 6) : dp(10);
+    lp.rightMargin = dp(16);
+    hallSurface.addView(badge, lp);
+    badge.setOnClickListener(
+        v -> {
+          press(v);
+          openWheel("");
+        });
+    badge.post(badge::start);
   }
 
   void addNewbieBadge() {
@@ -2073,13 +2132,18 @@ public final class MainActivity extends Activity {
 
   /** 新人礼包 video packet (amount already revealed on the page): standard rewarded-video flow
    * for task newbie:{id}; paid only after the ad network's verified callback. */
+  /** "" or "newbie:{id}" / "wheel:{id}": the activity video in progress (to return to its page). */
   String newbieVideoPacket = "";
 
   void watchNewbieVideo(String packetId) {
+    watchActivityVideo("newbie", packetId);
+  }
+
+  void watchActivityVideo(String kind, String packetId) {
     if (!packetId.matches("[0-9a-f-]{36}")) return;
-    newbieVideoPacket = packetId;
+    newbieVideoPacket = kind + ":" + packetId;
     rewardUiBusy = true;
-    String token = api.token, task = "newbie:" + packetId;
+    String token = api.token, task = kind + ":" + packetId;
     showBusy("视频加载中…");
     Api.Failure failed =
         m -> {
@@ -2088,7 +2152,8 @@ public final class MainActivity extends Activity {
           newbieVideoPacket = "";
           if (isDestroyed() || !token.equals(api.token)) return;
           tip(m);
-          openNewbie();
+          if (kind.equals("wheel")) openWheel("");
+          else openNewbie();
         };
     api.quoteReward(
         task,
@@ -2107,7 +2172,11 @@ public final class MainActivity extends Activity {
   void openNative(String target) {
     if (user == null || page == null) return;
     if (target.startsWith("newbie-video:")) {
-      watchNewbieVideo(target.substring("newbie-video:".length()));
+      watchActivityVideo("newbie", target.substring("newbie-video:".length()));
+      return;
+    }
+    if (target.startsWith("wheel-video:")) {
+      watchActivityVideo("wheel", target.substring("wheel-video:".length()));
       return;
     }
     switch (target) {
@@ -2119,6 +2188,9 @@ public final class MainActivity extends Activity {
         break;
       case "newbie":
         openNewbie();
+        break;
+      case "wheel":
+        openWheel("");
         break;
       case "activity":
         if (activities.config != null) openActivity();
@@ -2708,12 +2780,13 @@ public final class MainActivity extends Activity {
           user = result.optJSONObject("user");
           render();
           if (!newbieVideoPacket.isEmpty()) {
-            // Back to the activity page, which plays the arrival celebration.
+            // Back to the activity page, which reveals what the video paid (blind box).
+            String done = newbieVideoPacket;
             newbieVideoPacket = "";
             rewardUiBusy = false;
             if (foreground) {
-              playCoinArrival();
-              openNewbie("claimed=" + result.optInt("reward"));
+              if (done.startsWith("wheel:")) openWheel("claimed=" + done.substring(6));
+              else openNewbie("claimed=" + result.optInt("reward"));
             }
             return;
           }
@@ -3520,6 +3593,8 @@ public final class MainActivity extends Activity {
     actions.setBackground(bg(WHITE, 22));
     menu(actions, "clock", "提现记录", this::withdrawals);
     line(actions);
+    menu(actions, "shield", "收款账户", this::payoutAccounts);
+    line(actions);
     menu(actions, "coin", "金币明细", this::ledger);
     add(content, actions, -1, -2);
     gap(content, 12);
@@ -4078,127 +4153,474 @@ public final class MainActivity extends Activity {
         () -> api.get("/withdraw/options", value -> showWithdraw((JSONObject) value), this::error));
   }
 
-  void showWithdraw(JSONObject options) {
+  // ---- 提现 / 收款账户 (WeChat-wallet look: grey page, white cards, green actions) ----
+  static final int WX_GREEN = 0xff07c160, WX_BG = 0xffededed, ALIPAY_BLUE = 0xff1677ff;
+  static final int PICK_QR = 4110;
+  String subReturn = "me";
+  JSONObject payoutAccount;
+  Runnable afterPayoutBound;
+
+  /** Full page with a back arrow and a title; returns the scrollable body. */
+  LinearLayout subPage(String key, String title, int background) {
+    authBack = null;
+    if (!current.equals("withdraw") && !current.equals("payout") && !current.equals("withdraw_done")) subReturn = current;
+    current = key;
+    ScrollView scroll = new ScrollView(this);
+    scroll.setFillViewport(true);
+    scroll.setVerticalScrollBarEnabled(false);
+    scroll.setBackgroundColor(background);
+    LinearLayout body = col();
+    body.setPadding(dp(14), dp(4), dp(14), dp(28));
+    scroll.addView(body);
+    stage.removeAllViews();
+    stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+    LinearLayout top = row();
+    LineIcon back = new LineIcon(this, "back", INK);
+    back.setContentDescription("返回");
+    back.setPadding(dp(10), dp(10), dp(10), dp(10));
+    back.setOnClickListener(v -> closeSubPage());
+    LinearLayout.LayoutParams bp = lp(44, 44);
+    bp.leftMargin = -dp(6);
+    top.addView(back, bp);
+    flex(top, text(title, 18, INK, true));
+    add(body, top, -1, 52);
+    gap(body, 6);
+    return body;
+  }
+
+  void closeSubPage() {
+    if (current.equals("payout") && afterPayoutBound != null) {
+      afterPayoutBound = null;
+      withdraw();
+      return;
+    }
+    current = subReturn.isEmpty() ? "me" : subReturn;
+    home();
+  }
+
+  View brandIcon(boolean wechat, int size) {
+    TextView t = text(wechat ? "微" : "支", size / 2, WHITE, true);
+    t.setGravity(Gravity.CENTER);
+    t.setBackground(bg(wechat ? WX_GREEN : ALIPAY_BLUE, size / 4));
+    return t;
+  }
+
+  LinearLayout whiteCard(LinearLayout parent) {
     LinearLayout card = col();
-    card.setPadding(dp(22), dp(22), dp(22), dp(20));
-    card.setBackground(bg(CREAM, 26));
-    add(card, text("提现", 23, INK, true), -1, -2);
-    gap(card, 6);
-    add(card, label("可提现 ¥" + money(options.optDouble("cash_yuan")) + " · 选择提现金额", 13, MUTED), -1, -2);
-    gap(card, 16);
+    card.setBackground(bg(WHITE, 12));
+    card.setPadding(dp(16), dp(14), dp(16), dp(14));
+    add(parent, card, -1, -2);
+    gap(parent, 12);
+    return card;
+  }
+
+  TextView greenButton(String s, Runnable run) {
+    TextView b = text(s, 17, WHITE, true);
+    b.setGravity(Gravity.CENTER);
+    b.setBackground(bg(WX_GREEN, 8));
+    b.setOnClickListener(v -> {
+      press(v);
+      run.run();
+    });
+    return b;
+  }
+
+  // ---------------- 收款账户 ----------------
+  void payoutAccounts() {
+    api.get("/payout-account", v -> {
+      payoutAccount = (JSONObject) v;
+      payoutPage();
+    }, this::error);
+  }
+
+  void payoutPage() {
+    LinearLayout body = subPage("payout", "收款账户", WX_BG);
+    add(body, label("绑定一次，以后提现直接选择，无需每次填写。", 12, 0xff888888), -1, -2);
+    gap(body, 10);
+    JSONObject wx = payoutAccount == null ? null : payoutAccount.optJSONObject("wechat");
+    JSONObject ali = payoutAccount == null ? null : payoutAccount.optJSONObject("alipay");
+
+    // 微信收款码
+    LinearLayout wcard = whiteCard(body);
+    LinearLayout wh = row();
+    add(wh, brandIcon(true, 36), 36, 36);
+    LinearLayout wt = col();
+    wt.setPadding(dp(12), 0, 0, 0);
+    add(wt, text("微信收款码", 16, INK, true), -2, -2);
+    gap(wt, 4);
+    add(wt, label(wx == null ? "选择微信“收款码”图片，提现打到你的微信" : "已绑定" + (wx.optString("name").isEmpty() ? "" : " · " + wx.optString("name")), 12, wx == null ? 0xff888888 : WX_GREEN), -2, -2);
+    flex(wh, wt);
+    add(wcard, wh, -1, -2);
+    gap(wcard, 12);
+    EditText wname = input("真实姓名（选填，便于核对）", InputType.TYPE_CLASS_TEXT);
+    wname.setBackground(bg(0xfff6f6f6, 8));
+    add(wcard, wname, -1, 46);
+    gap(wcard, 8);
+    add(wcard, label("在微信「我 → 服务 → 收付款 → 二维码收款」保存收款码图片后选择。图片只在手机上识别，仅上传收款码内容。", 11, 0xffaaaaaa), -1, -2);
+    gap(wcard, 12);
+    add(wcard, greenButton(wx == null ? "选择收款码图片" : "更换收款码", () -> {
+      pendingWechatName = wname.getText().toString().trim();
+      Intent pick = new Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE);
+      try {
+        startActivityForResult(Intent.createChooser(pick, "选择收款码图片"), PICK_QR);
+      } catch (ActivityNotFoundException e) {
+        tip("没有可用的相册应用");
+      }
+    }), -1, 46);
+
+    // 支付宝
+    LinearLayout acard = whiteCard(body);
+    LinearLayout ah = row();
+    add(ah, brandIcon(false, 36), 36, 36);
+    LinearLayout at = col();
+    at.setPadding(dp(12), 0, 0, 0);
+    add(at, text("支付宝", 16, INK, true), -2, -2);
+    gap(at, 4);
+    add(at, label(ali == null ? "填写支付宝账号和实名认证的姓名" : "已绑定 " + ali.optString("account") + " · " + ali.optString("name"), 12, ali == null ? 0xff888888 : ALIPAY_BLUE), -2, -2);
+    flex(ah, at);
+    add(acard, ah, -1, -2);
+    gap(acard, 12);
+    EditText account = input("支付宝账号（手机号或邮箱）", InputType.TYPE_CLASS_TEXT);
+    account.setBackground(bg(0xfff6f6f6, 8));
+    add(acard, account, -1, 46);
+    gap(acard, 8);
+    EditText name = input("真实姓名（须与支付宝实名一致）", InputType.TYPE_CLASS_TEXT);
+    name.setBackground(bg(0xfff6f6f6, 8));
+    add(acard, name, -1, 46);
+    gap(acard, 12);
+    TextView save = text(ali == null ? "绑定支付宝" : "修改支付宝", 16, WHITE, true);
+    save.setGravity(Gravity.CENTER);
+    save.setBackground(bg(ALIPAY_BLUE, 8));
+    save.setOnClickListener(v -> {
+      press(v);
+      String a = account.getText().toString().trim(), n = name.getText().toString().trim();
+      if (a.isEmpty() || n.isEmpty()) {
+        tip("请填写支付宝账号和真实姓名");
+        return;
+      }
+      save.setEnabled(false);
+      api.request("PUT", "/payout-account/alipay", Api.object("account", a, "real_name", n), d -> {
+        payoutAccount = (JSONObject) d;
+        tip("支付宝已绑定");
+        afterBind();
+      }, m -> {
+        save.setEnabled(true);
+        error(m);
+      });
+    });
+    add(acard, save, -1, 46);
+    add(body, label("收款信息仅用于提现打款，提交后的提现申请不受之后修改影响。", 11, 0xffaaaaaa), -1, -2);
+  }
+
+  String pendingWechatName = "";
+
+  /** Decodes the 收款码 on the phone; only its content (wxp://…) is uploaded, never the image. */
+  void uploadWechatQr(Uri uri) {
+    showBusy("正在识别收款码…");
+    new Thread(() -> {
+      String code;
+      try {
+        code = decodeQr(uri);
+      } catch (IOException | RuntimeException e) {
+        code = null;
+      }
+      String found = code;
+      runOnUiThread(() -> {
+        if (found == null) {
+          hideBusy();
+          error("没有识别到二维码，请选择清晰的微信收款码图片");
+          return;
+        }
+        if (!found.matches("wxp://[A-Za-z0-9_-]{12,120}")) {
+          hideBusy();
+          error("这不是微信收款码。请在微信“收付款 → 二维码收款”中保存收款码后重新选择");
+          return;
+        }
+        showBusy("正在绑定…");
+        api.post("/payout-account/wechat", Api.object("code", found, "real_name", pendingWechatName), d -> {
+          hideBusy();
+          payoutAccount = (JSONObject) d;
+          tip("微信收款码已绑定");
+          afterBind();
+        }, m -> {
+          hideBusy();
+          error(m);
+        });
+      });
+    }, "payout-qr").start();
+  }
+
+  String decodeQr(Uri uri) throws IOException {
+    BitmapFactory.Options bounds = new BitmapFactory.Options();
+    bounds.inJustDecodeBounds = true;
+    try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+      BitmapFactory.decodeStream(in, null, bounds);
+    }
+    int sample = 1;
+    while (Math.max(bounds.outWidth, bounds.outHeight) / sample > 2400) sample *= 2;
+    BitmapFactory.Options opts = new BitmapFactory.Options();
+    opts.inSampleSize = sample;
+    Bitmap bmp;
+    try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+      bmp = BitmapFactory.decodeStream(in, null, opts);
+    }
+    if (bmp == null) return null;
+    java.util.Map<com.google.zxing.DecodeHintType, Object> hints = new java.util.EnumMap<>(com.google.zxing.DecodeHintType.class);
+    hints.put(com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE);
+    hints.put(com.google.zxing.DecodeHintType.CHARACTER_SET, "UTF-8");
+    // Full image first, then smaller copies (very large screenshots can defeat the detector).
+    for (int edge : new int[] {0, 1200, 800}) {
+      Bitmap b = bmp;
+      if (edge > 0 && Math.max(bmp.getWidth(), bmp.getHeight()) > edge) {
+        float k = (float) edge / Math.max(bmp.getWidth(), bmp.getHeight());
+        b = Bitmap.createScaledBitmap(bmp, Math.round(bmp.getWidth() * k), Math.round(bmp.getHeight() * k), true);
+      }
+      int w = b.getWidth(), h = b.getHeight();
+      int[] px = new int[w * h];
+      b.getPixels(px, 0, w, 0, 0, w, h);
+      com.google.zxing.LuminanceSource src = new com.google.zxing.RGBLuminanceSource(w, h, px);
+      for (com.google.zxing.Binarizer bin : new com.google.zxing.Binarizer[] {new com.google.zxing.common.HybridBinarizer(src), new com.google.zxing.common.GlobalHistogramBinarizer(src)}) {
+        try {
+          return new com.google.zxing.qrcode.QRCodeReader().decode(new com.google.zxing.BinaryBitmap(bin), hints).getText().trim();
+        } catch (com.google.zxing.ReaderException ignored) {
+        }
+      }
+    }
+    return null;
+  }
+
+  void afterBind() {
+    Runnable next = afterPayoutBound;
+    afterPayoutBound = null;
+    if (next != null) next.run();
+    else payoutPage();
+  }
+
+  // ---------------- 提现 ----------------
+  void showWithdraw(JSONObject options) {
+    api.get("/payout-account", v -> {
+      payoutAccount = (JSONObject) v;
+      withdrawPage(options);
+    }, this::error);
+  }
+
+  void withdrawPage(JSONObject options) {
+    LinearLayout body = subPage("withdraw", "提现", WX_BG);
+    JSONObject wx = payoutAccount == null ? null : payoutAccount.optJSONObject("wechat");
+    JSONObject ali = payoutAccount == null ? null : payoutAccount.optJSONObject("alipay");
+    final String[] channel = {wx != null ? "wechat" : ali != null ? "alipay" : ""};
+
+    // 提现到
+    LinearLayout to = whiteCard(body);
+    add(to, label("提现到", 13, 0xff888888), -1, -2);
+    gap(to, 10);
+    LinearLayout methods = col();
+    add(to, methods, -1, -2);
+    Runnable[] paintMethods = new Runnable[1];
+    paintMethods[0] = () -> {
+      methods.removeAllViews();
+      for (int i = 0; i < 2; i++) {
+        boolean wechat = i == 0;
+        JSONObject acc = wechat ? wx : ali;
+        LinearLayout r = row();
+        r.setPadding(0, dp(8), 0, dp(8));
+        add(r, brandIcon(wechat, 32), 32, 32);
+        LinearLayout t = col();
+        t.setPadding(dp(12), 0, 0, 0);
+        add(t, text(wechat ? "微信" : "支付宝", 15, INK, true), -2, -2);
+        gap(t, 3);
+        String sub = acc == null ? "未绑定，点击去绑定" : wechat ? "收款码" + (acc.optString("name").isEmpty() ? "" : " · " + acc.optString("name")) : acc.optString("account") + " · " + acc.optString("name");
+        add(t, label(sub, 12, acc == null ? 0xffff7a45 : 0xff888888), -2, -2);
+        flex(r, t);
+        String key = wechat ? "wechat" : "alipay";
+        boolean on = key.equals(channel[0]);
+        TextView radio = text(on ? "✓" : "", 13, WHITE, true);
+        radio.setGravity(Gravity.CENTER);
+        GradientDrawable rd = bg(on ? WX_GREEN : WHITE, 11);
+        if (!on) rd.setStroke(dp(1.5f), 0xffcccccc);
+        radio.setBackground(rd);
+        add(r, radio, 22, 22);
+        r.setOnClickListener(v -> {
+          if (acc == null) {
+            afterPayoutBound = () -> withdraw();
+            payoutAccounts();
+            return;
+          }
+          channel[0] = key;
+          paintMethods[0].run();
+        });
+        add(methods, r, -1, -2);
+        if (i == 0) line(methods);
+      }
+    };
+    paintMethods[0].run();
+
+    // 金额
+    LinearLayout amountCard = whiteCard(body);
+    add(amountCard, label("提现金额", 13, 0xff888888), -1, -2);
+    gap(amountCard, 6);
+    LinearLayout bal = row();
+    add(bal, text("¥", 22, INK, true), -2, -2);
+    TextView cash = text(" " + money(options.optDouble("cash_yuan")), 34, INK, true);
+    bal.addView(cash);
+    add(amountCard, bal, -1, -2);
+    gap(amountCard, 2);
+    add(amountCard, label("当前可提现余额", 12, 0xffaaaaaa), -1, -2);
+    gap(amountCard, 14);
     JSONArray tiers = options.optJSONArray("tiers");
     final JSONObject[] selected = {null};
     final ArrayList<View> chips = new ArrayList<>();
-    TextView submit = button("确认提现", () -> {});
-    Runnable paint =
-        () -> {
-          for (View chip : chips) {
-            JSONObject tier = (JSONObject) chip.getTag();
-            boolean on = tier == selected[0];
-            GradientDrawable d = bg(on ? 0xffffefe4 : WHITE, 16);
-            d.setStroke(dp(on ? 2 : 1), on ? 0xffff7a45 : 0xfff0e2d6);
-            chip.setBackground(d);
-          }
-          submit.setAlpha(selected[0] == null ? .45f : 1f);
-          submit.setText(selected[0] == null ? "确认提现" : "提现 " + selected[0].optString("label"));
-        };
-    LinearLayout row = null;
+    TextView submit = greenButton("提现", () -> {});
+    Runnable paint = () -> {
+      for (View chip : chips) {
+        JSONObject tier = (JSONObject) chip.getTag();
+        boolean on = tier == selected[0];
+        GradientDrawable d = bg(on ? 0xffe8f8ef : 0xfff7f7f7, 8);
+        d.setStroke(dp(on ? 1.5f : 1), on ? WX_GREEN : 0xffeeeeee);
+        chip.setBackground(d);
+      }
+      boolean ready = selected[0] != null && !channel[0].isEmpty();
+      submit.setAlpha(ready ? 1f : .45f);
+      submit.setText(selected[0] == null ? "提现" : "提现 " + selected[0].optString("label"));
+    };
+    LinearLayout r = null;
     int count = tiers == null ? 0 : tiers.length();
     for (int i = 0; i < count; i++) {
       JSONObject tier = tiers.optJSONObject(i);
       if (i % 3 == 0) {
-        if (row != null) gap(card, 10);
-        row = row();
-        add(card, row, -1, -2);
+        if (r != null) gap(amountCard, 10);
+        r = row();
+        add(amountCard, r, -1, -2);
       }
       boolean available = tier.optBoolean("available");
       LinearLayout chip = col();
       chip.setGravity(Gravity.CENTER);
       chip.setPadding(dp(4), dp(12), dp(4), dp(10));
       chip.setTag(tier);
-      TextView amount = text(tier.optString("label"), 18, available ? INK : MUTED, true);
+      TextView amount = text(tier.optString("label"), 17, available ? INK : 0xffbbbbbb, true);
       amount.setGravity(Gravity.CENTER);
       add(chip, amount, -1, -2);
       gap(chip, 3);
-      TextView note = label(available ? tier.optString("limit") : tier.optString("reason"), 10, available ? MUTED : RED);
+      TextView note = label(available ? tier.optString("limit") : tier.optString("reason"), 10, available ? 0xffaaaaaa : 0xffff7a45);
       note.setGravity(Gravity.CENTER);
       note.setSingleLine(true);
       add(chip, note, -1, -2);
-      if (!available) chip.setAlpha(.55f);
-      chip.setOnClickListener(
-          v -> {
-            if (!available) {
-              tip(tier.optString("reason") + " · " + tier.optString("limit"));
-              return;
-            }
-            selected[0] = tier;
-            paint.run();
-          });
+      chip.setOnClickListener(v -> {
+        if (!available) {
+          tip(tier.optString("reason") + " · " + tier.optString("limit"));
+          return;
+        }
+        selected[0] = tier;
+        paint.run();
+      });
       chips.add(chip);
       LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
       if (i % 3 != 0) lp.leftMargin = dp(10);
-      row.addView(chip, lp);
+      r.addView(chip, lp);
       if (selected[0] == null && available) selected[0] = tier;
     }
-    if (row != null) for (int i = count % 3 == 0 ? 3 : count % 3; i < 3; i++) {
+    if (r != null) for (int i = count % 3 == 0 ? 3 : count % 3; i < 3; i++) {
       LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 1, 1);
       lp.leftMargin = dp(10);
-      row.addView(new View(this), lp);
+      r.addView(new View(this), lp);
     }
-    if (count == 0) add(card, label("提现暂未开放", 13, MUTED), -1, -2);
-    gap(card, 16);
-    EditText account = input("支付宝收款账号", InputType.TYPE_CLASS_TEXT);
-    add(card, account, -1, 54);
-    gap(card, 8);
-    add(card, label("提现需要审核，到账以支付宝实际结果为准", 11, MUTED), -1, -2);
-    gap(card, 18);
-    Dialog dialog = sheet(card, 7);
-    submit.setOnClickListener(
-        v -> {
-          if (selected[0] == null) {
-            tip(count == 0 ? "提现暂未开放" : "余额不足或次数已用完");
-            return;
-          }
-          if (account.getText().toString().trim().isEmpty()) {
-            tip("请填写支付宝收款账号");
-            account.requestFocus();
-            return;
-          }
-          press(v);
-          submit.setEnabled(false);
-          api.post(
-              "/withdrawals",
-              Api.object(
-                  "amount_yuan",
-                  selected[0].optDouble("amount_yuan"),
-                  "channel",
-                  "alipay",
-                  "account",
-                  account.getText().toString().trim()),
-              d -> {
-                dialog.dismiss();
-                JSONObject result = (JSONObject) d;
-                if (result.has("user")) user = result.optJSONObject("user");
-                refreshUser();
-                tip("提现申请已提交");
-              },
-              m -> {
-                submit.setEnabled(true);
-                error(m);
-              });
-        });
-    add(card, submit, -1, 52);
+    if (count == 0) add(amountCard, label("提现暂未开放", 13, 0xff888888), -1, -2);
+    gap(body, 10);
+    add(body, submit, -1, 50);
+    gap(body, 12);
+    TextView manage = label("管理收款账户", 13, 0xff576b95);
+    manage.setGravity(Gravity.CENTER);
+    manage.setOnClickListener(v -> {
+      afterPayoutBound = () -> withdraw();
+      payoutAccounts();
+    });
+    add(body, manage, -1, 36);
+    add(body, label("提现申请提交后需人工审核，预计 1–3 个工作日到账。", 11, 0xffaaaaaa), -1, -2);
     paint.run();
-    gap(card, 10);
-    TextView close = label("再攒一会儿", 12, MUTED);
-    close.setGravity(Gravity.CENTER);
-    close.setOnClickListener(v -> dialog.dismiss());
-    add(card, close, -1, 30);
-    dialog.show();
-    dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-    dialog
-        .getWindow()
-        .setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(40), dp(390)), -2);
+    submit.setOnClickListener(v -> {
+      if (channel[0].isEmpty()) {
+        tip("请先绑定收款账户");
+        afterPayoutBound = () -> withdraw();
+        payoutAccounts();
+        return;
+      }
+      if (selected[0] == null) {
+        tip(count == 0 ? "提现暂未开放" : "余额不足或次数已用完");
+        return;
+      }
+      press(v);
+      submit.setEnabled(false);
+      showBusy("正在提交…");
+      JSONObject tier = selected[0];
+      String ch = channel[0];
+      api.post("/withdrawals", Api.object("amount_yuan", tier.optDouble("amount_yuan"), "channel", ch), d -> {
+        hideBusy();
+        JSONObject result = (JSONObject) d;
+        if (result.has("user")) user = result.optJSONObject("user");
+        refreshUser();
+        withdrawDone(result, ch);
+      }, m -> {
+        hideBusy();
+        submit.setEnabled(true);
+        error(m);
+      });
+    });
+  }
+
+  /** WeChat-Pay-style result: green tick, amount, details, 完成. */
+  void withdrawDone(JSONObject result, String channel) {
+    LinearLayout body = subPage("withdraw_done", "", WHITE);
+    body.setGravity(Gravity.CENTER_HORIZONTAL);
+    gap(body, 36);
+    CheckMark mark = new CheckMark(this);
+    add(body, mark, 72, 72);
+    mark.post(mark::play);
+    gap(body, 18);
+    TextView title = text("提现申请已提交", 18, INK, true);
+    add(body, title, -2, -2);
+    gap(body, 16);
+    LinearLayout amt = row();
+    amt.setGravity(Gravity.CENTER);
+    add(amt, text("¥", 24, INK, true), -2, -2);
+    amt.addView(text(" " + money(result.optDouble("amount_yuan")), 40, INK, true));
+    add(body, amt, -1, -2);
+    gap(body, 30);
+    LinearLayout details = col();
+    details.setPadding(dp(10), 0, dp(10), 0);
+    String[][] rows = {
+      {"提现方式", channel.equals("wechat") ? "微信" : "支付宝"},
+      {"收款账户", result.optString("account")},
+      {"申请时间", date(result.optString("created_at"))},
+      {"预计到账", "1–3 个工作日"},
+      {"当前状态", "审核中"},
+    };
+    for (String[] rr : rows) {
+      LinearLayout line = row();
+      line.setPadding(0, dp(9), 0, dp(9));
+      flex(line, label(rr[0], 14, 0xff888888));
+      TextView v = label(rr[1], 14, INK);
+      v.setGravity(Gravity.END);
+      line.addView(v);
+      add(details, line, -1, -2);
+    }
+    add(body, details, -1, -2);
+    gap(body, 40);
+    TextView done = text("完成", 17, WX_GREEN, true);
+    done.setGravity(Gravity.CENTER);
+    done.setBackground(bg(0xfff2f2f2, 8));
+    done.setOnClickListener(v -> {
+      press(v);
+      current = subReturn.isEmpty() ? "me" : subReturn;
+      home();
+    });
+    LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(dp(184), dp(48));
+    body.addView(done, dlp);
+    gap(body, 14);
+    TextView records = label("查看提现记录", 13, 0xff576b95);
+    records.setGravity(Gravity.CENTER);
+    records.setOnClickListener(v -> withdrawals());
+    add(body, records, -2, 32);
+    playCoinArrival();
   }
 
   @Override
@@ -4224,6 +4646,8 @@ public final class MainActivity extends Activity {
       closeSettings();
     } else if (current.equals("withdrawals")) {
       closeWithdrawals();
+    } else if (current.equals("withdraw") || current.equals("payout") || current.equals("withdraw_done")) {
+      closeSubPage();
     } else if (welcomeShowing) {
       finish();
     } else if (user != null && user.optBoolean("invitation_required")) {
@@ -4296,8 +4720,13 @@ public final class MainActivity extends Activity {
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
+    if (requestCode == PICK_QR) {
+      if (resultCode == RESULT_OK && data != null && data.getData() != null) uploadWechatQr(data.getData());
+      return;
+    }
     if (requestCode == WebActivity.REQUEST) {
       loadNewbie();
+      loadWheel();
       String target = data == null ? null : data.getStringExtra(WebActivity.RESULT_OPEN);
       if (resultCode == RESULT_OK && target != null) handler.post(() -> openNative(target));
       return;
@@ -4343,6 +4772,7 @@ public final class MainActivity extends Activity {
     handler.postDelayed(runtimeTick, 45000);
     loadHome();
     loadNewbie();
+    loadWheel();
     api.get(
         "/app/runtime",
         result -> {
