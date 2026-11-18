@@ -66,6 +66,20 @@ final class LineIcon extends View {
         c.drawOval(6, 3, 12, 9, p);
         c.drawOval(12, 3, 18, 9, p);
         break;
+      case "wheel":
+        c.drawCircle(12, 13.5f, 8, p);
+        for (int i = 0; i < 4; i++) {
+          double a = Math.PI / 4 * i;
+          float dx = (float) Math.cos(a) * 8, dy = (float) Math.sin(a) * 8;
+          c.drawLine(12 - dx, 13.5f - dy, 12 + dx, 13.5f + dy, p);
+        }
+        c.drawCircle(12, 13.5f, 1.6f, p);
+        path.moveTo(12, 6.5f);
+        path.lineTo(10, 2.5f);
+        path.lineTo(14, 2.5f);
+        path.close();
+        c.drawPath(path, p);
+        break;
       case "clock":
         c.drawCircle(12, 12, 9, p);
         c.drawLine(12, 7, 12, 12, p);

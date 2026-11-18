@@ -3870,7 +3870,7 @@ public final class MainActivity extends Activity {
         tint = 0xffe8262b;
         break;
       case "wheel":
-        icon = "notice";
+        icon = "wheel";
         tint = 0xff8e44ad;
         break;
       case "video":
