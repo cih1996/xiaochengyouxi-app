@@ -806,27 +806,60 @@ struct EventsQuery {
     format: Option<String>,
     event: Option<String>,
     user_id: Option<i64>,
+    /// Phone, username, nickname or numeric user id.
+    user: Option<String>,
     session: Option<String>,
     page: Option<i64>,
+}
+
+/// Resolves the admin's "user" filter (phone / username / nickname / id) to a user id.
+fn find_user(db: &Connection, text: &str) -> Result<Option<i64>, ApiError> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    let found: Option<i64> = db
+        .query_row(
+            "SELECT id FROM users WHERE phone=?1 OR username=lower(?1) OR nickname=?1 OR CAST(id AS TEXT)=?1 ORDER BY (phone=?1) DESC, id LIMIT 1",
+            [text],
+            |r| r.get(0),
+        )
+        .optional()?;
+    // Unknown user: match nothing rather than everything.
+    Ok(Some(found.unwrap_or(-1)))
 }
 
 async fn admin_events(State(state): State<AppState>, Query(q): Query<EventsQuery>) -> ApiResult<Value> {
     let db = open(&state)?;
     let page = q.page.unwrap_or(1).max(1);
-    let filter = "(?1 IS NULL OR network=?1) AND (?2 IS NULL OR format=?2) AND (?3 IS NULL OR event=?3) AND (?4 IS NULL OR user_id=?4) AND (?5 IS NULL OR session_id=?5)";
+    let filter = "(?1 IS NULL OR e.network=?1) AND (?2 IS NULL OR e.format=?2) AND (?3 IS NULL OR e.event=?3) AND (?4 IS NULL OR e.user_id=?4) AND (?5 IS NULL OR e.session_id=?5)";
     let empty = |v: Option<String>| v.filter(|s| !s.is_empty());
     let (network, format, event, session) = (empty(q.network), empty(q.format), empty(q.event), empty(q.session));
+    let user_id = match q.user.as_deref() {
+        Some(text) if !text.trim().is_empty() => find_user(&db, text)?,
+        _ => q.user_id,
+    };
     let total: i64 = db.query_row(
-        &format!("SELECT COUNT(*) FROM ad_events WHERE {filter}"),
-        params![network, format, event, q.user_id, session],
+        &format!("SELECT COUNT(*) FROM ad_events e WHERE {filter}"),
+        params![network, format, event, user_id, session],
         |r| r.get(0),
     )?;
     let mut stmt = db.prepare(&format!(
-        "SELECT id,created_at,user_id,network,format,placement,event,source,session_id,error_code,message FROM ad_events WHERE {filter} ORDER BY id DESC LIMIT 50 OFFSET ?6"
+        "SELECT e.id,e.created_at,e.user_id,e.network,e.format,e.placement,e.event,e.source,e.session_id,e.error_code,e.message,
+                u.nickname,u.phone,u.username
+         FROM ad_events e LEFT JOIN users u ON u.id=e.user_id WHERE {filter} ORDER BY e.id DESC LIMIT 50 OFFSET ?6"
     ))?;
     let items = stmt
-        .query_map(params![network, format, event, q.user_id, session, (page - 1) * 50], |r| {
-            Ok(json!({"id":r.get::<_,i64>(0)?,"created_at":iso(r.get(1)?),"user_id":r.get::<_,Option<i64>>(2)?,"network":r.get::<_,String>(3)?,"format":r.get::<_,String>(4)?,"placement":r.get::<_,String>(5)?,"event":r.get::<_,String>(6)?,"source":r.get::<_,String>(7)?,"session_id":r.get::<_,String>(8)?,"code":r.get::<_,String>(9)?,"message":r.get::<_,String>(10)?}))
+        .query_map(params![network, format, event, user_id, session, (page - 1) * 50], |r| {
+            let phone: Option<String> = r.get(12)?;
+            // Username accounts keep a "u:<name>" placeholder in phone; never show it.
+            let phone = phone.filter(|p| !p.starts_with("u:"));
+            let username: Option<String> = r.get(13)?;
+            let nickname: Option<String> = r.get(11)?;
+            let name = username.clone().filter(|v| !v.is_empty()).or(nickname.clone());
+            Ok(json!({"id":r.get::<_,i64>(0)?,"created_at":iso(r.get(1)?),"user_id":r.get::<_,Option<i64>>(2)?,
+                "user_name":name,"user_phone":phone,
+                "network":r.get::<_,String>(3)?,"format":r.get::<_,String>(4)?,"placement":r.get::<_,String>(5)?,"event":r.get::<_,String>(6)?,"source":r.get::<_,String>(7)?,"session_id":r.get::<_,String>(8)?,"code":r.get::<_,String>(9)?,"message":r.get::<_,String>(10)?}))
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(Json(json!({"items":items,"total":total,"page":page,"page_size":50,

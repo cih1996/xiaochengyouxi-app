@@ -10,7 +10,7 @@ const stats = ref(null),
   format = ref(""),
   metric = ref("show"),
   hover = ref(-1),
-  filters = ref({ network: "", format: "", event: "", user_id: "", session: "" }),
+  filters = ref({ network: "", format: "", event: "", user: "", session: "" }),
   page = ref(1);
 const controller = new AbortController();
 const COLORS = { csj: "#f65331", kuaishou: "#f2a51a", baidu: "#3b7bd8", gdt: "#2e9e62" };
@@ -118,7 +118,7 @@ const funnel = computed(() => {
 const time = (iso) => new Date(iso).toLocaleString("zh-CN", { hour12: false });
 const label = (id) => stats.value?.networks.find((n) => n.network === id)?.label || (id === "-" ? "—" : id);
 function showSession(id) {
-  filters.value = { network: "", format: "", event: "", user_id: "", session: id };
+  filters.value = { network: "", format: "", event: "", user: "", session: id };
   loadDetail(1).catch(fail);
 }
 onMounted(refresh);
@@ -241,7 +241,7 @@ defineExpose({ refresh });
         <select v-model="filters.network" aria-label="平台"><option value="">全部平台</option><option v-for="n in stats?.networks || []" :key="n.network" :value="n.network">{{ n.label }}</option></select>
         <select v-model="filters.format" aria-label="形式"><option value="">全部形式</option><option value="rewarded">激励视频</option><option value="feed">信息流</option></select>
         <select v-model="filters.event" aria-label="事件"><option value="">全部事件</option><option v-for="e in detail.events" :key="e" :value="e">{{ EVENT_LABELS[e] || e }}</option></select>
-        <input v-model="filters.user_id" inputmode="numeric" placeholder="用户 ID" aria-label="用户 ID" />
+        <input v-model="filters.user" placeholder="用户名 / 手机号" aria-label="用户名或手机号" />
         <input v-model="filters.session" placeholder="奖励编号" aria-label="奖励编号" />
         <button class="outline"><Icon name="search" :size="14" />筛选</button>
       </form>
@@ -250,7 +250,7 @@ defineExpose({ refresh });
           <thead><tr><th>时间</th><th>用户</th><th>平台</th><th>形式</th><th>事件</th><th>来源</th><th>代码位</th><th>错误码 / 说明</th><th>奖励编号</th></tr></thead>
           <tbody>
             <tr v-for="row in detail.items" :key="row.id" :class="{ warn: ['risk_block', 'callback_reject', 'error'].includes(row.event) }">
-              <td>{{ time(row.created_at) }}</td><td>{{ row.user_id ?? "—" }}</td><td>{{ label(row.network) }}</td>
+              <td>{{ time(row.created_at) }}</td><td class="st-user" :title="row.user_id ? `用户 ID ${row.user_id}` : ''"><template v-if="row.user_id"><b>{{ row.user_name || "未命名用户" }}</b><small v-if="row.user_phone">{{ row.user_phone }}</small></template><span v-else>—</span></td><td>{{ label(row.network) }}</td>
               <td>{{ row.format === "feed" ? "信息流" : "激励视频" }}</td><td>{{ EVENT_LABELS[row.event] || row.event }}</td>
               <td>{{ { app: "App", server: "服务器", callback: "平台回调" }[row.source] || row.source }}</td>
               <td>{{ row.placement || "—" }}</td><td class="msg">{{ [row.code, row.message].filter(Boolean).join(" ") || "—" }}</td>
@@ -320,4 +320,6 @@ defineExpose({ refresh });
 .st-filters select, .st-detail-filters select { width: auto; padding: 8px 10px; font-size: 14px; }
 .st-detail-filters input { padding: 8px 10px; font-size: 14px; }
 .st-hint { background: #fff4e5; color: #8a5a1c; border-radius: 10px; padding: 10px 14px; font-size: 13.5px; line-height: 1.7; margin: 12px 0 0; }
+.st-user b { font-weight: 500; color: #4f3627; display: block; }
+.st-user small { color: #a8907f; font-size: 12px; }
 </style>
