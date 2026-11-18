@@ -138,6 +138,14 @@ struct SubPage<Content: View>: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .navigationBarHidden(true)
+        .hideTabBar()
+    }
+}
+
+extension View {
+    /// 二级页隐藏底部 tab（Android 二级页没有底部导航）
+    @ViewBuilder func hideTabBar() -> some View {
+        if #available(iOS 16.0, *) { toolbar(.hidden, for: .tabBar) } else { self }
     }
 }
 
