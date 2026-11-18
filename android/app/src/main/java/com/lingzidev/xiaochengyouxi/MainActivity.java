@@ -1622,26 +1622,21 @@ public final class MainActivity extends Activity {
             true);
     flex(header, title);
     if (!current.equals("me")) {
-      // Gold pill: a drawn coin on the left, the balance in warm brown.
+      // Balance: a flat coin and the number, no container.
       LinearLayout pill = row();
-      pill.setPadding(dp(4), 0, dp(10), 0);
-      GradientDrawable pillBg =
-          new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0xfffff6dc, 0xffffe6ad});
-      pillBg.setCornerRadius(dp(18));
-      pillBg.setStroke(dp(1), 0xffffd27a);
-      pill.setBackground(pillBg);
-      add(pill, new CoinIcon(this), 26, 26);
-      balance = text(number(user.optInt("coins")), 16, 0xff8a4b00, true);
-      balance.setPadding(dp(6), 0, dp(4), 0);
+      pill.setPadding(dp(8), 0, 0, 0);
+      add(pill, new CoinIcon(this), 20, 20);
+      balance = text(number(user.optInt("coins")), 18, INK, true);
+      balance.setPadding(dp(6), 0, 0, 0);
+      balance.setFontFeatureSettings("tnum");
       add(pill, balance, -2, -2);
-      add(pill, new LineIcon(this, "arrow", 0xffd8a560), 12, 12);
       pill.setContentDescription("我的金币 " + user.optInt("coins"));
       pill.setOnClickListener(
           v -> {
             current = "me";
             render();
           });
-      add(header, pill, -2, 34);
+      add(header, pill, -2, 40);
     } else {
       LinearLayout settings = row();
       settings.setPadding(dp(12), 0, dp(4), 0);
