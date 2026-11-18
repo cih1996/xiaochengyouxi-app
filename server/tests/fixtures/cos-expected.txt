@@ -1,0 +1,1 @@
+q-sign-algorithm=sha1&q-ak=AKIDEXAMPLE&q-sign-time=1700000000;1700007200&q-key-time=1700000000;1700007200&q-header-list=host&q-url-param-list=&q-signature=a06a504c873b483f14db7065ec68c7f9c6222376

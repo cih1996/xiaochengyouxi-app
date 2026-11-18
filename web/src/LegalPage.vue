@@ -10,53 +10,69 @@ onMounted(async () => {
 });
 const sdks = [
   {
-    name: "穿山甲广告 SDK",
-    company: "北京巨量引擎网络技术有限公司",
-    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
-    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
-    link: "https://www.csjplatform.com/privacy/partner",
-    linkText: "穿山甲 SDK 隐私政策",
+    "name": "穿山甲广告SDK",
+    "company": "北京巨量引擎网络技术有限公司",
+    "purpose": "激励视频、信息流广告的展示、效果统计与反作弊",
+    "data": "OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    "link": "https://www.csjplatform.com/privacy/partner",
+    "linkText": "SDK 隐私政策"
   },
   {
-    name: "快手广告 SDK（快手联盟）",
-    company: "北京快手广告有限公司",
-    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
-    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
-    link: "https://u.kuaishou.com/",
-    linkText: "快手联盟",
+    "name": "抖音SDK（安卓版）",
+    "company": "北京微播视界科技有限公司",
+    "purpose": "随穿山甲广告SDK集成，用于广告中抖音内容的展示与跳转",
+    "data": "设备品牌与型号、系统版本、网络状态、应用信息",
+    "link": "https://developer.open-douyin.com/docs/resource/zh-CN/dop/operation-standard/service-protocol/douyinsdk_pingtaiyinsizhengce",
+    "linkText": "SDK 隐私政策"
   },
   {
-    name: "百度广告 SDK（百青藤）",
-    company: "北京百度网讯科技有限公司",
-    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
-    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
-    link: "https://union.baidu.com/bqt/#/legal/policies",
-    linkText: "百度联盟隐私政策",
+    "name": "快手联盟（Android）",
+    "company": "北京快手科技有限公司",
+    "purpose": "激励视频、信息流广告的展示、效果统计与反作弊",
+    "data": "OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    "link": "https://u.kuaishou.com/home/help/detail/1337/1425",
+    "linkText": "SDK 隐私政策"
   },
   {
-    name: "优量汇广告 SDK",
-    company: "深圳市腾讯计算机系统有限公司",
-    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
-    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
-    link: "https://e.qq.com/dev/help_detail.html?cid=2005&pid=5983",
-    linkText: "优量汇 SDK 隐私保护声明",
+    "name": "百度移动广告SDK",
+    "company": "北京百度网讯科技有限公司",
+    "purpose": "激励视频、信息流广告的展示、效果统计与反作弊",
+    "data": "OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    "link": "https://union.baidu.com/bqt/#/legal/policies",
+    "linkText": "SDK 隐私政策"
   },
   {
-    name: "知衡 DeviceTrust SDK",
-    company: "广西奇易电子商务有限公司（自研）",
-    purpose: "识别作弊工具、异常设备和批量注册，保护账户与奖励安全",
-    data: "ANDROID_ID、Widevine 设备标识的不可逆摘要（原值不上传）、设备品牌型号与系统信息、指定风险工具是否安装、无障碍服务状态、调试状态与本机端口、局域网内网地址/网关/DNS、应用版本与签名摘要",
-    link: "",
-    linkText: "见本政策“设备与安全核验”",
+    "name": "百度oCPX转化追踪SDK",
+    "company": "北京百度网讯科技有限公司",
+    "purpose": "随百度移动广告SDK集成，用于广告转化效果的追踪与统计",
+    "data": "OAID、设备品牌与型号、系统版本、网络状态、IP 地址、应用信息、广告转化事件",
+    "link": "https://ocpx-devcenter.bj.bcebos.com/%E5%BA%94%E7%94%A8SDK%E8%B5%84%E6%BA%90/%E3%80%90%E7%99%BE%E5%BA%A6oCPX%E8%BD%AC%E5%8C%96%E8%BF%BD%E8%B8%AASDK%E3%80%91%E9%9A%90%E7%A7%81%E6%94%BF%E7%AD%96%2020250303.pdf?authorization=bce-auth-v1/e2ea496b5e7f4e20bd0e5d1ce5533588/2025-03-03T03%3A24%3A50Z/-1/host/f51f435fb61f7078188b3f185fcbffa4f08b54840da573f0050f6c90ce7dcb70",
+    "linkText": "SDK 隐私政策"
   },
   {
-    name: "腾讯云短信",
-    company: "腾讯云计算（北京）有限责任公司",
-    purpose: "发送注册、登录、找回密码验证码",
-    data: "手机号、验证码内容（仅在您获取验证码时）",
-    link: "",
-    linkText: "见腾讯云官网《隐私声明》",
+    "name": "优量汇 Android SDK",
+    "company": "深圳市腾讯计算机系统有限公司",
+    "purpose": "激励视频、信息流广告的展示、效果统计与反作弊",
+    "data": "OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    "link": "https://e.qq.com/dev/help_detail.html?cid=2005&pid=5983",
+    "linkText": "SDK 隐私政策"
   },
+  {
+    "name": "知衡 DeviceTrust SDK",
+    "company": "广西奇易电子商务有限公司（自研）",
+    "purpose": "识别作弊工具、异常设备和批量注册，保护账户与奖励安全",
+    "data": "ANDROID_ID、Widevine 设备标识的不可逆摘要（原值不上传）、设备品牌型号与系统信息、指定风险工具是否安装、无障碍服务状态、调试状态与本机端口、局域网内网地址/网关/DNS、应用版本与签名摘要",
+    "link": "",
+    "linkText": "见本政策“设备与安全核验”"
+  },
+  {
+    "name": "腾讯云短信",
+    "company": "腾讯云计算（北京）有限责任公司",
+    "purpose": "发送注册、登录、找回密码验证码",
+    "data": "手机号、验证码内容（仅在您获取验证码时）",
+    "link": "",
+    "linkText": "见腾讯云官网《隐私声明》"
+  }
 ];
 </script>
 
@@ -70,7 +86,7 @@ const sdks = [
     <main class="legal-document">
       <h1>{{ type === "privacy" ? "隐私政策" : "用户协议" }}</h1>
       <p class="legal-date">
-        <template v-if="type === 'privacy'">更新日期：2026年11月18日 · 生效日期：2026年11月18日 · 版本：1.5</template>
+        <template v-if="type === 'privacy'">更新日期：2026年11月18日 · 生效日期：2026年11月18日 · 版本：1.6</template>
         <template v-else>更新日期：2026年11月12日 · 生效日期：2026年11月12日 · 版本：1.0</template>
       </p>
       <template v-if="type === 'privacy'">

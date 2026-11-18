@@ -24,7 +24,7 @@
 
 `MainActivity.dispatchTouchEvent` 及 BehaviorAudit 包装的弹窗窗口回调调用 `TouchAudit.record(event)`，只累计按下次数、模拟点击形态和虚拟输入设备次数。
 
-SDK 使用独立 Android Keystore P-256 密钥注册公钥证书链，原生层生成 DTP4 加密签名帧，私钥保留在 Keystore。0.7 起新密钥生成时总是附带挑战值请求硬件证明证书链，`hardwareRequired` 不再影响客户端密钥生成；是否拒绝未通过证明的设备由平台“接入保护”配置决定。0.7.3：`hardwareRequired=false` 时若带证明生成密钥抛 `ProviderException`，SDK 删除残留别名后不带证明重新生成，并在登记包附 `attestationError`，平台记为 `signature_only`、`issue=keystore_failed`；`hardwareRequired=true` 时直接失败、不降级。该降级登记需要 DeviceTrust 0.7.3 服务端，线上仍为 0.7.2 时会以 400 拒绝。已有密钥继续沿用，应用不调用 `reset`。SDK 返回的不透明 `deviceId` 由平台验证签名和服务端绑定，Android 不把自报 ID 当作业务身份或通行凭据。
+SDK 使用独立 Android Keystore P-256 密钥注册公钥证书链，原生层生成 DTP4 加密签名帧，私钥保留在 Keystore。0.7 起新密钥生成时总是附带挑战值请求硬件证明证书链，`hardwareRequired` 不再影响客户端密钥生成；是否拒绝未通过证明的设备由平台“接入保护”配置决定。0.7.3：`hardwareRequired=false` 时若带证明生成密钥抛 `ProviderException`，SDK 删除残留别名后不带证明重新生成，并在登记包附 `attestationError`，平台记为 `signature_only`、`issue=keystore_failed`；`hardwareRequired=true` 时直接失败、不降级。该降级登记需要 DeviceTrust 0.7.3 服务端，线上仍为 0.7.2 时会以 400 拒绝。已有密钥继续沿用；唯一例外是系统抛出 `KeyPermanentlyInvalidatedException`（密钥被 Android 永久作废，例如修改锁屏后），应用调用 `SecureReporter.reset` 并用 `/device/config` 的参数重新登记，原事件记为 `key_reset` 核验错误后重试本次操作一次，60 秒内最多重置一次。SDK 返回的不透明 `deviceId` 由平台验证签名和服务端绑定，Android 不把自报 ID 当作业务身份或通行凭据。
 
 ## 业务协议
 
@@ -46,7 +46,7 @@ SDK 使用独立 Android Keystore P-256 密钥注册公钥证书链，原生层�
 
 普通登录在页面展示后独立提交 login 证据。邀请未绑定会话仍可提交登录证据。收益动作须先完成本次 SDK 报告，review/restricted 或采集上报失败时不发起收益请求；业务后端同时强制验证同用户、同场景、时效及一次消费。
 
-没有自动重试或后台队列。主线程的一次 SDK 请求状态避免首次密钥登记并行；已在处理时用户可以稍后重新操作。SDK 密钥异常不会重置或重新登记以掩盖错误。
+没有自动重试或后台队列。主线程的一次 SDK 请求状态避免首次密钥登记并行；已在处理时用户可以稍后重新操作。除上述密钥被永久作废的情况外，SDK 密钥异常不会重置或重新登记以掩盖错误。
 
 ## 错误与边界
 

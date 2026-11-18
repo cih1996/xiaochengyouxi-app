@@ -219,7 +219,7 @@ public final class MainActivity extends Activity {
     else loadAccount();
   }
 
-  static final String PRIVACY_ACCEPTED = "privacy_accepted_v3";
+  static final String PRIVACY_ACCEPTED = "privacy_accepted_v4";
 
   void confirmPrivacy() {
     // Bumped when the policy adds third parties (0.3.21: 快手/百度/优量汇 ad SDKs, 腾讯云短信),
@@ -235,7 +235,7 @@ public final class MainActivity extends Activity {
             .setTitle("欢迎来到小橙有喜")
             .setMessage(
                 "广西奇易电子商务有限公司为你提供服务。请阅读《隐私政策》和《用户协议》，点击“同意并继续”即表示你同意以下处理：\n\n"
-                    + "1. 广告服务：App 集成穿山甲、快手、百度、优量汇广告 SDK，会读取设备标识 OAID（匿名设备标识符），以及设备型号、系统版本、网络状态和广告展示点击记录，用于广告投放、效果统计和防作弊。已关闭个性化广告，不读取位置、电话状态、MAC 地址和应用列表。\n\n"
+                    + "1. 广告服务：App 集成穿山甲广告 SDK（含抖音 SDK）、快手联盟、百度移动广告 SDK（含百度 oCPX 转化追踪 SDK）、优量汇 Android SDK，会读取设备标识 OAID（匿名设备标识符），以及设备型号、系统版本、网络状态和广告展示点击记录，用于广告投放、效果统计和防作弊。已关闭个性化广告，不读取位置、电话状态、MAC 地址和应用列表。\n\n"
                     + "2. 账户安全：知衡 DeviceTrust SDK 会读取 ANDROID_ID、Widevine 设备标识的不可逆摘要（原值不上传）、指定风险工具是否安装、无障碍服务状态、本机调试端口，以及当前局域网的内网地址、网关和 DNS，并按核验需要检测同一网段内其他设备是否在线或开启无线调试，用于识别作弊和保护账户安全。\n\n"
                     + "3. 服务改进：登录后记录本应用内的页面访问、点击、停留与触点，用于账户安全和服务改进；不采集输入内容、密码短信、屏幕画面或其他应用的使用内容。\n\n"
                     + "以上 SDK 均在你同意后才会初始化。你可以在“我的 → 设置”中查看隐私政策和第三方 SDK 清单。")

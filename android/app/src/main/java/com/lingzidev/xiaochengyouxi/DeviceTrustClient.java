@@ -19,6 +19,9 @@ final class DeviceTrustClient {
   // first-login check is still uploading).
   private final java.util.ArrayDeque<Attempt> waiting = new java.util.ArrayDeque<>();
   private String startupError = "", startupCode = "";
+  // Registration parameters from /device/config, kept for re-registering after a key reset.
+  private String sdkBase = "";
+  private String[] sdkPins;
 
   interface Ready {
     void done(String eventId);
@@ -46,6 +49,8 @@ final class DeviceTrustClient {
             String[] pins = new String[list.length()];
             for (int i = 0; i < pins.length; i++) pins[i] = list.getString(i);
             String base = config.getString("business_url");
+            sdkBase = base;
+            sdkPins = pins;
             new Thread(
                     () -> {
                       try {
@@ -83,6 +88,46 @@ final class DeviceTrustClient {
           android.util.Log.e("DeviceTrust", "GET /device/config: " + startupError);
           done.run();
         });
+  }
+
+  /**
+   * Android permanently invalidated the SDK's Keystore key (e.g. the lock screen was changed).
+   * That key can never sign again, so this one case — and only this one — resets the key and
+   * registers a new one; every other key error is still reported as is.
+   */
+  static boolean keyInvalidated(Throwable error) {
+    for (Throwable e = error; e != null; e = e.getCause()) {
+      if (e.getClass().getSimpleName().equals("KeyPermanentlyInvalidatedException")) return true;
+      String text = String.valueOf(e.getMessage());
+      if (text.contains("KeyPermanentlyInvalidatedException") || text.contains("Key permanently invalidated"))
+        return true;
+      if (e.getCause() == e) break;
+    }
+    return false;
+  }
+
+  /** Runs on a worker thread. Returns true when a fresh key is registered. */
+  private long lastKeyReset;
+
+  private synchronized boolean resetKey() {
+    if (sdkPins == null || sdkBase.isEmpty()) return false;
+    // At most once a minute, so a key that keeps failing can never loop.
+    long now = System.currentTimeMillis();
+    if (now - lastKeyReset < 60_000) return false;
+    lastKeyReset = now;
+    try {
+      SecureReporter.reset(activity.getApplicationContext(), BuildConfig.DEVICE_TRUST_APP_ID);
+      com.device.trust.secure.DeviceTrustClient.initialize(
+          activity.getApplicationContext(),
+          new com.device.trust.secure.DeviceTrustClient.Config(
+              BuildConfig.DEVICE_TRUST_APP_ID, sdkBase, sdkPins),
+          api.preferences.getBoolean(CONSENT, false),
+          null);
+      return true;
+    } catch (Exception | LinkageError error) {
+      android.util.Log.e("DeviceTrust", "key reset failed", error);
+      return false;
+    }
   }
 
   void reportStartupFailure() {
@@ -144,6 +189,15 @@ final class DeviceTrustClient {
                             failure);
                     });
               } catch (Exception | LinkageError error) {
+                if (keyInvalidated(error) && resetKey()) {
+                  activity.runOnUiThread(
+                      () -> {
+                        if (activity.isDestroyed() || !token.equals(api.token)) return;
+                        reportFailure("", "reward", "key_reset", "KeyPermanentlyInvalidated", "", ignored -> {});
+                        quoteReward(taskId, result, failure);
+                      });
+                  return;
+                }
                 activity.runOnUiThread(
                     () -> {
                       if (!activity.isDestroyed() && token.equals(api.token))
@@ -170,6 +224,7 @@ final class DeviceTrustClient {
     final Ready ready;
     final Api.Failure failure;
     String eventId = "";
+    boolean keyReset;
 
     Attempt(String kind, JSONObject intent, String token, Ready ready, Api.Failure failure) {
       this.kind = kind;
@@ -199,6 +254,7 @@ final class DeviceTrustClient {
                         if (active()) prepare(keyId);
                       });
                 } catch (Exception | LinkageError error) {
+                  if (recoverKey(error)) return;
                   activity.runOnUiThread(
                       () -> {
                         if (active()) recordFailure("key_id", code(error), detail(error, token));
@@ -256,6 +312,7 @@ final class DeviceTrustClient {
                         if (active()) complete(reportId);
                       });
                 } catch (Exception | LinkageError error) {
+                  if (recoverKey(error)) return;
                   String failedStage = stage;
                   activity.runOnUiThread(
                       () -> {
@@ -285,6 +342,26 @@ final class DeviceTrustClient {
             } else recordFailure("complete", "InvalidBusinessStatus");
           },
           httpFailure("complete"));
+    }
+
+    /**
+     * On a worker thread: if the key was permanently invalidated (first time for this attempt),
+     * note it on the current event, register a new key and start the attempt over.
+     */
+    boolean recoverKey(Throwable error) {
+      if (keyReset || !keyInvalidated(error)) return false;
+      keyReset = true;
+      String previous = eventId;
+      if (!resetKey()) return false;
+      activity.runOnUiThread(
+          () -> {
+            if (!active()) return;
+            // Visible in the admin as an assessment error with stage key_reset.
+            reportFailure(previous, kind, "key_reset", "KeyPermanentlyInvalidated", "", ignored -> {});
+            eventId = "";
+            start();
+          });
+      return true;
     }
 
     Api.Failure httpFailure(String stage) {

@@ -17,6 +17,7 @@ import AdConfigAdmin from "./AdConfigAdmin.vue";
 import AdStats from "./AdStats.vue";
 import SmsAdmin from "./SmsAdmin.vue";
 import TraceLookup from "./TraceLookup.vue";
+import CosAdmin from "./CosAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
 defineEmits(["back"]);
@@ -65,6 +66,7 @@ const withdrawRulesPanel = ref(null);
 const adConfigPanel = ref(null);
 const adStatsPanel = ref(null);
 const smsPanel = ref(null);
+const cosPanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -96,6 +98,7 @@ const items = [
   { id: "ad-config", label: "广告配置", icon: "play" },
   { id: "ad-stats", label: "广告统计", icon: "list" },
   { id: "sms", label: "短信通道", icon: "mail" },
+  { id: "cos", label: "COS 存储", icon: "download" },
   { id: "invitations", label: "邀请管理", icon: "send" },
   { id: "settings", label: "运营设置", icon: "settings" },
   { id: "release", label: "版本发布", icon: "download" },
@@ -146,7 +149,7 @@ const groups = [
     id: "system",
     label: "系统设置",
     icon: "settings",
-    children: ["settings", "sms", "release"],
+    children: ["settings", "sms", "cos", "release"],
   },
 ];
 const userCenterTabs = ["user-overview", "registrations", "activity"];
@@ -302,6 +305,7 @@ async function refreshCurrent() {
   else if (tab.value === "ad-config") await adConfigPanel.value?.refresh();
   else if (tab.value === "ad-stats") await adStatsPanel.value?.refresh();
   else if (tab.value === "sms") await smsPanel.value?.refresh();
+  else if (tab.value === "cos") await cosPanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -707,6 +711,12 @@ onMounted(load);
         <AdStats
           v-if="tab === 'ad-stats'"
           ref="adStatsPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <CosAdmin
+          v-if="tab === 'cos'"
+          ref="cosPanel"
           :api="api"
           @unauthorized="fail"
         />

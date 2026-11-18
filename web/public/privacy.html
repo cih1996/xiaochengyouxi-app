@@ -6,13 +6,14 @@
   <title>小橙有喜隐私政策</title>
   <style>
     :root{color-scheme:light}body{margin:0;background:#fff8f2;color:#49352b;font:15px/1.9 -apple-system,BlinkMacSystemFont,"Microsoft YaHei",Arial,sans-serif}header,main,footer{max-width:900px;margin:auto}header{padding:28px 22px 10px;border-bottom:1px solid #eadfd5}header a{color:#e8623f;text-decoration:none;font-weight:700}main{padding:24px 22px 48px;background:#fffdfb}h1{font-size:30px;line-height:1.3;margin:0 0 8px;color:#3f2b22}h2{font-size:20px;margin:32px 0 10px;color:#7d4c35}h3{font-size:17px;margin:24px 0 8px;color:#8a5c44}.meta{font-size:13px;color:#927d70}p{margin:10px 0}ul{padding-left:24px}li{margin:5px 0}.notice{background:#fff1e4;border-left:4px solid #ee7049;padding:12px 15px;margin:18px 0}a{color:#c95739}footer{padding:18px 22px 36px;color:#947e70;font-size:13px}
+    table.sdk{width:100%;border-collapse:collapse;font-size:13px;line-height:1.6;min-width:680px}table.sdk th,table.sdk td{border:1px solid #eadfd5;padding:7px 9px;text-align:left;vertical-align:top}table.sdk th{background:#fff4ea;color:#7d4c35;white-space:nowrap}table.sdk small{color:#947e70}
   </style>
 </head>
 <body>
 <header><a href="/">小橙有喜</a></header>
 <main>
   <h1>隐私政策</h1>
-  <p class="meta">更新日期：2026年11月18日　生效日期：2026年11月18日　版本：1.5</p>
+  <p class="meta">更新日期：2026年11月18日　生效日期：2026年11月18日　版本：1.6</p>
   <div class="notice">请在注册账号、登录或使用需要个人信息的功能前阅读本政策。加粗内容涉及设备标识、账号、收款账号等较为敏感的信息。</div>
 
   <h2>一、政策导言</h2>
@@ -30,14 +31,21 @@
   <p>提交提现申请时，我们收集<strong>提现金额、提现方式、您填写的收款账号、申请时间和审核状态</strong>，用于审核提现、处理支付和展示提现记录。未提交提现申请时，我们不会收集收款账号。提现是否开通、实际到账时间和支付服务商处理结果以页面及服务商实际状态为准。</p>
   <h3>4. 商品推广和活动推荐</h3>
   <p>浏览或点击商品时，我们记录<strong>商品ID、曝光、详情打开、外链跳转、点击时间和账号或匿名会话标识</strong>，用于商品统计、推广归因和改善展示。当前大厅内容按照活动配置和服务状态展示，不根据您的个人信息进行个性化消息推送。</p>
-  <h3 id="sdk">5. Android广告SDK</h3>
-  <p>Android应用的激励视频和信息流广告接入以下广告SDK，每次请求由服务端按运营配置选择其中一家提供广告：</p>
-  <ul>
-    <li><strong>穿山甲广告SDK</strong>：提供方为北京巨量引擎网络技术有限公司及其关联方，详见<a href="https://www.csjplatform.com/privacy/partner" target="_blank" rel="noopener">穿山甲广告SDK隐私政策</a>。</li>
-    <li><strong>快手广告SDK（快手联盟）</strong>：提供方为北京快手广告有限公司及其关联方，详见<a href="https://u.kuaishou.com/" target="_blank" rel="noopener">快手联盟</a>公布的SDK隐私政策。</li>
-    <li><strong>百度广告SDK（百青藤）</strong>：提供方为北京百度网讯科技有限公司及其关联方，详见<a href="https://union.baidu.com/bqt/#/legal/policies" target="_blank" rel="noopener">百度联盟隐私政策</a>。</li>
-    <li><strong>优量汇广告SDK</strong>：提供方为深圳市腾讯计算机系统有限公司及其关联方，详见<a href="https://e.qq.com/dev/help_detail.html?cid=2005&amp;pid=5983" target="_blank" rel="noopener">优量汇SDK隐私保护声明</a>。</li>
-  </ul>
+  <h3 id="sdk">5. 第三方SDK清单</h3>
+  <p>Android应用集成以下第三方SDK（信息与全国SDK管理服务平台登记一致）。激励视频和信息流广告每次由服务端按运营配置选择其中一家广告SDK提供；我们在您同意本政策后才初始化这些SDK。</p>
+  <div style="overflow-x:auto"><table class="sdk">
+    <thead><tr><th>SDK名称</th><th>开发者</th><th>使用目的</th><th>收集的个人信息</th><th>SDK隐私政策</th></tr></thead>
+    <tbody>
+      <tr><td><strong>穿山甲广告SDK</strong><br><small>com.bytedance.sdk.openadsdk</small></td><td>北京巨量引擎网络技术有限公司</td><td>激励视频、信息流广告的展示、效果统计与反作弊</td><td>OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据</td><td><a href="https://www.csjplatform.com/privacy/partner" target="_blank" rel="noopener">隐私政策</a></td></tr>
+      <tr><td><strong>抖音SDK（安卓版）</strong><br><small>com.bytedance.android.dy.sdk</small></td><td>北京微播视界科技有限公司</td><td>随穿山甲广告SDK集成，用于广告中抖音内容的展示与跳转</td><td>设备品牌与型号、系统版本、网络状态、应用信息</td><td><a href="https://developer.open-douyin.com/docs/resource/zh-CN/dop/operation-standard/service-protocol/douyinsdk_pingtaiyinsizhengce" target="_blank" rel="noopener">隐私政策</a></td></tr>
+      <tr><td><strong>快手联盟（Android）</strong><br><small>com.kwad.sdk</small></td><td>北京快手科技有限公司</td><td>激励视频、信息流广告的展示、效果统计与反作弊</td><td>OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据</td><td><a href="https://u.kuaishou.com/home/help/detail/1337/1425" target="_blank" rel="noopener">隐私政策</a></td></tr>
+      <tr><td><strong>百度移动广告SDK</strong><br><small>com.baidu.mobads.proxy</small></td><td>北京百度网讯科技有限公司</td><td>激励视频、信息流广告的展示、效果统计与反作弊</td><td>OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据</td><td><a href="https://union.baidu.com/bqt/#/legal/policies" target="_blank" rel="noopener">隐私政策</a></td></tr>
+      <tr><td><strong>百度oCPX转化追踪SDK</strong><br><small>com.baidu.mobads</small></td><td>北京百度网讯科技有限公司</td><td>随百度移动广告SDK集成，用于广告转化效果的追踪与统计</td><td>OAID、设备品牌与型号、系统版本、网络状态、IP 地址、应用信息、广告转化事件</td><td><a href="https://ocpx-devcenter.bj.bcebos.com/%E5%BA%94%E7%94%A8SDK%E8%B5%84%E6%BA%90/%E3%80%90%E7%99%BE%E5%BA%A6oCPX%E8%BD%AC%E5%8C%96%E8%BF%BD%E8%B8%AASDK%E3%80%91%E9%9A%90%E7%A7%81%E6%94%BF%E7%AD%96%2020250303.pdf?authorization=bce-auth-v1/e2ea496b5e7f4e20bd0e5d1ce5533588/2025-03-03T03%3A24%3A50Z/-1/host/f51f435fb61f7078188b3f185fcbffa4f08b54840da573f0050f6c90ce7dcb70" target="_blank" rel="noopener">隐私政策</a></td></tr>
+      <tr><td><strong>优量汇 Android SDK</strong><br><small>com.qq.e</small></td><td>深圳市腾讯计算机系统有限公司</td><td>激励视频、信息流广告的展示、效果统计与反作弊</td><td>OAID（开放匿名设备标识符）、设备品牌与型号、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据</td><td><a href="https://e.qq.com/dev/help_detail.html?cid=2005&amp;pid=5983" target="_blank" rel="noopener">隐私政策</a></td></tr>
+      <tr><td><strong>知衡 DeviceTrust SDK</strong><br><small>com.device.trust</small></td><td>广西奇易电子商务有限公司（自研）</td><td>识别作弊工具、异常设备和批量注册，保护账户与奖励安全</td><td>ANDROID_ID、Widevine 设备标识的不可逆摘要（原值不上传）、设备品牌型号与系统信息、指定风险工具是否安装、无障碍服务状态、调试状态与本机端口、局域网内网地址/网关/DNS、应用版本与签名摘要</td><td>见本政策第6节</td></tr>
+      <tr><td><strong>腾讯云短信</strong><br><small>（服务端接口，App 未集成 SDK）</small></td><td>腾讯云计算（北京）有限责任公司</td><td>发送注册、登录、找回密码验证码</td><td>手机号、验证码内容（仅在您获取验证码时）</td><td>见腾讯云官网《隐私声明》</td></tr>
+    </tbody>
+  </table></div>
   <p>经您同意后，上述SDK会读取<strong>设备标识OAID（开放匿名设备标识符）</strong>，并可能处理<strong>设备型号、系统版本、屏幕信息、应用信息、网络状态、IP地址、广告展示和点击记录、崩溃及性能信息</strong>，用于广告投放与频次控制、统计效果和防止作弊。OAID是手机系统提供、可由您重置的匿名标识，不能直接识别您的身份；您可以在手机“设置 → 隐私 → 广告与隐私”（不同品牌名称略有差异）中重置或限制。我们在您同意本政策后才初始化上述SDK；您不同意时，App不会初始化它们。当前配置关闭定位、应用安装列表、电话状态、Wi‑Fi详情、MAC地址、麦克风和传感器数据等可选读取，不申请电话、定位等敏感权限，并关闭个性化广告。观看激励视频时，我们会把<strong>您的账号编号和本次奖励编号</strong>传给提供该广告的平台，平台在您看完后回传给我们核对，用于确认奖励是否发放。</p>
   <h3>6. 设备安全核验与行为审计</h3>
   <p>经您同意并登录账号后，DeviceTrust设备核验组件可能处理<strong>设备品牌与型号、系统版本和安全补丁、系统构建信息、网络接入方式、运营商代码、VPN、调试或模拟器线索、应用包名、应用版本、安装来源、签名摘要、随机安装标识、设备标识（ANDROID_ID）以及Widevine设备标识的SHA-256摘要</strong>，用于异常领奖、签到和提现核查。Widevine设备标识的原值不离开您的手机，只上传不可逆摘要，用于在重新安装应用后识别同一台设备。</p>
@@ -51,7 +59,7 @@
   <h2>四、信息共享、转让和公开披露</h2>
   <p>我们不会出售您的个人信息，也不会将账号、手机号、收款账号公开展示。为提供服务，我们可能在必要范围内与以下接收方共享相应信息：</p>
   <ul>
-    <li>穿山甲、快手、百度、优量汇广告SDK：OAID、设备、网络、广告交互和性能信息，用于广告展示、效果统计和反作弊；观看激励视频时另提供账号编号和奖励编号，用于奖励核对。</li>
+    <li>第5节所列广告SDK（穿山甲广告SDK、抖音SDK（安卓版）、快手联盟（Android）、百度移动广告SDK、百度oCPX转化追踪SDK、优量汇 Android SDK）：OAID、设备、网络、广告交互和性能信息，用于广告展示、效果统计和反作弊；观看激励视频时另提供账号编号和奖励编号，用于奖励核对。</li>
     <li>腾讯云短信服务（腾讯云计算（北京）有限责任公司）：在您获取验证码时提供手机号和验证码内容，用于发送短信。</li>
     <li>DeviceTrust设备核验服务：设备安全核验信息、随机设备标识和关联业务事件，用于风险识别。</li>
     <li>短信、支付或提现服务商：在您使用验证码或提现功能时，提供手机号、提现金额、收款方式和收款账号等必要信息。</li>

@@ -27,6 +27,7 @@ mod ad_mediation;
 mod admin_account;
 mod app_config;
 mod behavior_audit;
+mod cos_storage;
 mod business_guard;
 mod campaign;
 mod device_bootstrap;
@@ -2470,6 +2471,7 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     reward_policy::initialize(&db).map_err(|e| e.1)?;
     ad_mediation::initialize(&db).map_err(|e| e.1)?;
     sms_channel::initialize(&db).map_err(|e| e.1)?;
+    cos_storage::initialize(&db).map_err(|e| e.1)?;
     business_guard::initialize(&db).map_err(|e| e.1)?;
     campaign::initialize(&db).map_err(|e| e.1)?;
     behavior_audit::initialize(&db)
@@ -2502,6 +2504,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(ad_mediation::admin_routes())
         .merge(sms_channel::admin_routes())
         .merge(trace_lookup::admin_routes())
+        .merge(cos_storage::admin_routes())
         .merge(reward_policy::admin_routes())
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())
@@ -2542,6 +2545,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(home_layout::routes())
         .merge(withdraw_rules::routes())
         .merge(ad_mediation::routes())
+        .merge(cos_storage::routes())
         .merge(reward_policy::routes())
         .merge(rain::routes())
         .merge(hall_requests::routes())
