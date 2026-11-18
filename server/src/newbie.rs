@@ -368,7 +368,7 @@ fn state_json(state: &AppState, db: &Connection, uid: i64, c: &Config) -> Result
     // packet still waiting for its video, unopened video packets, then invite packets.
     let queue: Vec<Value> = db
         .prepare(
-            "SELECT id,kind,status,coins FROM newbie_packets WHERE round=?1 AND user_id=?2 AND status IN ('ready','revealed','ad_started')
+            "SELECT id,kind,status,CASE WHEN kind='video' THEN NULL ELSE coins END FROM newbie_packets WHERE round=?1 AND user_id=?2 AND status IN ('ready','revealed','ad_started')
              ORDER BY CASE kind WHEN 'welcome' THEN 0 WHEN 'video' THEN 1 ELSE 2 END, CASE status WHEN 'ready' THEN 1 ELSE 0 END, invitee_id, created_at",
         )?
         .query_map(params![round, uid], |r| {
@@ -488,7 +488,9 @@ async fn open_packet(
                 amount
             }
         };
-        let result = json!({"coins":coins,"kind":kind,"already":false,"needs_video":true,"task_id":format!("newbie:{}",input.packet_id),"state":state_json(&state,&tx,uid,&c)?});
+        // Blind box: the amount is locked here but only shown after the video has paid it.
+        let _ = coins;
+        let result = json!({"kind":kind,"already":false,"needs_video":true,"task_id":format!("newbie:{}",input.packet_id),"state":state_json(&state,&tx,uid,&c)?});
         tx.commit()?;
         return Ok(Json(result));
     }
@@ -846,7 +848,9 @@ mod tests {
         assert_eq!(st["queue"][0]["kind"], "video");
         let revealed = open_packet(State(state.clone()), Extension(context.clone()), headers.clone(), Json(OpenInput { packet_id: pid.clone() })).await.unwrap().0;
         assert_eq!(revealed["needs_video"], true);
-        let coins = revealed["coins"].as_i64().unwrap();
+        // Blind box: the response never carries the locked amount.
+        assert!(revealed.get("coins").is_none());
+        let coins: i64 = db.query_row("SELECT coins FROM newbie_packets WHERE id=?1", [&pid], |r| r.get(0)).unwrap();
         assert!(coins >= 10);
         // Revealing pays nothing.
         assert_eq!(user(&db, 2).unwrap().coins, after_welcome);

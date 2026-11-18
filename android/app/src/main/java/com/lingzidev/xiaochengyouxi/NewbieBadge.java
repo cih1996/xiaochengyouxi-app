@@ -64,7 +64,6 @@ final class NewbieBadge extends FrameLayout {
     pill.setCornerRadius(dp(12));
     pill.setStroke(dp(2), Color.WHITE);
     label.setBackground(pill);
-    label.setElevation(dp(6));
     LayoutParams lp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
     addView(label, lp);
 
@@ -79,7 +78,6 @@ final class NewbieBadge extends FrameLayout {
     dot.setColor(0xffe8141d);
     dot.setStroke(dp(2), Color.WHITE);
     count.setBackground(dot);
-    count.setElevation(dp(8));
     count.setMinWidth(dp(20));
     count.setPadding(dp(4), 0, dp(4), 0);
     LayoutParams cp = new LayoutParams(-2, dp(20), Gravity.TOP | Gravity.RIGHT);
@@ -249,14 +247,6 @@ final class NewbieBadge extends FrameLayout {
 
     Envelope(Context c) {
       super(c);
-      setElevation(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6, c.getResources().getDisplayMetrics()));
-      setOutlineProvider(
-          new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(View v, android.graphics.Outline o) {
-              o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), v.getWidth() * .2f);
-            }
-          });
       text.setTypeface(Typeface.DEFAULT_BOLD);
       text.setTextAlign(Paint.Align.CENTER);
       text.setColor(0xff8a2a00);
@@ -265,7 +255,15 @@ final class NewbieBadge extends FrameLayout {
     @Override
     protected void onDraw(Canvas canvas) {
       float w = getWidth(), h = getHeight(), r = w * .2f;
+      p.setShader(null);
+      p.setColor(0x33000000);
+      rect.set(w * .04f, h * .06f, w, h);
+      canvas.drawRoundRect(rect, r, r, p);
+      // the envelope itself, slightly inset so the shadow shows on the lower right
+      w = w * .96f;
+      h = h * .95f;
       rect.set(0, 0, w, h);
+      p.setColor(0xff000000); // opaque: setColor(0x33…) below would otherwise stick
       p.setShader(new LinearGradient(0, 0, w, h, 0xffff5a45, 0xffc4141c, Shader.TileMode.CLAMP));
       canvas.drawRoundRect(rect, r, r, p);
       flap.reset();
@@ -276,9 +274,11 @@ final class NewbieBadge extends FrameLayout {
       flap.lineTo(w, h * .36f);
       flap.quadTo(w / 2, h * .62f, 0, h * .36f);
       flap.close();
+      p.setColor(0xff000000); // opaque: setColor(0x33…) below would otherwise stick
       p.setShader(new LinearGradient(0, 0, 0, h * .5f, 0xffff7a5c, 0xffe8362c, Shader.TileMode.CLAMP));
       canvas.drawPath(flap, p);
       float cx = w / 2, cy = h * .46f, cr = w * .25f;
+      p.setColor(0xff000000);
       p.setShader(
           new RadialGradient(cx - cr * .35f, cy - cr * .35f, cr * 1.3f, new int[] {0xfffff6c8, 0xffffc531, 0xffc27300}, new float[] {0f, .45f, 1f}, Shader.TileMode.CLAMP));
       canvas.drawCircle(cx, cy, cr, p);
