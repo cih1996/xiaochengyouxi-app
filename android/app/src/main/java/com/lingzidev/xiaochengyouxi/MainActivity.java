@@ -2266,7 +2266,8 @@ public final class MainActivity extends Activity {
         if (product == null) break;
         LinearLayout productRow = row();
         add(productRow, new View(this), 48, 1);
-        productRow.addView(productCard(product), new LinearLayout.LayoutParams(0, -2, 1));
+        // Hall card stays compact (square photo), like a shared item in a chat.
+        productRow.addView(productCard(product), new LinearLayout.LayoutParams(dp(220), -2));
         add(content, productRow, -1, -2);
         break;
       case "native_ad":
@@ -3297,7 +3298,16 @@ public final class MainActivity extends Activity {
     ProductImage photo =
         new ProductImage(
             this, p.optString("image"), p.optString("title"), ImageView.ScaleType.CENTER_CROP);
-    add(card, photo, -1, 132);
+    // Product photos are square: a square frame shows the whole picture at any card width.
+    FrameLayout square =
+        new FrameLayout(this) {
+          @Override
+          protected void onMeasure(int w, int h) {
+            super.onMeasure(w, w);
+          }
+        };
+    square.addView(photo, new FrameLayout.LayoutParams(-1, -1));
+    add(card, square, -1, -2);
     LinearLayout copy = col();
     copy.setPadding(dp(12), dp(12), dp(12), dp(14));
     TextView platform = text(p.optString("platform"), 11, MUTED, false);
