@@ -158,3 +158,9 @@ APK 地址：`https://orange.lingzidev.com/download/xiaochengyouxi-0.3.18-21.apk
 - 服务端同步：短信通道（腾讯云）、广告配置/统计、参考号查询、人工放行自动审批、穿山甲回调不再比对奖励数量。
 
 APK `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.22-25.apk`，27,117,354 字节，SHA256 `bed03c1c0337cc4dbdb25d69f5402e788ae24613e54ec270c2b8caf60602c8d3`，MD5 `98722dc13f87db6e91e6e78a22f625f4`，包名与固定签名不变。
+
+## 0.3.24 发布
+
+2026-11-19 发布 0.3.24（versionCode 27），revision 27，最低支持版本 0（可选更新）。新人礼包（盲盒视频红包、邀请拆红包）、幸运转盘重做、收款账户绑定（微信收款码本地识别）、微信钱包风格提现页、金币明细整页、音效，DeviceTrust 0.7.8（基站/定位采集、定期重新登记），启动提速（版本检查并行、设备登记最多等 2 秒）。
+
+元数据 `output/小橙有喜-0.3.24-更新发布.json`；不可变地址 `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.24-27.apk`，27,443,693 字节，SHA256 `82aae424c41a704c863104516b2454ebe5cddc3302cf13ed48a8ddecb7f6e7ea`，包名与固定证书一致。公网验收（版本边界、更新要求、受保护管理接口、APK 完整性）通过，不可变地址与通用入口下载哈希一致。下载暂由本站提供：COS 配置未启用、`dl.lingzidev.com` 未开 HTTPS，启用后 `/download/` 自动 302 到 COS。
