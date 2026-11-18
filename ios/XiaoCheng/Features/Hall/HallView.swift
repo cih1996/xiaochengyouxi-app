@@ -70,6 +70,13 @@ struct HallView: View {
         }
         .onChange(of: model.newbiePopup) { if $0 { model.newbiePopup = false; if activity == nil { activity = .newbie } } }
         .onChange(of: model.checkin?.currentDay) { _ in maybePromptCheckin() }
+        .onChange(of: session.user?.id) { uid in
+            // 用户信息晚于大厅加载：拿到 id 后再判断新人礼包自动弹出与每日签到提示
+            guard let uid, model.userId != uid else { return }
+            model.userId = uid
+            Task { await model.refreshBadges() }
+            maybePromptCheckin()
+        }
         .sheet(isPresented: $showCheckin) { CheckinSheet(model: model).compactSheet() }
         #if DEBUG
         .background(EmptyView().sheet(isPresented: $debugProduct) {
