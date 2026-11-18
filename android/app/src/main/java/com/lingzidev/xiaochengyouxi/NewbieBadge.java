@@ -48,33 +48,33 @@ final class NewbieBadge extends FrameLayout {
     setContentDescription(text);
 
     rays = new Rays(context);
-    addView(rays, new LayoutParams(dp(96), dp(96), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+    addView(rays, new LayoutParams(dp(72), dp(72), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
     LayoutParams rp = (LayoutParams) rays.getLayoutParams();
-    rp.topMargin = -dp(14);
+    rp.topMargin = -dp(10);
 
     envelope = wheel ? new MiniWheel(context) : new Envelope(context);
     LayoutParams ep =
         wheel
-            ? new LayoutParams(dp(62), dp(62), Gravity.TOP | Gravity.CENTER_HORIZONTAL)
-            : new LayoutParams(dp(50), dp(62), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-    ep.topMargin = dp(4);
+            ? new LayoutParams(dp(52), dp(52), Gravity.TOP | Gravity.CENTER_HORIZONTAL)
+            : new LayoutParams(dp(44), dp(52), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+    ep.topMargin = dp(3);
     addView(envelope, ep);
     if (wheel) {
       View pointer = new Pointer(context);
-      LayoutParams pp = new LayoutParams(dp(16), dp(20), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+      LayoutParams pp = new LayoutParams(dp(13), dp(16), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
       pp.topMargin = 0;
       addView(pointer, pp);
     }
 
     label = new TextView(context);
     label.setText(text);
-    label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+    label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
     label.setTypeface(Typeface.DEFAULT_BOLD);
     label.setTextColor(0xff8a1a00);
     label.setGravity(Gravity.CENTER);
     label.setSingleLine(true);
     label.setIncludeFontPadding(false);
-    label.setPadding(dp(8), dp(4), dp(8), dp(4));
+    label.setPadding(dp(6), dp(3), dp(6), dp(3));
     GradientDrawable pill =
         new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xfffff3b0, 0xffffcf3a, 0xfff5a300});
     pill.setCornerRadius(dp(12));
@@ -84,7 +84,7 @@ final class NewbieBadge extends FrameLayout {
     addView(label, lp);
 
     count = new TextView(context);
-    count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+    count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
     count.setTypeface(Typeface.DEFAULT_BOLD);
     count.setTextColor(Color.WHITE);
     count.setGravity(Gravity.CENTER);
@@ -94,10 +94,10 @@ final class NewbieBadge extends FrameLayout {
     dot.setColor(0xffe8141d);
     dot.setStroke(dp(2), Color.WHITE);
     count.setBackground(dot);
-    count.setMinWidth(dp(20));
+    count.setMinWidth(dp(18));
     count.setPadding(dp(4), 0, dp(4), 0);
-    LayoutParams cp = new LayoutParams(-2, dp(20), Gravity.TOP | Gravity.RIGHT);
-    cp.rightMargin = dp(6);
+    LayoutParams cp = new LayoutParams(-2, dp(18), Gravity.TOP | Gravity.RIGHT);
+    cp.rightMargin = dp(0);
     addView(count, cp);
     count.setVisibility(GONE);
   }
@@ -121,6 +121,14 @@ final class NewbieBadge extends FrameLayout {
     in.setInterpolator(new OvershootInterpolator(2.4f));
     in.setDuration(520);
     play(in);
+
+    // Gentle up/down float of the whole badge.
+    ObjectAnimator bob = ObjectAnimator.ofFloat(this, TRANSLATION_Y, 0f, -dp(3));
+    bob.setDuration(1600);
+    bob.setRepeatMode(ValueAnimator.REVERSE);
+    bob.setRepeatCount(ValueAnimator.INFINITE);
+    bob.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+    play(bob);
 
     ObjectAnimator spin = ObjectAnimator.ofFloat(rays, ROTATION, 0f, 360f);
     spin.setDuration(9000);
@@ -148,7 +156,7 @@ final class NewbieBadge extends FrameLayout {
         ObjectAnimator.ofPropertyValuesHolder(
             envelope,
             PropertyValuesHolder.ofFloat(ROTATION, 0, 0, 0, 0, -14, 14, -10, 10, -5, 0),
-            PropertyValuesHolder.ofFloat(TRANSLATION_Y, 0, 0, 0, 0, -dp(6), -dp(8), -dp(6), -dp(3), 0, 0),
+            PropertyValuesHolder.ofFloat(TRANSLATION_Y, 0, 0, 0, 0, -dp(4), -dp(5), -dp(4), -dp(2), 0, 0),
             PropertyValuesHolder.ofFloat(SCALE_X, 1, 1, 1, 1, 1.12f, 1.12f, 1.08f, 1.04f, 1, 1),
             PropertyValuesHolder.ofFloat(SCALE_Y, 1, 1, 1, 1, 1.12f, 1.12f, 1.08f, 1.04f, 1, 1));
     shake.setDuration(2200);
@@ -181,6 +189,7 @@ final class NewbieBadge extends FrameLayout {
     animators.clear();
     setScaleX(1f);
     setScaleY(1f);
+    setTranslationY(0f);
   }
 
   @Override

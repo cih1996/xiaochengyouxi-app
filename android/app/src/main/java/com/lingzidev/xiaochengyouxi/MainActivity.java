@@ -1920,9 +1920,9 @@ public final class MainActivity extends Activity {
     if (!wheelOn() || hallSurface == null) return;
     NewbieBadge badge = new NewbieBadge(this, wheelInfo.optString("entry_label", "幸运转盘"), true);
     badge.setCount(wheelInfo.optInt("available"));
-    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(92), dp(100), Gravity.TOP | Gravity.RIGHT);
-    lp.topMargin = newbieOn() ? dp(10 + 100 + 6) : dp(10);
-    lp.rightMargin = dp(16);
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(64), dp(78), Gravity.TOP | Gravity.RIGHT);
+    lp.topMargin = newbieOn() ? dp(10 + 78 + 4) : dp(10);
+    lp.rightMargin = dp(14);
     hallSurface.addView(badge, lp);
     badge.setOnClickListener(
         v -> {
@@ -1936,9 +1936,9 @@ public final class MainActivity extends Activity {
     if (!newbieOn() || hallSurface == null) return;
     NewbieBadge badge = new NewbieBadge(this, newbie.optString("entry_label", "新人礼包"));
     badge.setCount(newbieReady());
-    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(92), dp(100), Gravity.TOP | Gravity.RIGHT);
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(64), dp(78), Gravity.TOP | Gravity.RIGHT);
     lp.topMargin = dp(10);
-    lp.rightMargin = dp(16);
+    lp.rightMargin = dp(14);
     hallSurface.addView(badge, lp);
     badge.setOnClickListener(
         v -> {
