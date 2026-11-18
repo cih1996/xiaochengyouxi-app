@@ -24,3 +24,11 @@ private/
 android/signing/
 output/*.apk
 output/*.tar.gz
+
+# iOS
+ios/build/
+ios/*.xcodeproj/
+ios/Config/Local.xcconfig
+ios/Pods/
+**/xcuserdata/
+DerivedData/

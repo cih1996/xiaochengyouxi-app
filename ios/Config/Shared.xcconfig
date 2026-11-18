@@ -1,0 +1,6 @@
+// 共享配置。签名团队写在不入库的 Config/Local.xcconfig（见 README），这里不放个人信息。
+ORANGE_ACTIVITY_HOSTS = orange.lingzidev.com,orange-api.lingzidev.com
+ORANGE_PRIVACY_URL = https:/$()/orange-api.lingzidev.com/privacy
+// 个人开发者团队阶段使用 .dev 包名，正式包名 com.lingzidev.xiaochengyouxi 留给公司（邓白氏）账号注册。
+ORANGE_BUNDLE_ID = com.lingzidev.xiaochengyouxi.dev
+#include? "Local.xcconfig"

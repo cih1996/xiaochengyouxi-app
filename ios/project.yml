@@ -1,0 +1,45 @@
+# Xcode 工程由 XcodeGen 生成：在 Mac 上 `cd ios && xcodegen generate`。生成的 .xcodeproj 不入库。
+name: XiaoCheng
+options:
+  bundleIdPrefix: com.lingzidev
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: "$(ORANGE_TEAM_ID)"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  XiaoCheng:
+    type: application
+    platform: iOS
+    sources:
+      - path: XiaoCheng
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    info:
+      path: XiaoCheng/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: 小橙有喜
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        ITSAppUsesNonExemptEncryption: false
+        NSFaceIDUsageDescription: 开启后可用面容 ID 快速登录，不用每次输入密码。
+        OrangeAPIBaseURL: $(ORANGE_API_BASE_URL)
+        OrangeWebBaseURL: $(ORANGE_WEB_BASE_URL)
+        OrangeActivityHosts: $(ORANGE_ACTIVITY_HOSTS)
+        OrangePrivacyURL: $(ORANGE_PRIVACY_URL)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(ORANGE_BUNDLE_ID)
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO

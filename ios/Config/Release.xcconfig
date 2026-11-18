@@ -1,0 +1,3 @@
+#include "Shared.xcconfig"
+ORANGE_API_BASE_URL = https:/$()/orange-api.lingzidev.com
+ORANGE_WEB_BASE_URL = https:/$()/orange.lingzidev.com

@@ -1,0 +1,4 @@
+// 复制为 Local.xcconfig（不入库），填写自己的团队 ID。
+// 包名在 App Store 全局唯一，一个团队注册后，其他团队就不能再用；换团队时要同时换包名。
+ORANGE_TEAM_ID = XXXXXXXXXX
+// ORANGE_BUNDLE_ID = com.lingzidev.xiaochengyouxi.devag
