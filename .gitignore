@@ -32,3 +32,5 @@ ios/Config/Local.xcconfig
 ios/Pods/
 **/xcuserdata/
 DerivedData/
+ios/XiaoCheng/Resources/Info.plist
+ios/build.log
