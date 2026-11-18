@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 27,
+  "latest_version_name": "0.3.24",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "新人礼包、幸运转盘上线，拆红包、转盘更有趣；提现支持绑定微信/支付宝收款账户，无需每次填写；金币明细与提现页全新设计；启动更快更稳定",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.24-27.apk",
+  "apk_sha256": "82aae424c41a704c863104516b2454ebe5cddc3302cf13ed48a8ddecb7f6e7ea",
+  "apk_size_bytes": 27443693
+}
