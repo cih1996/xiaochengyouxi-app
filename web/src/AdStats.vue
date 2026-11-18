@@ -53,6 +53,11 @@ watch([days, format], () => loadStats().catch(fail));
 const t = (totals, key) => totals?.[key] || 0;
 const pct = (v) => (v == null ? "—" : `${v}%`);
 const overall = computed(() => stats.value?.overall || { totals: {}, rates: {} });
+// Apps before 0.3.21 never report request/fill/show; only server-side numbers exist for them.
+const clientSilent = computed(() => {
+  const o = overall.value.totals;
+  return t(o, "plan") > 0 && t(o, "request") + t(o, "fill") + t(o, "show") === 0;
+});
 const tiles = computed(() => {
   const o = overall.value;
   return [
@@ -60,6 +65,7 @@ const tiles = computed(() => {
     { label: "填充率", value: pct(o.rates.fill), sub: `${t(o.totals, "fill")} 次填充` },
     { label: "展示", value: t(o.totals, "show"), sub: `${stats.value?.show_users || 0} 人看过` },
     { label: "点击率", value: pct(o.rates.click), sub: `${t(o.totals, "click")} 次点击` },
+    { label: "完成率", value: pct(o.rates.complete), sub: `回调通过 ${t(o.totals, "callback_ok")} ÷ 分配 ${t(o.totals, "plan")}` },
     { label: "回调成功率", value: pct(o.rates.callback), sub: `${t(o.totals, "callback_ok")} 次通过 · ${t(o.totals, "callback_reject")} 次拒绝` },
     { label: "风控拦截", value: t(o.totals, "risk_block"), sub: `占分配 ${pct(o.rates.risk)}` },
     { label: "广告发放金币", value: stats.value?.rewarded_coins || 0, sub: "平台回调确认后入账" },
@@ -125,7 +131,7 @@ defineExpose({ refresh });
     <div v-if="error" class="form-error" role="alert">{{ error }}</div>
     <header class="st-head">
       <div>
-                <p>“请求/填充/展示/点击”来自 App 上报，“分配/风控拦截/回调”来自服务器。成功率：填充率=填充÷请求，点击率=点击÷展示，回调成功率=回调通过÷展示（仅激励视频有回调）。</p>
+                <p>“请求/填充/展示/点击”来自 App 上报，“分配/风控拦截/回调”来自服务器。成功率：填充率=填充÷请求，点击率=点击÷展示，回调成功率=回调通过÷展示，完成率=回调通过÷服务器分配（仅激励视频有回调）。</p>
       </div>
       <div class="st-filters">
         <select v-model.number="days" aria-label="时间范围">
@@ -139,6 +145,9 @@ defineExpose({ refresh });
       </div>
     </header>
     <p v-if="!stats && !error" class="st-muted">正在统计…</p>
+    <p v-if="clientSilent" class="st-hint">
+      所选时段只有服务器数据：用户目前使用的 App 版本（0.3.20 及以前）不上报请求、填充、展示、点击，升级到 0.3.22 后才会有这几项。在此之前请看“完成率”（回调通过 ÷ 服务器分配），它完全由服务器统计。
+    </p>
     <template v-if="stats">
       <div class="st-tiles">
         <div v-for="tile in tiles" :key="tile.label" class="st-tile">
@@ -192,7 +201,7 @@ defineExpose({ refresh });
         <header><b>各平台成功率</b></header>
         <div class="st-table-wrap">
           <table class="st-table">
-            <thead><tr><th>平台</th><th>分配</th><th>请求</th><th>填充</th><th>填充率</th><th>展示</th><th>展示率</th><th>点击</th><th>点击率</th><th>回调通过</th><th>回调拒绝</th><th>回调成功率</th><th>出错</th></tr></thead>
+            <thead><tr><th>平台</th><th>分配</th><th>请求</th><th>填充</th><th>填充率</th><th>展示</th><th>展示率</th><th>点击</th><th>点击率</th><th>回调通过</th><th>回调拒绝</th><th>回调成功率</th><th>完成率</th><th>出错</th></tr></thead>
             <tbody>
               <tr v-for="n in stats.networks" :key="n.network">
                 <td><i class="dot" :style="{ background: COLORS[n.network] }"></i>{{ n.label }}</td>
@@ -201,6 +210,7 @@ defineExpose({ refresh });
                 <td>{{ t(n.totals, "show") }}</td><td>{{ pct(n.rates.show) }}</td><td>{{ t(n.totals, "click") }}</td><td>{{ pct(n.rates.click) }}</td>
                 <td>{{ t(n.totals, "callback_ok") }}</td><td>{{ t(n.totals, "callback_reject") }}</td>
                 <td><span class="bar"><i :style="{ width: `${Math.min(100, n.rates.callback || 0)}%`, background: COLORS[n.network] }"></i></span>{{ pct(n.rates.callback) }}</td>
+                <td>{{ pct(n.rates.complete) }}</td>
                 <td>{{ t(n.totals, "error") + t(n.totals, "timeout") }}</td>
               </tr>
             </tbody>
@@ -309,4 +319,5 @@ defineExpose({ refresh });
 @media (max-width: 860px) { .st-grid { grid-template-columns: 1fr; } }
 .st-filters select, .st-detail-filters select { width: auto; padding: 8px 10px; font-size: 14px; }
 .st-detail-filters input { padding: 8px 10px; font-size: 14px; }
+.st-hint { background: #fff4e5; color: #8a5a1c; border-radius: 10px; padding: 10px 14px; font-size: 13.5px; line-height: 1.7; margin: 12px 0 0; }
 </style>

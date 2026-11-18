@@ -709,6 +709,8 @@ fn rates(t: &BTreeMap<String, i64>) -> Value {
         "show": rate(g("show"), g("fill")),
         "click": rate(g("click"), g("show")),
         "callback": rate(g("callback_ok"), g("show")),
+        // Server-only measure, so it also covers app versions that do not report client events.
+        "complete": rate(g("callback_ok"), g("plan")),
         "risk": rate(g("risk_block"), g("plan") + g("risk_block") + g("empty")),
     })
 }
