@@ -390,6 +390,11 @@ async fn quote(
     };
     let q = read_quote(&tx, uid, &id)?;
     let response = json!({"quote_id":q.id,"task_id":q.task_id,"reward":q.coins,"reward_min":q.min,"reward_max":q.max,"expires_at":iso(q.expires),"task":{"id":q.task_id,"title":title,"subtitle":"看视频领取这份小惊喜","reward":q.coins,"reward_min":q.coins,"reward_max":q.coins,"kind":"rewarded_video","claimed_today":0}});
+    // The hall uses this to know the last pushed packet was opened (quotes can be reused).
+    tx.execute(
+        "INSERT INTO hall_activity(user_id,last_open_at) VALUES(?1,?2) ON CONFLICT(user_id) DO UPDATE SET last_open_at=excluded.last_open_at",
+        params![uid, now()],
+    )?;
     tx.commit()?;
     Ok(Json(response))
 }

@@ -473,7 +473,9 @@ fn payload(bytes: &[u8]) -> Result<Payload, ApiError> {
         {
             return Err(invalid("行为业务关联号格式错误"));
         }
-        if duration > elapsed || (kind != 6 && duration != 0) {
+        // Gestures carry their press time; screen_leave carries the client's dwell time (the
+        // server still computes dwell itself). Every other event has no duration.
+        if duration > elapsed || (kind != 6 && kind != 2 && duration != 0) {
             return Err(invalid("行为持续时间错误"));
         }
         events.push(CapturedEvent {

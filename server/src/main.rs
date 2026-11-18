@@ -2012,7 +2012,9 @@ struct HallSchedule {
     first_product: bool,
     first_native: bool,
     packet_count: u8,
-    native_sent: bool,
+    native_count: u8,
+    last_packet_at: i64,
+    last_native_at: i64,
     last_dispatch_at: i64,
     unhandled_dispatches: u8,
     native_capable: bool,
@@ -2029,72 +2031,92 @@ fn hall_item(
     if !strategy.enabled {
         return Ok(None);
     }
+    // "Did the user do anything since the last push?" — behaviour audit events, or any
+    // server-recorded action (opening a packet, starting a video, check-in, rain, product
+    // clicks, hall requests), so a broken audit upload can never freeze the hall.
+    let mut interacted = true;
     if schedule.last_dispatch_at > 0 {
-        let interacted: bool = db.query_row(
-            "SELECT EXISTS(SELECT 1 FROM behavior_events WHERE user_id=?1 AND server_received_at>=?2 AND (type=5 OR action IN (1,2,3,4,5,6)))",
-            params![uid, schedule.last_dispatch_at],
+        let since = schedule.last_dispatch_at;
+        interacted = db.query_row(
+            "SELECT EXISTS(SELECT 1 FROM behavior_events WHERE user_id=?1 AND server_received_at>=?2 AND (type=5 OR action IN (1,2,3,4,5,6)))
+              OR EXISTS(SELECT 1 FROM hall_activity WHERE user_id=?1 AND last_open_at>=?2)
+              OR EXISTS(SELECT 1 FROM product_clicks WHERE user_id=?1 AND created_at>=?2)
+              OR EXISTS(SELECT 1 FROM user_behavior WHERE user_id=?1 AND created_at>=?2 AND kind IN ('reward_start','reward_complete','check_in','rain_join','hall_request'))",
+            params![uid, since],
             |r| r.get(0),
         )?;
-        if interacted {
-            schedule.unhandled_dispatches = 0;
-        } else {
-            schedule.unhandled_dispatches = schedule.unhandled_dispatches.saturating_add(1);
-            if schedule.unhandled_dispatches >= 2 {
-                return Ok(None);
-            }
-        }
     }
+    // Idle user (two pushes in a row went unanswered): keep the hall alive at a quarter of the
+    // pace instead of stopping. Counted per push, not per stream tick.
+    let slow_mode = !interacted && schedule.unhandled_dispatches >= 2;
     let elapsed = schedule.started.elapsed().as_secs();
+    let since_dispatch = schedule.last_dispatch.elapsed().as_secs();
+    let interval = strategy.interval_seconds.max(5);
     let product = product_admin::random_active(&db)?;
     let product_weight = if product.is_some() {
         strategy.product_weight
     } else {
         0
     };
-    let native_weight = if schedule.native_capable {
-        u64::from(strategy.native_ad_weight)
-    } else {
-        0
+    // Red packets: next one once the previous was opened (quote) or 3 minutes passed; at most 8
+    // per connection; none once today's claim limit is used up.
+    let packet_ok = strategy.video_weight > 0 && schedule.packet_count < 8 && {
+        let claimed: i64 = db.query_row(
+            "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2",
+            params![uid, today_start()],
+            |r| r.get(0),
+        )?;
+        let opened: bool = schedule.last_packet_at == 0
+            || db.query_row(
+                "SELECT EXISTS(SELECT 1 FROM hall_activity WHERE user_id=?1 AND last_open_at>=?2)",
+                params![uid, schedule.last_packet_at],
+                |r| r.get(0),
+            )?;
+        claimed < setting(&db, "daily_reward_limit")? as i64
+            && (opened || now() - schedule.last_packet_at >= 180)
     };
+    // Feed ads: weighted like the rest, at least 2 minutes apart, at most 5 per connection.
+    let native_ok = schedule.native_capable
+        && strategy.native_ad_weight > 0
+        && schedule.native_count < 5
+        && (schedule.last_native_at == 0 || now() - schedule.last_native_at >= 120);
     let kind = if !schedule.welcomed {
         schedule.welcomed = true;
         "text"
-    } else if !schedule.first_packet
-        && schedule.packet_count < 2
-        && strategy.video_weight > 0
-        && elapsed >= 1
-    {
+    } else if !schedule.first_packet && packet_ok && elapsed >= 1 {
         schedule.first_packet = true;
         "red_packet"
     } else if !schedule.first_product && product_weight > 0 && elapsed >= 6 {
         schedule.first_product = true;
         "product"
-    } else if !schedule.first_native && !schedule.native_sent && native_weight > 0 && elapsed >= 10
-    {
+    } else if !schedule.first_native && native_ok && elapsed >= 10 {
         schedule.first_native = true;
-        schedule.native_sent = true;
         "native_ad"
-    } else if elapsed >= if native_weight > 0 { 10 } else { 6 }
-        && schedule.last_dispatch.elapsed().as_secs() >= strategy.interval_seconds
-    {
-        let packet_weight = if schedule.packet_count < 2 {
-            strategy.video_weight
-        } else {
-            0
-        };
-        let weight = u64::from(packet_weight) + u64::from(product_weight);
+    } else if elapsed >= 10 && since_dispatch >= if slow_mode { interval * 4 } else { interval } {
+        let packet_weight = if packet_ok { u64::from(strategy.video_weight) } else { 0 };
+        let native_weight = if native_ok { u64::from(strategy.native_ad_weight) } else { 0 };
+        let weight = packet_weight + u64::from(product_weight) + native_weight;
         if weight == 0 {
             return Ok(None);
         }
-        let selected = Uuid::new_v4().as_u128() % u128::from(weight);
-        if selected < u128::from(packet_weight) {
+        let selected = (Uuid::new_v4().as_u128() % u128::from(weight)) as u64;
+        if selected < packet_weight {
             "red_packet"
+        } else if selected < packet_weight + native_weight {
+            "native_ad"
         } else {
             "product"
         }
     } else {
         return Ok(None);
     };
+    if schedule.last_dispatch_at > 0 {
+        schedule.unhandled_dispatches = if interacted {
+            0
+        } else {
+            schedule.unhandled_dispatches.saturating_add(1)
+        };
+    }
     schedule.last_dispatch = Instant::now();
     schedule.last_dispatch_at = now();
     let text = match kind {
@@ -2107,11 +2129,14 @@ fn hall_item(
         json!({"id":Uuid::new_v4().to_string(),"kind":kind,"text":text,"created_at":iso(now())});
     if kind == "red_packet" {
         schedule.packet_count = schedule.packet_count.saturating_add(1);
+        schedule.last_packet_at = now();
         let index = (Uuid::new_v4().as_u128() % TASKS.len() as u128) as usize;
         item["task"] = serde_json::to_value(task_payload(&db, uid, index)?)?;
     } else if kind == "product" {
         item["product"] = product.expect("positive product weight has an active product");
     } else if kind == "native_ad" {
+        schedule.native_count = schedule.native_count.saturating_add(1);
+        schedule.last_native_at = now();
         let plan = ad_mediation::plan(state, &db, uid, "feed", "")?;
         if plan.is_empty() {
             return Ok(None);
@@ -2145,7 +2170,7 @@ async fn hall_stream(
     let native_capable = state.config.ad_mode == "csj" && query.native_ads == Some(1);
     let stream = async_stream::stream! {
         let mut ticker=tokio::time::interval(Duration::from_secs(1));
-        let mut schedule=HallSchedule {started:Instant::now(),welcomed:false,first_packet:false,first_product:false,first_native:false,packet_count:0,native_sent:false,last_dispatch_at:0,unhandled_dispatches:0,native_capable,last_dispatch:Instant::now()};
+        let mut schedule=HallSchedule {started:Instant::now(),welcomed:false,first_packet:false,first_product:false,first_native:false,packet_count:0,native_count:0,last_packet_at:0,last_native_at:0,last_dispatch_at:0,unhandled_dispatches:0,native_capable,last_dispatch:Instant::now()};
         loop {
             ticker.tick().await;
             match hall_item(&state,&headers,&mut schedule) {
@@ -2416,6 +2441,7 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
         CREATE TABLE IF NOT EXISTS sms_codes(phone TEXT NOT NULL,purpose TEXT NOT NULL,code TEXT NOT NULL,expires_at INTEGER NOT NULL,PRIMARY KEY(phone,purpose));
         CREATE TABLE IF NOT EXISTS login_guard(guard_key TEXT PRIMARY KEY,failures INTEGER NOT NULL DEFAULT 0,last_failed_at INTEGER NOT NULL DEFAULT 0,captcha_id TEXT,captcha_answer TEXT,captcha_expires_at INTEGER);
         CREATE TABLE IF NOT EXISTS checkin_progress(user_id INTEGER PRIMARY KEY,cycle_start_day TEXT NOT NULL,checked_mask INTEGER NOT NULL DEFAULT 0,makeup_mask INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS hall_activity(user_id INTEGER PRIMARY KEY,last_open_at INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS reward_sessions(id TEXT PRIMARY KEY,user_id INTEGER NOT NULL,task_id TEXT NOT NULL,reward INTEGER NOT NULL,started_at INTEGER NOT NULL,completed_at INTEGER,provider TEXT NOT NULL DEFAULT 'mock',verified_at INTEGER,csj_trans_id TEXT);
         CREATE TABLE IF NOT EXISTS ledger(id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL,title TEXT NOT NULL,coins INTEGER NOT NULL,source TEXT NOT NULL UNIQUE,created_at INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS withdrawals(id TEXT PRIMARY KEY,user_id INTEGER NOT NULL,amount_yuan REAL NOT NULL,coins INTEGER NOT NULL,channel TEXT NOT NULL,account TEXT NOT NULL,status TEXT NOT NULL,created_at INTEGER NOT NULL);
