@@ -8,7 +8,7 @@ import org.json.JSONObject;
 
 /** Batches ad lifecycle events for the admin statistics. Failures are silent: stats only. */
 final class AdEvents {
-  private static final int BATCH = 20;
+  private static final int BATCH = 20, MAX_PENDING = 200;
   private final Api api;
   private final Handler main = new Handler(Looper.getMainLooper());
   private JSONArray pending = new JSONArray();
@@ -27,6 +27,7 @@ final class AdEvents {
       Object errorCode,
       String message,
       long startedAt) {
+    android.util.Log.d("AdEvents", network + " " + format + " " + event + (errorCode == null ? "" : " " + errorCode));
     main.post(
         () -> {
           try {
@@ -55,8 +56,32 @@ final class AdEvents {
   void flush() {
     scheduled = false;
     if (pending.length() == 0 || api.token == null || api.token.isEmpty()) return;
-    JSONArray batch = pending;
-    pending = new JSONArray();
-    api.post("/ads/events", Api.object("events", batch), ignored -> {}, ignored -> {});
+    // The server takes at most 30 events per request; send the rest in a following flush.
+    JSONArray batch = new JSONArray(), rest = new JSONArray();
+    for (int i = 0; i < pending.length(); i++) (i < 30 ? batch : rest).put(pending.opt(i));
+    pending = rest;
+    if (rest.length() > 0) {
+      scheduled = true;
+      main.postDelayed(this::flush, 1000);
+    }
+    api.post(
+        "/ads/events",
+        Api.object("events", batch),
+        ignored -> {},
+        ignored ->
+            main.post(
+                () -> {
+                  // Put the batch back once (bounded) so a network blip doesn't lose stats.
+                  JSONArray merged = new JSONArray();
+                  for (int i = 0; i < batch.length() && merged.length() < MAX_PENDING; i++)
+                    merged.put(batch.opt(i));
+                  for (int i = 0; i < pending.length() && merged.length() < MAX_PENDING; i++)
+                    merged.put(pending.opt(i));
+                  pending = merged;
+                  if (!scheduled) {
+                    scheduled = true;
+                    main.postDelayed(this::flush, 30000);
+                  }
+                }));
   }
 }
