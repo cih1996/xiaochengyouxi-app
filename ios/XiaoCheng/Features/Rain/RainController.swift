@@ -266,6 +266,7 @@ final class RainController: ObservableObject {
         }
         resetRound()
         hiddenRound = ""
+        summaryRound = ""
         preview = true
         assignment = Assignment(serverNow: nil,
                                 round: Round(id: "preview-\(UUID().uuidString)", startAt: f.string(from: start), endAt: f.string(from: end)),

@@ -3,6 +3,7 @@ import SwiftUI
 struct HallView: View {
     @EnvironmentObject private var session: Session
     @EnvironmentObject private var reminders: Reminders
+    @EnvironmentObject private var rain: RainController
     @StateObject private var model = HallModel()
     @State private var activity: ActivityLink?
     @State private var showCheckin = false
@@ -73,6 +74,8 @@ struct HallView: View {
             guard pop else { return }
             model.newbiePopup = false
             // 签到弹窗开着时不能叠全屏页：等它关闭后再弹
+            // 红包雨进行中不打断（对照 Android rewardUiBusy）
+            if rain.skyVisible(at: Date()) { return }
             if showCheckin { newbieAfterSheet = true } else if activity == nil { activity = .newbie }
         }
         .onChange(of: model.checkin?.currentDay) { _ in maybePromptCheckin() }
@@ -111,14 +114,17 @@ extension HallView {
 
     /// 当天未签到时，每天自动弹一次签到（对照 Android maybePromptCheckin）
     func maybePromptCheckin() {
-        guard let c = model.checkin, !c.checkedToday, let uid = session.user?.id, activity == nil else { return }
+        guard let c = model.checkin, !c.checkedToday, let uid = session.user?.id, activity == nil,
+              !rain.skyVisible(at: Date()) else { return }
         let f = DateFormatter()
         f.timeZone = TimeZone(identifier: "Asia/Shanghai")
         f.dateFormat = "yyyy-MM-dd"
         let key = "checkin_prompt_\(uid)", today = f.string(from: Date())
         guard UserDefaults.standard.string(forKey: key) != today else { return }
         UserDefaults.standard.set(today, forKey: key)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { if activity == nil { showCheckin = true } }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            if activity == nil && !rain.skyVisible(at: Date()) { showCheckin = true }
+        }
     }
 }
 

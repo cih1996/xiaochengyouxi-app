@@ -9,7 +9,10 @@ struct RainSkyView: View {
     @State private var appear = false
 
     var body: some View {
-        GeometryReader { geo in
+        // 外层读取安全区（HUD 避开状态栏/灵动岛），内层铺满全屏
+        GeometryReader { outer in
+            let topInset = outer.safeAreaInsets.top
+            GeometryReader { geo in
             TimelineView(.animation) { ctx in
                 let date = ctx.date
                 let t = date.timeIntervalSinceReferenceDate
@@ -21,9 +24,9 @@ struct RainSkyView: View {
                     }
                     ForEach(rain.bursts) { b in BurstView(burst: b, now: date) }
                     ForEach(rain.credits) { c in CreditView(credit: c, now: date, width: geo.size.width) }
-                    hud(date).padding(.top, geo.safeAreaInsets.top + 14).padding(.leading, 16)
+                    hud(date).padding(.top, topInset + 10).padding(.leading, 16)
                     closeButton.frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.top, geo.safeAreaInsets.top + 14).padding(.trailing, 16)
+                        .padding(.top, topInset + 10).padding(.trailing, 16)
                 }
                 .onChange(of: Int(t * 4)) { tick in
                     rain.prune(at: date)
@@ -41,8 +44,9 @@ struct RainSkyView: View {
                     #endif
                 }
             }
+            }
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
         .opacity(appear ? 1 : 0)
         .onAppear {
             withAnimation(.easeOut(duration: 0.3)) { appear = true }
