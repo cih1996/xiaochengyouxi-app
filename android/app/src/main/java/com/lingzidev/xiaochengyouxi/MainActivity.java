@@ -3653,6 +3653,13 @@ public final class MainActivity extends Activity {
         result -> {
           JSONObject summary = (JSONObject) result;
           String code = summary.optString("invite_code");
+          // While 新人礼包 runs, the poster advertises the invited friend's packet.
+          if (newbieOn()) {
+            try {
+              summary.put("promo_max", newbie.optInt("invited_max", newbie.optInt("welcome_max")));
+            } catch (JSONException ignored) {
+            }
+          }
           api.get(
               "/invite/qr/" + code,
               qr -> {
@@ -3669,60 +3676,57 @@ public final class MainActivity extends Activity {
         this::error);
   }
 
+  /** 邀请好友: the poster, the invite code (tap to copy) and two ways to send it. */
   void invitationPreview(JSONObject summary, Bitmap poster) {
     String code = summary.optString("invite_code"), url = summary.optString("invite_url");
     Dialog dialog = new Dialog(this);
-    ScrollView scroll = new ScrollView(this);
-    scroll.setBackground(bg(CREAM, 25));
-    scroll.setClipToOutline(true);
     LinearLayout content = col();
-    content.setPadding(dp(18), dp(16), dp(18), dp(16));
-    scroll.addView(content);
+    content.setBackground(bg(CREAM, 25));
+    content.setClipToOutline(true);
+    content.setPadding(dp(18), dp(16), dp(18), dp(18));
     LinearLayout title = row();
-    flex(title, text("邀请好友", 23, INK, true));
+    flex(title, text("邀请好友", 21, INK, true));
     LineIcon close = new LineIcon(this, "close", MUTED);
+    close.setContentDescription("关闭");
     close.setOnClickListener(v -> dialog.dismiss());
     add(title, close, 22, 22);
     add(content, title, -1, 30);
     gap(content, 12);
-    LinearLayout totals = row();
-    String[] labels = {"已邀请", "已注册", "待注册"};
-    String[] fields = {"invited_count", "registered_count", "pending_count"};
-    for (int i = 0; i < labels.length; i++) {
-      LinearLayout item = col();
-      item.setGravity(Gravity.CENTER);
-      add(item, text(number(summary.optInt(fields[i])), 21, RED, true), -2, -2);
-      gap(item, 7);
-      add(item, label(labels[i], 11, MUTED), -2, -2);
-      totals.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
-    }
-    add(content, totals, -1, -2);
-    gap(content, 16);
     ImageView preview = new ImageView(this);
     preview.setImageBitmap(poster);
     preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
-    add(content, preview, -1, 240);
-    gap(content, 16);
-    LinearLayout primary = row();
-    TextView save = button("保存图片", () -> saveInvitePoster(poster, code));
-    TextView share = button("分享海报", () -> shareInvitePoster(poster, code, url));
-    LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(0, dp(49), 1);
-    saveParams.rightMargin = dp(10);
-    primary.addView(save, saveParams);
-    primary.addView(share, new LinearLayout.LayoutParams(0, dp(49), 1));
-    add(content, primary, -1, -2);
+    preview.setAdjustViewBounds(true);
+    int screenH = getResources().getDisplayMetrics().heightPixels;
+    add(content, preview, -1, Math.max(260, Math.min(430, (int) (screenH / getResources().getDisplayMetrics().density) - 300)));
+    gap(content, 12);
+    TextView codeLine = label("邀请码 " + code + "  ·  点击复制", 13, MUTED);
+    codeLine.setGravity(Gravity.CENTER);
+    codeLine.setOnClickListener(v -> copyInvite("邀请码", code));
+    add(content, codeLine, -1, 30);
     gap(content, 10);
-    LinearLayout copies = row();
-    TextView link = text("复制链接", 13, RED, false);
-    link.setGravity(Gravity.CENTER);
-    link.setOnClickListener(v -> copyInvite("邀请链接", url));
-    TextView inviteCode = text("复制邀请码", 13, RED, false);
-    inviteCode.setGravity(Gravity.CENTER);
-    inviteCode.setOnClickListener(v -> copyInvite("邀请码", code));
-    copies.addView(link, new LinearLayout.LayoutParams(0, dp(38), 1));
-    copies.addView(inviteCode, new LinearLayout.LayoutParams(0, dp(38), 1));
-    add(content, copies, -1, -2);
-    dialog.setContentView(scroll);
+    LinearLayout actions = row();
+    TextView wechat = text("微信好友", 16, WHITE, true);
+    wechat.setGravity(Gravity.CENTER);
+    wechat.setBackground(grad(0xff2fd05a, 0xff14a83c, 18));
+    wechat.setOnClickListener(
+        v -> {
+          press(v);
+          PosterShare.share(this, "wechat", poster, url);
+        });
+    TextView moments = text("朋友圈", 16, WHITE, true);
+    moments.setGravity(Gravity.CENTER);
+    moments.setBackground(grad(0xffff8a3d, 0xfff0551f, 18));
+    moments.setOnClickListener(
+        v -> {
+          press(v);
+          PosterShare.share(this, "moments", poster, url);
+        });
+    LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(0, dp(50), 1);
+    wp.rightMargin = dp(10);
+    actions.addView(wechat, wp);
+    actions.addView(moments, new LinearLayout.LayoutParams(0, dp(50), 1));
+    add(content, actions, -1, -2);
+    dialog.setContentView(content);
     api.behavior.dialog(dialog, 8);
     Window window = dialog.getWindow();
     window.setBackgroundDrawableResource(android.R.color.transparent);
@@ -3748,55 +3752,6 @@ public final class MainActivity extends Activity {
         throw new IOException("海报图片保存失败");
     }
     return file;
-  }
-
-  void shareInvitePoster(Bitmap poster, String code, String url) {
-    try {
-      File file = cacheInvitePoster(poster, code);
-      Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".invite-files", file);
-      Intent share = new Intent(Intent.ACTION_SEND);
-      share.setType("image/png");
-      share.putExtra(Intent.EXTRA_STREAM, uri);
-      share.putExtra(Intent.EXTRA_TEXT, url);
-      share.setClipData(ClipData.newRawUri("邀请海报", uri));
-      share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-      startActivity(Intent.createChooser(share, "邀请好友"));
-    } catch (IOException | ActivityNotFoundException failure) {
-      error(failure.getMessage());
-    }
-  }
-
-  void saveInvitePoster(Bitmap poster, String code) {
-    String filename = "小橙有喜-邀请-" + code + "-" + System.currentTimeMillis() + ".png";
-    try {
-      if (Build.VERSION.SDK_INT >= 29) {
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
-        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
-        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/小橙有喜");
-        values.put(MediaStore.Images.Media.IS_PENDING, 1);
-        Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-        if (uri == null) throw new IOException("相册图片创建失败");
-        try (OutputStream output = getContentResolver().openOutputStream(uri)) {
-          if (!poster.compress(Bitmap.CompressFormat.PNG, 100, output))
-            throw new IOException("海报图片保存失败");
-        }
-        values.clear();
-        values.put(MediaStore.Images.Media.IS_PENDING, 0);
-        getContentResolver().update(uri, values, null, null);
-        tip("已保存到相册");
-      } else {
-        File directory = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        if (directory == null) throw new IOException("图片目录不可用");
-        try (OutputStream output = new FileOutputStream(new File(directory, filename))) {
-          if (!poster.compress(Bitmap.CompressFormat.PNG, 100, output))
-            throw new IOException("海报图片保存失败");
-        }
-        tip("海报已保存，可直接分享");
-      }
-    } catch (IOException failure) {
-      error(failure.getMessage());
-    }
   }
 
   void ledger() {

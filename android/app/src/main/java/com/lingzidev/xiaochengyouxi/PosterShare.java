@@ -37,10 +37,21 @@ final class PosterShare {
       toast(activity, "海报生成失败，请重试");
       return;
     }
-    if (png.length == 0 || png.length > MAX_BYTES || png[0] != (byte) 0x89 || png[1] != 'P') {
+    if (png.length < 8 || png.length > MAX_BYTES || png[0] != (byte) 0x89 || png[1] != 'P') {
       toast(activity, "海报生成失败，请重试");
       return;
     }
+    share(activity, target, png, text);
+  }
+
+  /** Same as above for a poster drawn natively. */
+  static void share(Activity activity, String target, android.graphics.Bitmap poster, String text) {
+    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+    poster.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
+    share(activity, target, out.toByteArray(), text);
+  }
+
+  static void share(Activity activity, String target, byte[] png, String text) {
     try {
       switch (target) {
         case "wechat":

@@ -529,42 +529,54 @@ $("ruleBtn").onclick = () => $("rules").scrollIntoView({ behavior: "smooth", blo
 $("closeBtn").onclick = close;
 
 /* ---------------- poster (drawn here, shared by the App) ---------------- */
+// Poster in the App's own look (same as the native invite poster): cream paper, brand mark,
+// mascot + red packet art, a white invite-code card and a white QR card. Static on purpose —
+// no rays or motion-style graphics, which look like a frozen animation in a still image.
+function img(src) {
+  return new Promise((resolve) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => resolve(null); i.src = src; });
+}
+function fit(g, image, x, y, w, h) {
+  if (!image) return;
+  const k = Math.min(w / image.width, h / image.height), dw = image.width * k, dh = image.height * k;
+  g.drawImage(image, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
 async function poster() {
-  const qr = await api("/invite/qr/" + encodeURIComponent(state.invite_code));
-  const W = 1080, H = 1920, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const [qr, mascot, packet] = await Promise.all([api("/invite/qr/" + encodeURIComponent(state.invite_code)), img("/assets/mascot.png"), img("/assets/packet.png")]);
+  const W = 1080, H = 1600, RED = "#f65331", INK = "#392923", MUTED = "#a67e64";
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
   const g = c.getContext("2d");
-  let bg = g.createRadialGradient(W / 2, 640, 50, W / 2, 760, 1300);
-  bg.addColorStop(0, "#e8262b"); bg.addColorStop(0.5, "#a60f17"); bg.addColorStop(1, "#4d0609");
+  const bg = g.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#fff9ef"); bg.addColorStop(0.5, "#ffdfc3"); bg.addColorStop(1, "#fff9f2");
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  g.save(); g.translate(W / 2, 700); // rays
-  for (let i = 0; i < 36; i++) { g.rotate(Math.PI / 18); g.fillStyle = "rgba(255,214,120,0.07)"; g.beginPath(); g.moveTo(0, 0); g.lineTo(-60, -1500); g.lineTo(60, -1500); g.closePath(); g.fill(); }
-  g.restore();
-  // title
-  g.textAlign = "center";
-  g.fillStyle = "#ffe7a8"; g.font = "700 46px sans-serif"; g.fillText("小橙有喜 · 新人福利", W / 2, 170);
-  const tg = g.createLinearGradient(0, 210, 0, 360); tg.addColorStop(0, "#fffbe6"); tg.addColorStop(0.5, "#ffe27a"); tg.addColorStop(1, "#ffad14");
-  g.font = "900 128px sans-serif"; g.lineWidth = 14; g.strokeStyle = "#7d2400"; g.strokeText("送你大红包", W / 2, 340); g.fillStyle = tg; g.fillText("送你大红包", W / 2, 340);
-  g.font = "800 58px sans-serif"; g.fillStyle = "#fff"; g.fillText("好友专享 最高 " + fmt(state.invited_max || state.welcome_max) + " 金币", W / 2, 440);
-  // envelope
-  const ex = W / 2 - 220, ey = 500, ew = 440, eh = 540;
-  rr(g, ex, ey + 14, ew, eh, 44, "rgba(40,0,0,.45)");
-  const eg = g.createLinearGradient(ex, ey, ex + ew, ey + eh); eg.addColorStop(0, "#ff5a45"); eg.addColorStop(1, "#c4141c");
-  rr(g, ex, ey, ew, eh, 44, eg);
-  g.fillStyle = "#ff6a50"; g.beginPath(); g.moveTo(ex, ey + 44); g.quadraticCurveTo(ex, ey, ex + 44, ey); g.lineTo(ex + ew - 44, ey); g.quadraticCurveTo(ex + ew, ey, ex + ew, ey + 44); g.lineTo(ex + ew, ey + 220); g.quadraticCurveTo(W / 2, ey + 340, ex, ey + 220); g.closePath(); g.fill();
-  const cg = g.createRadialGradient(W / 2 - 30, ey + 250, 10, W / 2, ey + 280, 95); cg.addColorStop(0, "#fff6c8"); cg.addColorStop(0.45, "#ffc531"); cg.addColorStop(1, "#c27300");
-  g.fillStyle = cg; g.beginPath(); g.arc(W / 2, ey + 280, 95, 0, Math.PI * 2); g.fill();
-  g.fillStyle = "#8a2a00"; g.font = "900 100px sans-serif"; g.textBaseline = "middle"; g.fillText("開", W / 2, ey + 284); g.textBaseline = "alphabetic";
-  g.fillStyle = "rgba(255,226,140,.95)"; g.font = "900 50px sans-serif"; g.fillText("大吉大利", W / 2, ey + 450);
-  g.font = "500 32px sans-serif"; g.fillStyle = "rgba(255,226,180,.8)"; g.fillText("可提现 · 今日暴富", W / 2, ey + 500);
-  // QR card
-  const qy = 1110, card = 500, cx = W / 2 - card / 2;
-  rr(g, cx - 20, qy - 20, card + 40, card + 160, 36, "#fff8ea");
-  // Whole-pixel cells and origin: no seams between modules, so every phone can scan it.
-  const n = qr.size, quiet = 3, cell = Math.floor((card - 40) / (n + quiet * 2)), qs = cell * (n + quiet * 2), qx = Math.round(W / 2 - qs / 2), qyy = qy + 10;
-  g.fillStyle = "#fff"; g.fillRect(qx, qyy, qs, qs); g.fillStyle = "#1a0a05";
-  qr.modules.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "1") g.fillRect(qx + (x + quiet) * cell, qyy + (y + quiet) * cell, cell, cell); });
-  g.fillStyle = "#c4161f"; g.font = "900 46px sans-serif"; g.fillText("长按识别二维码 领红包", W / 2, qyy + qs + 70);
-  g.fillStyle = "#a5532a"; g.font = "500 32px sans-serif"; g.fillText("邀请码 " + state.invite_code + " · 注册时填写", W / 2, qyy + qs + 120);
+  g.fillStyle = "rgba(255,255,255,.4)";
+  g.beginPath(); g.arc(900, 115, 330, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(125, 650, 240, 0, Math.PI * 2); g.fill();
+  const text = (t, x, y, size, color, bold, align) => { g.fillStyle = color; g.font = (bold ? "800 " : "400 ") + size + "px sans-serif"; g.textAlign = align || "left"; g.fillText(t, x, y); };
+  // brand
+  rr(g, 72, 72, 54, 54, 17, RED); text("橙", 99, 111, 34, "#fff", true, "center"); text("小橙有喜", 146, 111, 34, INK, true);
+  // headline
+  text("好友送你一个", 74, 250, 66, INK, true);
+  text("新人大红包", 74, 352, 96, RED, true);
+  const amount = "最高 " + fmt(state.invited_max || state.welcome_max) + " 金币 · 可提现";
+  g.font = "800 34px sans-serif"; const pw = g.measureText(amount).width + 56;
+  const pill = g.createLinearGradient(74, 0, 74 + pw, 0); pill.addColorStop(0, "#ff8a3d"); pill.addColorStop(1, RED);
+  rr(g, 74, 392, pw, 62, 31, pill); text(amount, 102, 435, 34, "#fff", true);
+  // art
+  fit(g, packet, 88, 480, 440, 370);
+  fit(g, mascot, 500, 400, 535, 470);
+  g.fillStyle = "#f6bb5e";
+  [[885, 470, 9], [122, 470, 7], [928, 790, 13]].forEach(([x, y, r]) => { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); });
+  // invite code
+  rr(g, 72, 860, 936, 160, 34, "#fff");
+  text("邀请码 · 注册时填写", W / 2, 910, 27, MUTED, false, "center");
+  text(state.invite_code.split("").join(" "), W / 2, 990, 64, INK, true, "center");
+  // QR (whole-pixel cells: scans reliably)
+  rr(g, 72, 1046, 936, 490, 38, "#fff");
+  const n = qr.size, quiet = 2, cell = Math.floor(392 / (n + quiet * 2)), qs = cell * (n + quiet * 2);
+  const qx = Math.round(W / 2 - qs / 2), qy = 1066 + Math.round((400 - qs) / 2);
+  g.fillStyle = "#fff"; g.fillRect(qx, qy, qs, qs); g.fillStyle = INK;
+  qr.modules.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "1") g.fillRect(qx + (x + quiet) * cell, qy + (y + quiet) * cell, cell, cell); });
+  text("长按识别二维码，领取新人红包", W / 2, 1504, 30, MUTED, false, "center");
   return c.toDataURL("image/png");
 }
 function rr(g, x, y, w, h, r, fill) { g.fillStyle = fill; g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fill(); }

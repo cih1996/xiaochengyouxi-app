@@ -32,9 +32,23 @@ final class InvitePoster {
     canvas.drawRoundRect(72, 72, 126, 126, 17, 17, paint);
     drawText(canvas, paint, "橙", 99, 111, 34, Color.WHITE, true, Paint.Align.CENTER);
     drawText(canvas, paint, "小橙有喜", 146, 111, 34, INK, true, Paint.Align.LEFT);
-    drawText(canvas, paint, "把小欢喜，", 74, 254, 70, INK, true, Paint.Align.LEFT);
-    drawText(canvas, paint, "分享给朋友", 74, 348, 78, RED, true, Paint.Align.LEFT);
-    drawText(canvas, paint, "一起领福利 · 一起发现好物", 78, 414, 29, MUTED, false, Paint.Align.LEFT);
+    int promo = summary.optInt("promo_max");
+    if (promo > 0) {
+      drawText(canvas, paint, "好友送你一个", 74, 250, 66, INK, true, Paint.Align.LEFT);
+      drawText(canvas, paint, "新人大红包", 74, 352, 96, RED, true, Paint.Align.LEFT);
+      String amount = "最高 " + String.format(java.util.Locale.CHINA, "%,d", promo) + " 金币 · 可提现";
+      paint.setTextSize(34);
+      paint.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+      float w = paint.measureText(amount) + 56;
+      paint.setShader(new LinearGradient(74, 0, 74 + w, 0, 0xffff8a3d, RED, Shader.TileMode.CLAMP));
+      canvas.drawRoundRect(74, 392, 74 + w, 454, 31, 31, paint);
+      paint.setShader(null);
+      drawText(canvas, paint, amount, 102, 435, 34, Color.WHITE, true, Paint.Align.LEFT);
+    } else {
+      drawText(canvas, paint, "把小欢喜，", 74, 254, 70, INK, true, Paint.Align.LEFT);
+      drawText(canvas, paint, "分享给朋友", 74, 348, 78, RED, true, Paint.Align.LEFT);
+      drawText(canvas, paint, "一起领福利 · 一起发现好物", 78, 414, 29, MUTED, false, Paint.Align.LEFT);
+    }
 
     drawArt(canvas, paint, context, "mascot", new RectF(500, 355, 1035, 850));
     drawArt(canvas, paint, context, "packet", new RectF(88, 465, 555, 855));
@@ -80,7 +94,7 @@ final class InvitePoster {
     }
     paint.setAntiAlias(true);
     drawText(
-        canvas, paint, "扫码输入手机号，加入福利大厅", WIDTH / 2f, 1500, 28, MUTED, false, Paint.Align.CENTER);
+        canvas, paint, promo > 0 ? "长按识别二维码，领取新人红包" : "长按识别二维码，加入小橙有喜", WIDTH / 2f, 1500, 28, MUTED, false, Paint.Align.CENTER);
     return bitmap;
   }
 
