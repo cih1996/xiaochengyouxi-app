@@ -25,9 +25,20 @@ struct RainSkyView: View {
                     closeButton.frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.top, geo.safeAreaInsets.top + 14).padding(.trailing, 16)
                 }
-                .onChange(of: Int(t * 4)) { _ in
+                .onChange(of: Int(t * 4)) { tick in
                     rain.prune(at: date)
                     rain.checkEnded(at: date)
+                    #if DEBUG
+                    // -XCRainAutoTap 1：预览时每 1.5 秒自动点一个落到中段的红包（截图验证特效用）
+                    if rain.preview, DebugLaunch.value("XCRainAutoTap") == "1", tick % 6 == 0,
+                       let d = rain.visibleDrops(at: date).first(where: { !$0.large && rain.now.timeIntervalSince($0.reveal) > 2 }) {
+                        let s: CGFloat = 62
+                        let total = d.expires.timeIntervalSince(d.reveal)
+                        let p = rain.now.timeIntervalSince(d.reveal) / total
+                        let x = CGFloat(d.hash % 10000) / 10000 * max(0, geo.size.width - s) + s / 2
+                        rain.tap(d, at: CGPoint(x: x, y: -s + (geo.size.height + s * 2) * p + s / 2))
+                    }
+                    #endif
                 }
             }
         }
