@@ -80,7 +80,6 @@ defineExpose({ refresh });
     <form v-if="campaign" @submit.prevent="save">
       <header>
         <div>
-          <h2>活动配置</h2>
           <p>机会与奖励由服务端统一确认。</p>
         </div>
         <label class="activity-switch"
@@ -240,7 +239,7 @@ defineExpose({ refresh });
 <style scoped>
 .activity-admin {
   max-width: 1000px;
-  padding: 27px 29px;
+  padding: 18px 20px;
 }
 .activity-insights {
   margin-top: 24px;
@@ -252,16 +251,16 @@ defineExpose({ refresh });
 .activity-metrics div { padding: 13px 10px; border-radius: 12px; background: #fff4e5; }
 .activity-metrics b, .activity-metrics span { display: block; }
 .activity-metrics b { font-size: 18px; color: #874f32; }
-.activity-metrics span { margin-top: 5px; font-size: 10px; color: #b08d6d; }
-.activity-list-title { margin: 18px 0 8px; font-size: 13px; color: #785438; font-weight: 700; }
+.activity-metrics span { margin-top: 5px; font-size: 12.5px; color: #b08d6d; }
+.activity-list-title { margin: 18px 0 8px; font-size: 14px; color: #785438; font-weight: 700; }
 .activity-user-row { width: 100%; display: grid; grid-template-columns: 1fr 1fr 20px; gap: 12px; align-items: center; text-align: left; padding: 12px 10px; border-top: 1px solid #f0e6db; color: #79563e; }
 .activity-user-row b, .activity-user-row small { display: block; }
-.activity-user-row small { margin-top: 4px; color: #b59b7b; font-size: 10px; }
+.activity-user-row small { margin-top: 4px; color: #b59b7b; font-size: 12.5px; }
 .activity-user-detail { margin-top: 16px; padding: 14px; border-radius: 12px; background: #fff8ef; }
 .activity-user-detail h3 { color: #785438; }
-.activity-user-detail p { margin: 7px 0; color: #a88467; font-size: 11px; }
+.activity-user-detail p { margin: 7px 0; color: #a88467; font-size: 13px; }
 .activity-detail-records { display: flex; gap: 7px; flex-wrap: wrap; }
-.activity-detail-records span { padding: 6px 8px; border-radius: 7px; background: #f9ead9; color: #9b694b; font-size: 10px; }
+.activity-detail-records span { padding: 6px 8px; border-radius: 7px; background: #f9ead9; color: #9b694b; font-size: 12.5px; }
 .activity-admin > form > header {
   display: flex;
   align-items: center;
@@ -275,7 +274,7 @@ defineExpose({ refresh });
   color: #785438;
 }
 .activity-admin header p {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b59b7b;
   margin-top: 8px;
 }
@@ -283,13 +282,17 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b0865d;
   margin: 0;
 }
 .activity-switch input {
   position: absolute;
   opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
 }
 .activity-switch span {
   width: 33px;
@@ -331,7 +334,7 @@ defineExpose({ refresh });
   gap: 17px;
 }
 .activity-two label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   color: #aa8b6c;
 }
@@ -352,12 +355,12 @@ defineExpose({ refresh });
 }
 .activity-tiers header span {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #bba183;
   margin-top: 6px;
 }
 .activity-tiers .outline {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 9px 11px;
 }
 .activity-tier {
@@ -376,17 +379,17 @@ defineExpose({ refresh });
   place-items: center;
   background: #fff0de;
   color: #c48a59;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .activity-tier label {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #ab8c6b;
   margin: 0;
 }
 .activity-tier input {
   padding: 10px;
-  font-size: 11px;
+  font-size: 13px;
   margin-top: 7px;
 }
 .activity-tier > button {
@@ -396,7 +399,7 @@ defineExpose({ refresh });
 .activity-empty {
   text-align: center;
   color: #bba181;
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 23px;
 }
 .activity-preview {
@@ -410,7 +413,7 @@ defineExpose({ refresh });
   overflow: hidden;
 }
 .activity-preview > div > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #ba8558;
   letter-spacing: 1px;
 }
@@ -420,7 +423,7 @@ defineExpose({ refresh });
   margin: 10px 0 7px;
 }
 .activity-preview p {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b3815f;
   max-width: 310px;
   line-height: 1.8;
@@ -448,7 +451,7 @@ defineExpose({ refresh });
   font-size: 20px;
 }
 .activity-wheel b {
-  font-size: 11px;
+  font-size: 13px;
 }
 .activity-wheel small {
   font-size: 7px;
@@ -470,14 +473,14 @@ defineExpose({ refresh });
   border-radius: 9px;
   background: #edf5e8;
   color: #8fa178;
-  font-size: 11px;
+  font-size: 13px;
   margin-bottom: 17px;
 }
 .activity-loading {
   padding: 55px;
   text-align: center;
   color: #bca27f;
-  font-size: 11px;
+  font-size: 13px;
 }
 @media (max-width: 650px) {
   .activity-admin {

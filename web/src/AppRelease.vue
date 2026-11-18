@@ -297,7 +297,7 @@ defineExpose({ refresh });
 }
 .release-form,
 .release-announcement {
-  padding: 27px;
+  padding: 18px 20px;
 }
 .release-card-heading {
   display: flex;
@@ -311,7 +311,7 @@ defineExpose({ refresh });
   color: #7f5a3a;
 }
 .release-import {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 9px 11px;
   border-radius: 9px;
   white-space: nowrap;
@@ -328,12 +328,12 @@ defineExpose({ refresh });
   border-top: 1px solid #f0e4d4;
 }
 .release-switch-row b {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #896645;
   font-weight: 600;
 }
 .release-switch-row p {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b69a79;
   margin-top: 7px;
 }
@@ -389,14 +389,14 @@ defineExpose({ refresh });
   gap: 19px;
 }
 .release-form label {
-  font-size: 11px;
+  font-size: 13px;
   color: #a78a67;
   margin-bottom: 20px;
 }
 .release-form input,
 .release-form textarea,
 .release-announcement textarea {
-  font-size: 12px;
+  font-size: 13.5px;
   background: #fffdf9;
   border-color: #e9ddca;
   border-radius: 9px;
@@ -413,7 +413,7 @@ defineExpose({ refresh });
 }
 .release-minimum > small {
   display: block;
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   line-height: 1.7;
   color: #b8a080;
@@ -429,7 +429,7 @@ defineExpose({ refresh });
   justify-content: space-between;
   align-items: center;
   padding: 15px 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #a98a62;
   cursor: pointer;
   list-style: none;
@@ -450,7 +450,7 @@ defineExpose({ refresh });
 }
 .release-mono {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px !important;
+  font-size: 12.5px !important;
 }
 .release-form-footer {
   display: flex;
@@ -460,11 +460,11 @@ defineExpose({ refresh });
   margin-top: 23px;
 }
 .release-form-footer > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #bca181;
 }
 .release-form-footer > .primary {
-  font-size: 11px;
+  font-size: 13px;
   padding: 12px 17px;
   border-radius: 9px;
   white-space: nowrap;
@@ -477,14 +477,14 @@ defineExpose({ refresh });
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b39a7e;
   margin-bottom: 19px;
 }
 .release-preview-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid #f0d5b8;
+  border: 0;
   border-radius: 25px;
   padding: 19px 24px 23px;
   background: #fff8eb;
@@ -507,7 +507,7 @@ defineExpose({ refresh });
 }
 .release-preview-brand {
   display: block;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #c59969;
   margin-top: 9px;
 }
@@ -519,7 +519,7 @@ defineExpose({ refresh });
   overflow-wrap: anywhere;
 }
 .release-preview-version {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b69a78;
   margin-top: 8px;
 }
@@ -527,7 +527,7 @@ defineExpose({ refresh });
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   text-align: left;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 2;
   color: #ac8967;
   margin: 23px 0;
@@ -536,7 +536,7 @@ defineExpose({ refresh });
 .release-preview-action {
   background: linear-gradient(110deg, #ff9860, #f06942);
   color: #fff8e8;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 600;
   display: flex;
   justify-content: center;
@@ -548,7 +548,7 @@ defineExpose({ refresh });
 }
 .release-preview-later {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #b99b7b;
   margin-top: 16px;
 }
@@ -576,7 +576,7 @@ defineExpose({ refresh });
   position: absolute;
   bottom: 13px;
   right: 13px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #b89d7a;
 }
@@ -586,15 +586,15 @@ defineExpose({ refresh });
   gap: 8px;
   background: #f3f3e6;
   color: #91965e;
-  border: 1px solid #e5e5c9;
+  border: 0;
   border-radius: 10px;
   padding: 12px 15px;
-  font-size: 11px;
+  font-size: 13px;
   margin-bottom: 20px;
 }
 .release-loading {
   padding: 30px 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #b09978;
 }
 @media (max-width: 1100px) {

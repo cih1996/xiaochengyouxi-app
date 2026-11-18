@@ -336,7 +336,7 @@ defineExpose({ refresh });
   gap: 7px;
   padding: 10px 15px;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 13px;
   color: #b39876;
 }
 .behavior-admin-tabs > button.active {
@@ -351,7 +351,7 @@ defineExpose({ refresh });
   padding: 22px;
 }
 .behavior-alerts label {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #b19978;
   margin: 0;
@@ -361,7 +361,7 @@ defineExpose({ refresh });
 .behavior-alerts input,
 .behavior-alerts select {
   padding: 10px;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 8px;
   margin-top: 7px;
   color: #a5845e;
@@ -369,7 +369,7 @@ defineExpose({ refresh });
 }
 .behavior-alerts form > .outline {
   padding: 10px 13px;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 8px;
   height: 37px;
 }
@@ -379,13 +379,13 @@ defineExpose({ refresh });
 .behavior-alert-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 .behavior-alert-table th {
   background: #fcf5e9;
   color: #b39871;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   padding: 13px 21px;
   text-align: left;
@@ -399,7 +399,7 @@ defineExpose({ refresh });
   font-weight: 500;
 }
 .behavior-alert-table td > button {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b78d5c;
 }
 .behavior-alert-action {
@@ -407,7 +407,7 @@ defineExpose({ refresh });
   border-radius: 5px;
   background: #f4ecd9;
   color: #ae946d;
-  font-size: 8px;
+  font-size: 11px;
   margin-left: 8px;
 }
 .behavior-alert-action.review {
@@ -423,7 +423,7 @@ defineExpose({ refresh });
   display: flex;
   gap: 5px;
   align-items: center;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .behavior-alert-empty {
   height: 180px;
@@ -436,7 +436,7 @@ defineExpose({ refresh });
   padding: 18px 22px;
   border-top: 1px solid #ecdec6;
   color: #b79a72;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .behavior-alerts > footer > span {
   margin-right: auto;
@@ -456,12 +456,12 @@ defineExpose({ refresh });
   flex: 1;
   min-width: 0;
   padding: 10px;
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 8px;
 }
 .behavior-user-search > .outline {
   padding: 10px 13px;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 8px;
   white-space: nowrap;
 }
@@ -472,7 +472,7 @@ defineExpose({ refresh });
   right: 20px;
   z-index: 22;
   background: #fffdf7;
-  border: 1px solid #e7d5b9;
+  border: 0;
   border-radius: 10px;
   box-shadow: 0 10px 25px #8d60321a;
   max-height: 360px;
@@ -486,7 +486,7 @@ defineExpose({ refresh });
   padding: 14px;
   border-bottom: 1px solid #f1e4d1;
   text-align: left;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .behavior-user-results b {
   font-weight: 500;
@@ -498,13 +498,13 @@ defineExpose({ refresh });
 .behavior-user-results small {
   margin-left: auto;
   color: #c3ab89;
-  font-size: 9px;
+  font-size: 12px;
 }
 .behavior-user-results p {
   padding: 22px;
   text-align: center;
   color: #b69e7b;
-  font-size: 11px;
+  font-size: 13px;
 }
 .behavior-select-user {
   display: flex;
@@ -514,7 +514,7 @@ defineExpose({ refresh });
   gap: 17px;
   padding: 95px 15px;
   color: #bda27d;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .behavior-evidence-overlay {
   position: fixed;
@@ -533,9 +533,9 @@ defineExpose({ refresh });
   max-height: 90vh;
   overflow: auto;
   background: #fffaf1;
-  border: 1px solid #e8d6b8;
+  border: 0;
   border-radius: 17px;
-  padding: 25px;
+  padding: 18px 20px;
 }
 .behavior-evidence-panel > header {
   display: flex;
@@ -561,16 +561,16 @@ defineExpose({ refresh });
   font-weight: 500;
 }
 .behavior-evidence-summary small {
-  font-size: 10px;
+  font-size: 12.5px;
   margin-left: 6px;
   color: #baa179;
 }
 .behavior-evidence-summary > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b2956c;
 }
 .behavior-evidence-panel > article {
-  border: 1px solid #edddc3;
+  border: 0;
   border-radius: 10px;
   padding: 17px;
   margin-bottom: 12px;
@@ -582,12 +582,12 @@ defineExpose({ refresh });
   justify-content: space-between;
 }
 .behavior-evidence-panel h3 {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #a78354;
   font-weight: 500;
 }
 .behavior-evidence-panel article > header > b {
-  font-size: 11px;
+  font-size: 13px;
   color: #c49a5f;
   font-weight: 500;
 }
@@ -599,7 +599,7 @@ defineExpose({ refresh });
 .behavior-evidence-panel dl > div {
   display: flex;
   gap: 10px;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .behavior-evidence-panel dt {
   color: #bda784;
@@ -616,14 +616,14 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 12px;
   color: #bba27b;
 }
 .behavior-evidence-panel footer > button {
   display: flex;
   gap: 5px;
   align-items: center;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #bd935c;
 }
 @media (max-width: 650px) {
@@ -632,7 +632,7 @@ defineExpose({ refresh });
   }
   .behavior-admin-tabs > button {
     flex: 1;
-    font-size: 10px;
+    font-size: 12.5px;
     padding: 10px 7px;
     gap: 6px;
   }
@@ -646,7 +646,7 @@ defineExpose({ refresh });
   }
   .behavior-alerts input,
   .behavior-alerts select {
-    font-size: 9px;
+    font-size: 12px;
     padding: 9px 5px;
   }
   .behavior-alerts form > .outline {
@@ -661,11 +661,11 @@ defineExpose({ refresh });
     gap: 8px;
   }
   .behavior-user-search > .outline {
-    font-size: 9px;
+    font-size: 12px;
     padding: 10px;
   }
   .behavior-user-search > input {
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .behavior-evidence-overlay {
     padding: 16px;

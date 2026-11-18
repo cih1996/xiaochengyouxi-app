@@ -948,8 +948,8 @@ pub(crate) mod tests {
                 Sha256::digest(format!("rain-test-secret:{trans}").as_bytes())
             ),
         );
-        assert!(!verify_csj_callback(&state, &query).unwrap().valid);
-        query.insert("reward_amount".into(), "100".into());
+        // The platform's reward amount (99999 here) is ignored: a correctly signed callback is
+        // accepted and the coins paid are the server-locked amount on the session.
         assert!(verify_csj_callback(&state, &query).unwrap().valid);
         let paid = reward_complete(
             State(state.clone()),

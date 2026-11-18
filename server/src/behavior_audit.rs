@@ -107,6 +107,10 @@ struct Policy {
     review_score: i64,
     hold_score: i64,
     weights: Weights,
+    /// Where review_score/hold_score came from: DeviceTrust's live policy when available
+    /// (read-only in the admin), otherwise the stored fallback.
+    #[serde(default, skip_deserializing)]
+    score_source: Value,
 }
 impl Default for Policy {
     fn default() -> Self {
@@ -128,6 +132,7 @@ impl Default for Policy {
             session_anomaly_threshold: 3,
             review_score: 40,
             hold_score: 75,
+            score_source: Value::Null,
             weights: Weights {
                 click_frequency: 25,
                 regular_intervals: 30,
@@ -156,13 +161,42 @@ pub(super) fn initialize(db: &Connection) -> Result<(), ApiError> {
     )?;
     Ok(())
 }
+/// DeviceTrust's current review/hold score lines, read from the newest verified event.
+fn device_trust_scores(db: &Connection) -> Result<Option<(i64, i64, i64)>, ApiError> {
+    let row: Option<(Option<i64>, Option<i64>, i64)> = db
+        .query_row(
+            "SELECT json_extract(detail_json,'$.policy.reviewScore'),json_extract(detail_json,'$.policy.holdScore'),updated_at
+             FROM (SELECT detail_json,updated_at FROM risk_events WHERE status='reported' ORDER BY rowid DESC LIMIT 50)
+             WHERE json_extract(detail_json,'$.policy.reviewScore') IS NOT NULL LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?;
+    Ok(match row {
+        Some((Some(review), Some(hold), at)) if (1..=100).contains(&review) && review < hold && hold <= 100 => {
+            Some((review, hold, at))
+        }
+        _ => None,
+    })
+}
+/// The behaviour policy, with its score lines following DeviceTrust's platform policy so there
+/// is one place (the DeviceTrust console) that defines them.
 fn policy(db: &Connection) -> Result<Policy, ApiError> {
     let raw: String = db.query_row(
         "SELECT config_json FROM behavior_policy WHERE id=1",
         [],
         |r| r.get(0),
     )?;
-    Ok(serde_json::from_str(&raw)?)
+    let mut p: Policy = serde_json::from_str(&raw)?;
+    p.score_source = match device_trust_scores(db)? {
+        Some((review, hold, at)) => {
+            p.review_score = review;
+            p.hold_score = hold;
+            json!({"source":"DeviceTrust","review_score":review,"hold_score":hold,"synced_at":iso(at)})
+        }
+        None => json!({"source":"local"}),
+    };
+    Ok(p)
 }
 fn random<const N: usize>() -> Result<[u8; N], ApiError> {
     let mut bytes = [0; N];
@@ -1043,7 +1077,7 @@ fn assess(
             now()
         ],
     )?;
-    if action != "observe" {
+    if action != "observe" && trusted_override(db, uid)?.is_none() {
         let status = if action == "hold" {
             "restricted"
         } else {
@@ -1056,7 +1090,7 @@ fn assess(
                 |r| r.get(0),
             )
             .optional()?;
-        let changed=db.execute("INSERT INTO account_restrictions(user_id,status,reason,updated_at,updated_by,trace_id,risk_event_id) VALUES(?1,?2,?3,?4,'BehaviorAudit',?5,'') ON CONFLICT(user_id) DO UPDATE SET status=CASE WHEN account_restrictions.status='restricted' THEN 'restricted' ELSE excluded.status END,reason=excluded.reason,updated_at=excluded.updated_at,updated_by=excluded.updated_by,trace_id=excluded.trace_id,risk_event_id='' WHERE account_restrictions.status='active' OR account_restrictions.updated_by='BehaviorAudit'",params![uid,status,format!("行为审计评估：{}",evidence.iter().filter_map(|e|e["label"].as_str()).collect::<Vec<_>>().join("、")),now(),id])?;
+        let changed=db.execute("INSERT INTO account_restrictions(user_id,status,reason,updated_at,updated_by,trace_id,risk_event_id) VALUES(?1,?2,?3,?4,'BehaviorAudit',?5,'') ON CONFLICT(user_id) DO UPDATE SET status=CASE WHEN account_restrictions.status='restricted' THEN 'restricted' ELSE excluded.status END,reason=excluded.reason,updated_at=excluded.updated_at,updated_by=excluded.updated_by,trace_id=excluded.trace_id,risk_event_id='' WHERE account_restrictions.updated_by IN ('DeviceTrust','BehaviorAudit')",params![uid,status,format!("行为审计评估：{}",evidence.iter().filter_map(|e|e["label"].as_str()).collect::<Vec<_>>().join("、")),now(),id])?;
         if changed > 0 {
             let mut actor = context.clone();
             actor.admin_username = Some("BehaviorAudit".into());
@@ -1151,7 +1185,8 @@ async fn update_policy(
         serde_json::to_value(&input)?,
     )?;
     tx.commit()?;
-    Ok(Json(input))
+    // Re-read so the response carries the DeviceTrust-synced score lines and their source.
+    Ok(Json(policy(&open(&state)?)?))
 }
 async fn alerts(State(state): State<AppState>, Query(q): Query<PageQuery>) -> ApiResult<Value> {
     let db = open(&state)?;
@@ -1299,6 +1334,26 @@ mod tests {
         let f = frame(&bytes).unwrap();
         assert!(decode(&f, &public[26..], &key).is_err());
     }
+    #[test]
+    fn score_lines_follow_device_trust_policy_when_known() {
+        let db = Connection::open_in_memory().unwrap();
+        db.execute_batch("CREATE TABLE behavior_policy(id INTEGER PRIMARY KEY,config_json TEXT NOT NULL,updated_at INTEGER);
+            CREATE TABLE risk_events(id TEXT,status TEXT,detail_json TEXT,updated_at INTEGER);").unwrap();
+        db.execute("INSERT INTO behavior_policy VALUES(1,?1,0)", [serde_json::to_string(&Policy::default()).unwrap()]).unwrap();
+        let p = policy(&db).unwrap();
+        assert_eq!((p.review_score, p.hold_score), (40, 75));
+        assert_eq!(p.score_source["source"], "local");
+        db.execute("INSERT INTO risk_events VALUES('a','reported',?1,100)", [json!({"policy":{"reviewScore":30,"holdScore":70}}).to_string()]).unwrap();
+        db.execute("INSERT INTO risk_events VALUES('b','prepared','{}',200)", []).unwrap();
+        let p = policy(&db).unwrap();
+        assert_eq!((p.review_score, p.hold_score), (30, 70));
+        assert_eq!(p.score_source["source"], "DeviceTrust");
+        assert_eq!(level(Some(50), &p), "medium");
+        // Nonsense platform values are ignored rather than applied.
+        db.execute("INSERT INTO risk_events VALUES('c','reported',?1,300)", [json!({"policy":{"reviewScore":80,"holdScore":20}}).to_string()]).unwrap();
+        assert_eq!(policy(&db).unwrap().score_source["source"], "local");
+    }
+
     #[test]
     fn policy_defaults_and_event_enumerations_are_explicit() {
         let p = Policy::default();

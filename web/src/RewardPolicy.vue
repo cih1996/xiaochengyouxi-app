@@ -174,8 +174,8 @@ defineExpose({ refresh });
 <style scoped>
 .reward-policy {
   max-width: 1000px;
-  padding: 26px 29px;
-  margin-bottom: 24px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
 }
 .reward-policy-heading {
   display: flex;
@@ -189,7 +189,7 @@ defineExpose({ refresh });
   color: #775337;
 }
 .policy-version {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b18a61;
   padding: 7px 10px;
   background: #fcf1df;
@@ -197,7 +197,7 @@ defineExpose({ refresh });
   white-space: nowrap;
 }
 .policy-loading {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #ad9272;
   padding: 20px 0;
 }
@@ -210,12 +210,12 @@ defineExpose({ refresh });
   padding: 19px 0 22px;
 }
 .policy-switch-row b {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #8a6746;
   font-weight: 600;
 }
 .policy-switch-row p {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b59a7a;
   margin-top: 7px;
 }
@@ -271,7 +271,7 @@ defineExpose({ refresh });
   gap: 14px;
 }
 .policy-tier {
-  border: 1px solid #ecdcc6;
+  border: 0;
   border-radius: 13px;
   background: #fffbf5;
   padding: 18px;
@@ -285,7 +285,7 @@ defineExpose({ refresh });
   border-color: #e6dfd3;
 }
 .policy-tier h3 {
-  font-size: 12px;
+  font-size: 13.5px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -300,7 +300,7 @@ defineExpose({ refresh });
   align-items: center;
 }
 .policy-tier h3 > small {
-  font-size: 9px;
+  font-size: 12px;
   color: #b29a7a;
   font-weight: 400;
 }
@@ -312,7 +312,7 @@ defineExpose({ refresh });
 .policy-fields label,
 .policy-footer label,
 .policy-fixed label {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #a18666;
   margin: 0;
   position: relative;
@@ -320,7 +320,7 @@ defineExpose({ refresh });
 .policy-fields input,
 .policy-footer input,
 .policy-fixed input {
-  font-size: 13px;
+  font-size: 14px;
   border: 1px solid #e8dcc9;
   background: #fffefb;
   border-radius: 8px;
@@ -331,7 +331,7 @@ defineExpose({ refresh });
   position: absolute;
   right: 12px;
   bottom: 12px;
-  font-size: 9px;
+  font-size: 12px;
   color: #b49e82;
 }
 .policy-fields:not(.policy-coins) input {
@@ -341,7 +341,7 @@ defineExpose({ refresh });
   margin-top: 14px;
 }
 .policy-rule {
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.9;
   color: #b29a7b;
   margin: 15px 0 0;
@@ -361,7 +361,7 @@ defineExpose({ refresh });
 .policy-footer .primary {
   border-radius: 9px;
   padding: 12px 19px;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .policy-fixed {
@@ -369,7 +369,7 @@ defineExpose({ refresh });
   align-items: center;
   gap: 16px;
   padding: 18px;
-  border: 1px solid #eaddc8;
+  border: 0;
   border-radius: 12px;
   background: #fff9ed;
   color: #d39b53;
@@ -382,7 +382,7 @@ defineExpose({ refresh });
   align-items: center;
   gap: 7px;
   margin-bottom: 16px;
-  font-size: 11px;
+  font-size: 13px;
   color: #8f9a5d;
 }
 @media (max-width: 700px) {

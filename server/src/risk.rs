@@ -98,14 +98,14 @@ pub fn init(db: &Connection) -> Result<(), rusqlite::Error> {
 fn public_error(reference: &str) -> ApiError {
     ApiError(
         StatusCode::SERVICE_UNAVAILABLE,
-        format!("服务暂不可用，请稍后再试。参考号：{reference}"),
+        format!("服务暂时繁忙，请稍后再试。\n如需帮助请联系客服，参考号：{reference}"),
         None,
     )
 }
 fn restriction_error(reference: &str) -> ApiError {
     ApiError(
         StatusCode::LOCKED,
-        format!("当前账户暂不能参与此活动。参考号：{reference}"),
+        format!("当前账户暂时无法参与活动。\n如需帮助请联系客服，参考号：{reference}"),
         None,
     )
 }
@@ -303,11 +303,13 @@ async fn complete(
         )?;
         return Err(public_error(&input.event_id));
     }
+    let auto_approve = {
     let mut db = open(&state)?;
     let tx = db.transaction()?;
     let device_id = event["deviceId"].as_str().unwrap_or("");
     let device_identity = reward_policy::observe_verified(&tx, uid, key, device_id)?;
     // Re-check inside the same transaction: equal retries retain their original decision.
+    let mut auto_approve: Option<String> = None;
     let prior_status: String = tx.query_row(
         "SELECT status FROM risk_events WHERE id=?1",
         [&input.event_id],
@@ -317,7 +319,16 @@ async fn complete(
         tx.execute("UPDATE risk_events SET report_id=?1,key_id=?2,status='reported',decision=?3,action=?4,score=?5,detail_json=?6,error='',updated_at=?7,device_identity=?9 WHERE id=?8",
             params![input.report_id,key,event["decision"].as_str().unwrap_or(""),event["action"].as_str().unwrap_or(""),event["score"].as_i64(),event.to_string(),now(),input.event_id,device_identity])?;
         let action = event["action"].as_str().unwrap_or("observe");
-        if ["verify", "hold"].contains(&action) {
+        let trusted = if ["verify", "hold"].contains(&action) {
+            trusted_override(&tx, uid)?
+        } else {
+            None
+        };
+        if trusted.is_some() {
+            // Released by an admin (or the review account): approve this event on the platform
+            // instead of restricting the account again.
+            auto_approve = trusted;
+        } else if ["verify", "hold"].contains(&action) {
             let status = if action == "hold" {
                 "restricted"
             } else {
@@ -325,7 +336,7 @@ async fn complete(
             };
             tx.execute("INSERT INTO account_restrictions(user_id,status,reason,updated_at,updated_by,trace_id,risk_event_id) VALUES(?1,?2,?3,?4,'DeviceTrust',?5,?5)
                 ON CONFLICT(user_id) DO UPDATE SET status=CASE WHEN account_restrictions.status='restricted' THEN 'restricted' ELSE excluded.status END,reason=excluded.reason,updated_at=excluded.updated_at,updated_by=excluded.updated_by,trace_id=excluded.trace_id,risk_event_id=excluded.risk_event_id
-                WHERE account_restrictions.status='active' OR account_restrictions.updated_by='DeviceTrust'",
+                WHERE account_restrictions.updated_by IN ('DeviceTrust','BehaviorAudit')",
                 params![uid,status,format!("DeviceTrust {action}: {}",event["reasons"]),now(),input.event_id])?;
         }
     }
@@ -347,6 +358,29 @@ async fn complete(
         },
     )?;
     tx.commit()?;
+    auto_approve
+    };
+    if let Some(note) = auto_approve {
+        // Platform approval is what lets the following execution permit through; a failure here
+        // is logged and the operation then fails the normal way with its reference number.
+        match business_guard::resolve_approved(&state, &input.event_id, &note).await {
+            Ok(()) => {
+                let mut actor = request_context.clone();
+                actor.admin_username = Some("自动放行".into());
+                user_admin::action_audit(
+                    &open(&state)?,
+                    &actor,
+                    Some(uid),
+                    "risk_auto_approve",
+                    &input.event_id,
+                    &note,
+                    json!({}),
+                    json!({"event_id":input.event_id}),
+                )?;
+            }
+            Err(error) => eprintln!("DeviceTrust 自动放行失败 {}: {}", input.event_id, error.1),
+        }
+    }
     public_status(&state, uid, &input.event_id)
 }
 fn public_status(state: &AppState, uid: i64, id: &str) -> ApiResult<Value> {

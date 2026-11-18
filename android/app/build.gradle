@@ -6,7 +6,7 @@ android {
     namespace 'com.lingzidev.xiaochengyouxi'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.lingzidev.xiaochengyouxi'; minSdk 24; targetSdk 35; versionCode 24; versionName '0.3.21'
+        applicationId 'com.lingzidev.xiaochengyouxi'; minSdk 24; targetSdk 35; versionCode 25; versionName '0.3.22'
         buildConfigField 'String', 'DEVICE_TRUST_APP_ID', '"24befb89afb1186d8dc492c722ba302d40b148e8f5ca5a5f"'
         buildConfigField 'String', 'CSJ_APP_ID', '"5931950"'
         buildConfigField 'String', 'CSJ_REWARD_SLOT', '"993606639"'

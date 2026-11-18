@@ -176,7 +176,7 @@ onUnmounted(() => controller.abort());
   width: 420px;
   max-height: calc(100dvh - 48px);
   overflow-y: auto;
-  border: 1px solid #f1dfc7;
+  border: 0;
   border-radius: 23px;
   background: #fffcf6;
   padding: 27px;
@@ -202,12 +202,12 @@ onUnmounted(() => controller.abort());
   background: #f8eedf;
 }
 .admin-account-panel label {
-  font-size: 11px;
+  font-size: 13px;
   color: #a58a68;
   margin-bottom: 18px;
 }
 .admin-account-panel input {
-  font-size: 12px;
+  font-size: 13.5px;
   margin-top: 8px;
   border-color: #e8dbc8;
   background: #fffefa;
@@ -220,7 +220,7 @@ onUnmounted(() => controller.abort());
   margin-top: 0;
 }
 .admin-account-panel .primary {
-  font-size: 12px;
+  font-size: 13.5px;
   margin-top: 8px;
   border-radius: 11px;
 }
@@ -232,13 +232,13 @@ onUnmounted(() => controller.abort());
 .admin-field-note {
   float: right;
   font-weight: 400;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #c0a584;
 }
 .admin-account-loading {
   color: #b09675;
   padding: 25px 0;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 @media (max-width: 500px) {
   .admin-account-overlay {

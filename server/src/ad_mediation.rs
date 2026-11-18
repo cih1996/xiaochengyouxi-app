@@ -242,7 +242,7 @@ pub(super) fn plan(
         log(db, Some(uid), "-", format, "", "empty", "server", session, "", "广告总开关关闭", json!({}))?;
         return Ok(Vec::new());
     }
-    if cfg.risk_block {
+    if cfg.risk_block && trusted_override(db, uid)?.is_none() {
         if let Some(reason) = risk_reason(db, uid, &cfg)? {
             log(db, Some(uid), "-", format, "", "risk_block", "server", session, "", &reason, json!({}))?;
             return Ok(Vec::new());

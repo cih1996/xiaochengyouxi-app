@@ -308,17 +308,17 @@ defineExpose({ refresh });
   color: #cba076;
 }
 .user-center-range b {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #8f6c4b;
 }
 .user-center-range span {
   display: block;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b3987e;
   margin-top: 6px;
 }
 .user-center-range small {
-  font-size: 8px;
+  font-size: 11px;
   margin-left: 8px;
   color: #c2aa91;
 }
@@ -332,7 +332,7 @@ defineExpose({ refresh });
 .user-center-presets button {
   padding: 8px 11px;
   color: #b0967c;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 6px;
   white-space: nowrap;
 }
@@ -348,14 +348,14 @@ defineExpose({ refresh });
   margin-left: auto;
 }
 .user-center-filters label {
-  font-size: 9px;
+  font-size: 12px;
   color: #b3987e;
   font-weight: 400;
   margin: 0;
 }
 .user-center-filters input {
   margin-top: 5px;
-  font-size: 10px;
+  font-size: 12.5px;
   width: 132px;
   border-radius: 8px;
   padding: 9px;
@@ -363,13 +363,13 @@ defineExpose({ refresh });
   background: #fffcf7;
 }
 .user-center-filters form > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #bea78f;
   padding-bottom: 11px;
 }
 .user-center-filters .outline {
   padding: 9px 11px;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 8px;
   height: 35px;
   white-space: nowrap;
@@ -380,7 +380,7 @@ defineExpose({ refresh });
   justify-content: center;
   gap: 10px;
   align-items: center;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #b49b81;
 }
 .user-center-metrics {
@@ -401,7 +401,7 @@ defineExpose({ refresh });
   gap: 12px;
   align-items: center;
   color: #b19476;
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-center-metrics article > div > svg {
   color: #c6a27d;
@@ -415,14 +415,14 @@ defineExpose({ refresh });
   color: #765136;
 }
 .user-center-metrics article > b small {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   margin-left: 6px;
   letter-spacing: 0;
   color: #b69574;
 }
 .user-center-metric-caption {
-  font-size: 9px;
+  font-size: 12px;
   color: #c2ab92;
 }
 .user-center-metrics .warm {
@@ -470,13 +470,13 @@ defineExpose({ refresh });
   color: #7b593c;
 }
 .distribution-summary small {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #b39a81;
   margin-left: 8px;
 }
 .distribution-summary > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #c1a68c;
 }
 .distribution-row {
@@ -484,7 +484,7 @@ defineExpose({ refresh });
   align-items: center;
   gap: 13px;
   margin: 16px 0;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #ad9277;
 }
 .distribution-row > span {
@@ -507,7 +507,7 @@ defineExpose({ refresh });
 .distribution-row > b {
   width: 40px;
   text-align: right;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #8b6c51;
 }
@@ -516,7 +516,7 @@ defineExpose({ refresh });
   padding-top: 16px;
   margin-top: 22px;
   color: #b59b81;
-  font-size: 10px;
+  font-size: 12.5px;
   display: flex;
   gap: 5px;
   align-items: center;
@@ -542,7 +542,7 @@ defineExpose({ refresh });
   gap: 14px;
 }
 .user-center-daily header span {
-  font-size: 9px;
+  font-size: 12px;
   color: #bca389;
   cursor: help;
 }
@@ -550,7 +550,7 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #c18b5d;
   white-space: nowrap;
 }
@@ -560,7 +560,7 @@ defineExpose({ refresh });
 .user-center-daily table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 13px;
   text-align: left;
   white-space: nowrap;
 }
@@ -568,7 +568,7 @@ defineExpose({ refresh });
   padding: 12px 24px;
   background: #faf5ed;
   color: #b79d82;
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 .user-center-daily td {
@@ -578,10 +578,10 @@ defineExpose({ refresh });
 }
 .user-center-daily td:first-child {
   color: #b1977f;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .user-center-footnote {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.9;
   color: #bda78f;
   padding: 17px 2px;
@@ -636,7 +636,7 @@ defineExpose({ refresh });
   .user-center-filters input {
     width: 100%;
     padding: 9px 5px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .user-center-filters .outline {
     padding: 9px;
@@ -654,7 +654,7 @@ defineExpose({ refresh });
     padding: 17px 15px;
   }
   .user-center-metrics article > div {
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .user-center-metrics article > div > svg {
     width: 16px;

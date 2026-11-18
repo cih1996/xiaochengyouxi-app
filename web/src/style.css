@@ -421,7 +421,7 @@ label small {
 }
 .mini-badge {
   display: inline-block;
-  font-size: 9px;
+  font-size: 12px;
   color: #ab6c41;
   background: #fff6e4bb;
   padding: 4px 8px;
@@ -1101,7 +1101,7 @@ label small {
   margin-bottom: 4px;
 }
 .profile p {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b49986;
 }
 .small-primary {
@@ -1448,7 +1448,7 @@ label small {
   text-align: center;
 }
 .empty-state p {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.7;
 }
 .record {
@@ -2020,7 +2020,7 @@ label small {
   font-size: 18px;
 }
 .admin-label {
-  font-size: 10px;
+  font-size: 12.5px;
   letter-spacing: 2px;
   color: #c0a98f;
   padding: 0 10px;
@@ -2037,7 +2037,7 @@ label small {
   gap: 12px;
   padding: 14px 16px;
   text-align: left;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #a18b75;
   border-radius: 11px;
 }
@@ -2053,7 +2053,7 @@ label small {
   margin-top: auto;
   border-top: 1px solid #eee1d4;
   padding-top: 23px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b9a18b;
 }
 .admin-sidebar-footer > span {
@@ -2073,7 +2073,7 @@ label small {
   gap: 6px;
   align-items: center;
   color: #ae9276;
-  font-size: 11px;
+  font-size: 13px;
   padding: 5px;
 }
 .admin-main {
@@ -2090,7 +2090,7 @@ label small {
   justify-content: space-between;
   padding: 0 43px;
   color: #ad9680;
-  font-size: 11px;
+  font-size: 13px;
 }
 .admin-topbar > span {
   display: flex;
@@ -2098,7 +2098,7 @@ label small {
   gap: 12px;
 }
 .admin-topbar .outline {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 9px 14px;
   border-radius: 8px;
   color: #a4896d;
@@ -2121,7 +2121,7 @@ label small {
   font-weight: 700;
 }
 .admin-date {
-  font-size: 11px;
+  font-size: 13px;
   color: #b69e85;
 }
 .stat-grid {
@@ -2133,7 +2133,7 @@ label small {
 .stat-card {
   padding: 22px;
   background: #fffdfa;
-  border: 1px solid #eee4d7;
+  border: 0;
   border-radius: 17px;
   box-shadow: 0 6px 15px #97784e03;
 }
@@ -2141,7 +2141,7 @@ label small {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
+  font-size: 13px;
   color: #aa9175;
   margin-bottom: 22px;
   gap: 12px;
@@ -2157,14 +2157,14 @@ label small {
   font-weight: 600;
 }
 .stat-card > b small {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b79b7c;
   margin-left: 7px;
   font-weight: 400;
   letter-spacing: 0;
 }
 .stat-card > p {
-  font-size: 9px;
+  font-size: 12px;
   color: #c4ad92;
   margin-top: 20px;
 }
@@ -2188,7 +2188,7 @@ label small {
 }
 .admin-card {
   background: #fffdfa;
-  border: 1px solid #eee4d7;
+  border: 0;
   border-radius: 17px;
   overflow: hidden;
   min-width: 0;
@@ -2208,7 +2208,7 @@ label small {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b7956f;
 }
 .table-scroll {
@@ -2246,7 +2246,7 @@ tbody tr:last-child td {
 .empty-table {
   text-align: center;
   padding: 58px 15px !important;
-  font-size: 11px;
+  font-size: 13px;
   color: #c1a98f;
 }
 .warm-card {
@@ -2258,7 +2258,7 @@ tbody tr:last-child td {
   overflow: hidden;
 }
 .warm-card > .mini-badge {
-  font-size: 9px;
+  font-size: 12px;
   color: #b78b5b;
 }
 .warm-card > h2 {
@@ -2270,7 +2270,7 @@ tbody tr:last-child td {
   z-index: 1;
 }
 .warm-card > p {
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.9;
   color: #bd946c;
   width: 61%;
@@ -2288,12 +2288,12 @@ tbody tr:last-child td {
 .warm-card > .primary {
   position: relative;
   z-index: 1;
-  font-size: 11px;
+  font-size: 13px;
   padding: 11px 14px;
   border-radius: 9px;
 }
 .table-count {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #baa287;
 }
 .table-avatar {
@@ -2306,7 +2306,7 @@ tbody tr:last-child td {
   border-radius: 9px;
   color: #d7a16a;
   margin-right: 9px;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .status-tag {
   display: inline-block;
@@ -2315,14 +2315,14 @@ tbody tr:last-child td {
   border: 1px solid #f0dbbc;
   padding: 4px 7px;
   border-radius: 5px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .review-actions {
   display: flex;
   gap: 8px;
 }
 .review-actions button {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 5px 8px;
   background: #fff0df;
   border-radius: 6px;
@@ -2336,26 +2336,26 @@ tbody tr:last-child td {
   padding: 29px;
 }
 .admin-form > p {
-  font-size: 11px;
+  font-size: 13px;
   color: #b49a7d;
   line-height: 1.9;
   margin-top: 10px;
   margin-bottom: 28px;
 }
 .admin-form label {
-  font-size: 11px;
+  font-size: 13px;
   color: #a58a6d;
   margin-bottom: 22px;
 }
 .admin-form input,
 .admin-form textarea {
-  font-size: 12px;
+  font-size: 13.5px;
   background: #fffdfa;
   border-color: #eadecd;
   border-radius: 10px;
 }
 .admin-form .primary {
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 9px;
   padding: 12px 19px;
 }
@@ -2373,7 +2373,7 @@ tbody tr:last-child td {
   color: #b99d7e;
   border-radius: 10px;
   padding: 13px 14px;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 400;
   margin-top: 7px;
 }
@@ -2389,7 +2389,7 @@ tbody tr:last-child td {
   align-items: center;
   gap: 7px;
   padding: 13px 22px;
-  font-size: 12px;
+  font-size: 13.5px;
   z-index: 30;
   box-shadow: 0 8px 20px #5c3b2622;
 }
@@ -2406,10 +2406,10 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #f1e5d5;
+  border: 0;
   border-radius: 10px;
   padding: 15px;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .platform-grid b {
   font-weight: 500;
@@ -2418,7 +2418,7 @@ tbody tr:last-child td {
 .platform-grid > div > span:last-child {
   margin-left: auto;
   color: #c3ad92;
-  font-size: 9px;
+  font-size: 12px;
 }
 .platform-dot {
   width: 6px;
@@ -2546,7 +2546,7 @@ tbody tr:last-child td {
     font-size: 23px;
   }
   .admin-date {
-    font-size: 9px;
+    font-size: 12px;
   }
   .stat-card > b {
     font-size: 32px;
@@ -2644,31 +2644,31 @@ tbody tr:last-child td {
     padding: 16px 13px;
   }
   .stat-card > div {
-    font-size: 10px;
+    font-size: 12.5px;
     margin-bottom: 17px;
   }
   .stat-card > b {
     font-size: 27px;
   }
   .stat-card > p {
-    font-size: 8px;
+    font-size: 11px;
     line-height: 1.7;
   }
   .stat-card > b small {
-    font-size: 8px;
+    font-size: 11px;
     margin-left: 4px;
   }
   .admin-card-header {
     padding: 20px 17px;
   }
   .admin-card-header h2 {
-    font-size: 13px;
+    font-size: 14px;
   }
   .admin-card-header > button {
-    font-size: 9px;
+    font-size: 12px;
   }
   .table-count {
-    font-size: 9px;
+    font-size: 12px;
   }
   .admin-card th,
   .admin-card td {
@@ -2788,7 +2788,7 @@ tbody tr:last-child td {
   margin-bottom: 27px;
 }
 .strategy-heading p {
-  font-size: 11px;
+  font-size: 13px;
   color: #b49a7d;
   line-height: 1.9;
   margin-top: 10px;
@@ -2797,7 +2797,7 @@ tbody tr:last-child td {
   display: flex;
   gap: 9px;
   align-items: center;
-  font-size: 10px !important;
+  font-size: 12.5px !important;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -2992,7 +2992,7 @@ tbody tr:last-child td {
   position: relative;
   width: 390px;
   background: #fffcf8;
-  border: 1px solid #efdfcd;
+  border: 0;
   border-radius: 28px;
   padding: 32px;
   box-shadow: 0 22px 60px #a9794721;
@@ -3018,12 +3018,12 @@ tbody tr:last-child td {
   margin: 57px 0 29px;
 }
 .admin-login-card label {
-  font-size: 11px;
+  font-size: 13px;
   color: #a78b70;
 }
 .admin-login-card input {
   background: #fffaf3;
-  font-size: 13px;
+  font-size: 14px;
 }
 .admin-login-card .primary {
   margin-top: 8px;
@@ -3046,7 +3046,7 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.7;
   color: #8f975e;
   background: #f5f4e8;
@@ -3058,7 +3058,7 @@ tbody tr:last-child td {
   display: inline-flex;
   gap: 7px;
   align-items: center;
-  font-size: 11px;
+  font-size: 13px;
   color: #b08d6d;
   padding: 8px 0;
   max-width: 155px;
@@ -3074,7 +3074,7 @@ tbody tr:last-child td {
   justify-content: center;
   gap: 5px;
   width: 100%;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b79b7d;
   margin-top: 24px;
 }
@@ -3200,7 +3200,7 @@ tbody tr:last-child td {
   align-items: center;
   gap: 6px;
   padding: 8px 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #b08d6d;
 }
 .admin-topbar-logout:hover {
@@ -3626,12 +3626,12 @@ tbody tr:last-child td {
   padding-top: 20px;
 }
 .platform-invite-link > span {
-  font-size: 11px;
+  font-size: 13px;
   color: #bc9a75;
   word-break: break-all;
 }
 .platform-invite-link > .outline {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 9px 14px;
   border-radius: 8px;
   white-space: nowrap;
@@ -3796,11 +3796,11 @@ tbody tr:last-child td {
     gap: 9px;
   }
   .platform-invite-link > span {
-    font-size: 10px;
+    font-size: 12.5px;
     line-height: 1.8;
   }
   .platform-invite-link > .outline {
-    font-size: 9px;
+    font-size: 12px;
     padding: 8px;
   }
   .platform-invite-form {
@@ -4225,4 +4225,23 @@ tbody tr:last-child td {
   .big-packet.rain-jackpot {
     animation: none !important;
   }
+}
+
+
+/* ---- 后台：更大的字、无容器边框、更紧凑的留白（覆盖上面的后台样式） ---- */
+.admin-layout { font-size: 14px; }
+.admin-topbar { height: 60px; padding: 0 28px; font-size: 13px; }
+.admin-topbar .outline { font-size: 13px; padding: 7px 12px; }
+.admin-content { padding: 18px 28px 40px; max-width: none; }
+.admin-heading { margin-bottom: 12px; }
+.admin-heading h1 { font-size: 22px; }
+.admin-date { font-size: 13px; }
+.admin-card { background: #fff; border: 0; border-radius: 12px; box-shadow: none; }
+.admin-card-header { padding: 14px 18px 10px; }
+.admin-card h2 { font-size: 16px; }
+.admin-form { padding: 18px 20px; }
+.admin-layout th { padding: 10px 18px; font-size: 13px; }
+.admin-layout td { padding: 11px 18px; font-size: 13.5px; color: #6d5547; }
+@media (max-width: 760px) {
+  .admin-content { padding: 14px 14px 32px; }
 }

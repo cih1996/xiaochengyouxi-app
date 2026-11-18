@@ -346,14 +346,14 @@ defineExpose({ refresh });
   margin: 0 0 20px;
 }
 .behavior-profile-toolbar > b {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #a17a53;
 }
 .behavior-profile-toolbar > button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b08a62;
 }
 .behavior-profile-days {
@@ -365,7 +365,7 @@ defineExpose({ refresh });
   margin-right: auto;
 }
 .behavior-profile-days > button {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 8px 11px;
   border-radius: 6px;
   color: #b39879;
@@ -386,7 +386,7 @@ defineExpose({ refresh });
   background: #f5eddc;
   color: #b3976f;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .behavior-collection > span.available {
   background: #edf4e9;
@@ -396,18 +396,18 @@ defineExpose({ refresh });
   flex: 1;
 }
 .behavior-collection b {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #a68865;
 }
 .behavior-collection small {
-  font-size: 9px;
+  font-size: 12px;
   color: #bba283;
   display: block;
   margin-top: 6px;
 }
 .behavior-collection > span:last-child {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b09776;
 }
 .behavior-profile-note {
@@ -415,7 +415,7 @@ defineExpose({ refresh });
   align-items: flex-start;
   gap: 7px;
   color: #b99c76;
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.8;
   margin: 10px 2px;
 }
@@ -430,7 +430,7 @@ defineExpose({ refresh });
 }
 .behavior-profile-metrics span {
   display: block;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b19675;
   margin-bottom: 16px;
 }
@@ -441,7 +441,7 @@ defineExpose({ refresh });
   letter-spacing: -0.8px;
 }
 .behavior-profile-metrics small {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #b59b79;
   letter-spacing: 0;
@@ -467,7 +467,7 @@ defineExpose({ refresh });
   --bar: #9bb79f;
 }
 .behavior-profile h3 {
-  font-size: 13px;
+  font-size: 14px;
   color: #95714a;
   font-weight: 600;
 }
@@ -479,7 +479,7 @@ defineExpose({ refresh });
   align-items: center;
   gap: 8px;
   margin: 17px 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .behavior-bar-row > span {
   width: 53px;
@@ -501,7 +501,7 @@ defineExpose({ refresh });
 }
 .behavior-bar-row > b {
   width: 41px;
-  font-size: 9px;
+  font-size: 12px;
   text-align: right;
   color: #a88b65;
   font-weight: 400;
@@ -510,7 +510,7 @@ defineExpose({ refresh });
 .behavior-intervals > p {
   padding: 34px 0;
   text-align: center;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #c0a786;
 }
 .behavior-intervals {
@@ -523,13 +523,13 @@ defineExpose({ refresh });
   justify-content: space-between;
 }
 .behavior-intervals header > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #bba17e;
 }
 .behavior-interval-metrics {
   display: flex;
   gap: 27px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #baa07b;
   margin-top: 20px;
 }
@@ -552,7 +552,7 @@ defineExpose({ refresh });
   align-items: center;
   gap: 9px;
   min-width: 0;
-  font-size: 9px;
+  font-size: 12px;
   color: #bba17e;
 }
 .behavior-interval-bars i {
@@ -562,7 +562,7 @@ defineExpose({ refresh });
   border-radius: 4px 4px 0 0;
 }
 .behavior-interval-bars b {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 400;
   text-align: center;
 }
@@ -579,7 +579,7 @@ defineExpose({ refresh });
   padding: 21px 23px;
 }
 .behavior-sessions > header > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b89e79;
 }
 .behavior-sessions-table {
@@ -588,13 +588,13 @@ defineExpose({ refresh });
 .behavior-sessions table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 .behavior-sessions th {
   padding: 13px 20px;
   background: #fbf5e9;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   text-align: left;
   color: #b59a74;
@@ -606,7 +606,7 @@ defineExpose({ refresh });
 }
 .behavior-sessions td > small {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   color: #c0a786;
   margin-top: 6px;
 }
@@ -631,7 +631,7 @@ defineExpose({ refresh });
   gap: 17px;
   padding: 17px 21px;
   border-top: 1px solid #eee0cb;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b99d76;
 }
 .behavior-sessions footer > span {
@@ -641,7 +641,7 @@ defineExpose({ refresh });
   padding: 80px 15px;
   text-align: center;
   color: #bca17e;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 @media (max-width: 1100px) {
   .behavior-profile-main {
@@ -659,7 +659,7 @@ defineExpose({ refresh });
     gap: 13px;
   }
   .behavior-profile-toolbar > b {
-    font-size: 11px;
+    font-size: 13px;
   }
   .behavior-profile-days {
     order: 3;
@@ -690,7 +690,7 @@ defineExpose({ refresh });
     font-size: 23px;
   }
   .behavior-profile-metrics span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .behavior-profile-distributions {
     grid-template-columns: 1fr;

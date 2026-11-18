@@ -217,7 +217,7 @@ public final class MainActivity extends Activity {
     else loadAccount();
   }
 
-  static final String PRIVACY_ACCEPTED = "privacy_accepted_v2";
+  static final String PRIVACY_ACCEPTED = "privacy_accepted_v3";
 
   void confirmPrivacy() {
     // Bumped when the policy adds third parties (0.3.21: 快手/百度/优量汇 ad SDKs, 腾讯云短信),
@@ -232,8 +232,11 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
             .setTitle("欢迎来到小橙有喜")
             .setMessage(
-                "广西奇易电子商务有限公司为你提供服务。请阅读隐私政策和用户协议。为提供福利、广告与账户安全服务，我们使用穿山甲、快手、百度、优量汇广告 SDK 和知衡 DeviceTrust"
-                    + " SDK，处理必要的设备、系统组件、网络及广告互动信息；安全核验会读取设备标识（ANDROID_ID 及 Widevine 设备标识的不可逆摘要，原值不上传），检测指定风险工具是否安装、无障碍服务状态及本机调试端口，读取当前局域网的内网地址、网关和 DNS，并按核验需要检测同一网段内其他设备是否在线或开启无线调试，不读取应用列表。登录后记录本应用的页面访问、点击、停留与触点，用于账户安全和服务改进。不会采集输入内容、密码短信、屏幕画面或其他应用的使用内容。")
+                "广西奇易电子商务有限公司为你提供服务。请阅读《隐私政策》和《用户协议》，点击“同意并继续”即表示你同意以下处理：\n\n"
+                    + "1. 广告服务：App 集成穿山甲、快手、百度、优量汇广告 SDK，会读取设备标识 OAID（匿名设备标识符），以及设备型号、系统版本、网络状态和广告展示点击记录，用于广告投放、效果统计和防作弊。已关闭个性化广告，不读取位置、电话状态、MAC 地址和应用列表。\n\n"
+                    + "2. 账户安全：知衡 DeviceTrust SDK 会读取 ANDROID_ID、Widevine 设备标识的不可逆摘要（原值不上传）、指定风险工具是否安装、无障碍服务状态、本机调试端口，以及当前局域网的内网地址、网关和 DNS，并按核验需要检测同一网段内其他设备是否在线或开启无线调试，用于识别作弊和保护账户安全。\n\n"
+                    + "3. 服务改进：登录后记录本应用内的页面访问、点击、停留与触点，用于账户安全和服务改进；不采集输入内容、密码短信、屏幕画面或其他应用的使用内容。\n\n"
+                    + "以上 SDK 均在你同意后才会初始化。你可以在“我的 → 设置”中查看隐私政策和第三方 SDK 清单。")
             .setPositiveButton(
                 "同意并继续",
                 (dialog, which) -> {
@@ -311,7 +314,9 @@ public final class MainActivity extends Activity {
     String url =
         path.equals("/privacy")
             ? BuildConfig.PRIVACY_URL
-            : "https://orange-api.lingzidev.com/terms";
+            : path.equals("/privacy#sdk")
+                ? BuildConfig.PRIVACY_URL + "#sdk"
+                : "https://orange-api.lingzidev.com/terms";
     try {
       startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
     } catch (ActivityNotFoundException failure) {
@@ -429,7 +434,7 @@ public final class MainActivity extends Activity {
 
   void error(String message) {
     new AlertDialog.Builder(this)
-        .setTitle("操作未完成")
+        .setTitle("温馨提示")
         .setMessage(message)
         .setPositiveButton("知道了", null)
         .show();
@@ -2907,7 +2912,7 @@ public final class MainActivity extends Activity {
 
   void rewardError(String message) {
     new AlertDialog.Builder(this)
-        .setTitle("操作未完成")
+        .setTitle("温馨提示")
         .setMessage(message)
         .setPositiveButton("知道了", null)
         .setOnDismissListener(ignored -> rewardUiBusy = false)
@@ -3314,6 +3319,8 @@ public final class MainActivity extends Activity {
     settingRow(about, "检查更新", "当前 " + BuildConfig.VERSION_NAME, updates::manual);
     line(about);
     settingRow(about, "隐私政策", "", () -> openPolicy("/privacy"));
+    line(about);
+    settingRow(about, "第三方 SDK 清单", "", () -> openPolicy("/privacy#sdk"));
     line(about);
     settingRow(about, "用户协议", "", () -> openPolicy("/terms"));
     add(body, about, -1, -2);

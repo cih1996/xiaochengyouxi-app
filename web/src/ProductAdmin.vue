@@ -847,7 +847,7 @@ defineExpose({ refresh });
 .product-analytics,
 .product-display-config {
   margin-top: 22px;
-  padding: 25px 27px;
+  padding: 18px 20px;
 }
 .product-analytics > header,
 .product-display-config > header {
@@ -862,7 +862,7 @@ defineExpose({ refresh });
   display: block;
   margin-top: 7px;
   color: #b2997d;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .product-analytics-days {
   display: flex;
@@ -875,7 +875,7 @@ defineExpose({ refresh });
   padding: 8px 11px;
   border-radius: 6px;
   color: #ae9375;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .product-analytics-days button.active {
   background: #fffaf4;
@@ -889,14 +889,14 @@ defineExpose({ refresh });
 }
 .product-analytics-summary article {
   padding: 15px 13px;
-  border: 1px solid #eee1d1;
+  border: 0;
   border-radius: 10px;
   background: #fffcf8;
 }
 .product-analytics-summary span {
   display: block;
   color: #b29a7e;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .product-analytics-summary b {
   display: block;
@@ -915,7 +915,7 @@ defineExpose({ refresh });
   margin-top: 22px;
 }
 .product-ranking h3 {
-  font-size: 13px;
+  font-size: 14px;
   color: #94704e;
   margin-bottom: 14px;
 }
@@ -934,7 +934,7 @@ defineExpose({ refresh });
   place-items: center;
   background: #f7ebdb;
   color: #bb8a5b;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
 }
 .product-ranking-row > div {
@@ -944,7 +944,7 @@ defineExpose({ refresh });
 .product-ranking-row b {
   display: block;
   color: #8f6b4b;
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -952,13 +952,13 @@ defineExpose({ refresh });
 .product-ranking-row span {
   display: block;
   color: #b69b7b;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 5px;
 }
 .product-ranking-row em {
   font-style: normal;
   color: #c48959;
-  font-size: 11px;
+  font-size: 13px;
 }
 .product-analytics-note {
   display: flex;
@@ -968,7 +968,7 @@ defineExpose({ refresh });
   border-radius: 10px;
   background: #fbf3e6;
   color: #b19676;
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.8;
 }
 .product-analytics-note svg {
@@ -979,7 +979,7 @@ defineExpose({ refresh });
   padding: 45px 10px;
   text-align: center;
   color: #bba383;
-  font-size: 11px;
+  font-size: 13px;
 }
 .product-display-form {
   display: flex;
@@ -991,13 +991,13 @@ defineExpose({ refresh });
   width: 190px;
   height: 78px;
   border-radius: 11px;
-  border: 1px dashed #e7d4bd;
+  border: 0;
   background: #fff7ea;
   display: grid;
   place-items: center;
   overflow: hidden;
   color: #b59a7a;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .product-display-preview img {
   width: 100%;
@@ -1006,18 +1006,18 @@ defineExpose({ refresh });
 }
 .product-display-form label {
   margin: 0;
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #ad9273;
 }
 .product-display-form input {
   display: block;
   margin-top: 8px;
-  font-size: 10px;
+  font-size: 12.5px;
   width: 220px;
 }
 .product-display-clear {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #ba8657;
 }
 .product-analytics-trend {
@@ -1026,7 +1026,7 @@ defineExpose({ refresh });
   padding-top: 18px;
 }
 .product-analytics-trend h3 {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #95704e;
   margin-bottom: 10px;
 }
@@ -1044,7 +1044,7 @@ defineExpose({ refresh });
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 25px 27px 20px;
+  padding: 18px 20px;
 }
 .product-library-heading > div {
   display: flex;
@@ -1057,7 +1057,7 @@ defineExpose({ refresh });
 }
 .product-library-heading span {
   color: #b29479;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .product-admin button {
   display: inline-flex;
@@ -1092,7 +1092,7 @@ defineExpose({ refresh });
   min-width: 0;
   padding: 11px 0;
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .product-filters select {
   flex: 0 0 140px;
@@ -1101,7 +1101,7 @@ defineExpose({ refresh });
   border: 1px solid #eadfd4;
   border-radius: 10px;
   padding: 9px 12px;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #86654b;
   background: #fffdf9;
 }
@@ -1116,13 +1116,13 @@ defineExpose({ refresh });
 .product-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13.5px;
   text-align: left;
 }
 .product-table th {
   background: #fcf8f2;
   color: #b49a84;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   padding: 13px 18px;
   white-space: nowrap;
@@ -1152,7 +1152,7 @@ defineExpose({ refresh });
   overflow: hidden;
   max-width: 260px;
   line-height: 1.6;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #795539;
 }
 .product-cell small,
@@ -1160,7 +1160,7 @@ defineExpose({ refresh });
   display: block;
   margin-top: 5px;
   color: #b39a83;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .product-coins {
   display: flex;
@@ -1172,7 +1172,7 @@ defineExpose({ refresh });
 }
 .product-dates {
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 13px;
 }
 .product-remaining {
   white-space: nowrap;
@@ -1189,7 +1189,7 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 13px;
   color: #b8875e;
 }
 .product-doc-links a:hover {
@@ -1200,7 +1200,7 @@ defineExpose({ refresh });
   border-radius: 6px;
   color: #a38d78;
   background: #f5f0eb;
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 .product-status.active {
@@ -1217,7 +1217,7 @@ defineExpose({ refresh });
   white-space: nowrap;
 }
 .product-row-actions button {
-  font-size: 11px;
+  font-size: 13px;
   color: #ba8053;
 }
 .product-empty {
@@ -1233,13 +1233,13 @@ defineExpose({ refresh });
   margin-bottom: 12px;
 }
 .product-empty b {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 .product-empty span {
   margin-top: 9px;
   color: #bea68f;
-  font-size: 11px;
+  font-size: 13px;
 }
 .product-pagination {
   display: flex;
@@ -1248,7 +1248,7 @@ defineExpose({ refresh });
   padding: 15px 24px;
   border-top: 1px solid #f1e8df;
   color: #b1967f;
-  font-size: 11px;
+  font-size: 13px;
 }
 .product-pagination > div {
   display: flex;
@@ -1264,7 +1264,7 @@ defineExpose({ refresh });
   margin-top: 22px;
 }
 .product-settings-grid > section {
-  padding: 25px 27px;
+  padding: 18px 20px;
 }
 .product-settings-grid h2 {
   display: flex;
@@ -1279,7 +1279,7 @@ defineExpose({ refresh });
   gap: 17px;
 }
 .product-config label {
-  font-size: 11px;
+  font-size: 13px;
   color: #9c7d62;
   position: relative;
   flex: 1;
@@ -1320,23 +1320,23 @@ defineExpose({ refresh });
   background: #fffdf9;
 }
 .product-key > button {
-  font-size: 11px;
+  font-size: 13px;
   color: #a07c5b;
   flex-shrink: 0;
 }
 .product-key-confirm {
-  border: 1px solid #f2cfb4;
+  border: 0;
   border-radius: 10px;
   padding: 14px;
   background: #fff8ee;
 }
 .product-key-confirm b {
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .product-key-confirm span {
   display: block;
   margin: 6px 0 13px;
-  font-size: 11px;
+  font-size: 13px;
   color: #b38b68;
 }
 .product-key-confirm > div {
@@ -1355,7 +1355,7 @@ defineExpose({ refresh });
   justify-content: space-between;
   cursor: pointer;
   color: #ac8b6c;
-  font-size: 11px;
+  font-size: 13px;
 }
 .product-example pre {
   overflow-x: auto;
@@ -1368,7 +1368,7 @@ defineExpose({ refresh });
 }
 .product-example button {
   color: #b78b62;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .product-notice {
   display: flex;
@@ -1377,10 +1377,10 @@ defineExpose({ refresh });
   padding: 12px 15px;
   margin-bottom: 16px;
   background: #edf7ed;
-  border: 1px solid #dbead7;
+  border: 0;
   border-radius: 10px;
   color: #73926c;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .product-editor-backdrop {
   position: fixed;
@@ -1398,7 +1398,7 @@ defineExpose({ refresh });
   overflow-y: auto;
   background: #fffdf9;
   box-shadow: -10px 0 50px #5f37151a;
-  padding: 26px 29px;
+  padding: 18px 20px;
 }
 .product-editor header {
   display: flex;
@@ -1416,7 +1416,7 @@ defineExpose({ refresh });
 .product-form-grid label {
   display: block;
   margin-bottom: 17px;
-  font-size: 11px;
+  font-size: 13px;
   color: #a08063;
 }
 .product-editor label > input:not([type="checkbox"]) {
@@ -1428,7 +1428,7 @@ defineExpose({ refresh });
   background: #fff;
   color: #755239;
   padding: 11px 12px;
-  font-size: 12px;
+  font-size: 13.5px;
   outline: none;
 }
 .product-editor input:focus {
@@ -1444,7 +1444,7 @@ defineExpose({ refresh });
   gap: 18px;
   align-items: center;
   padding: 17px;
-  border: 1px dashed #e8cdb1;
+  border: 0;
   border-radius: 13px;
   background: #fff8ee;
   margin-bottom: 23px;
@@ -1460,19 +1460,19 @@ defineExpose({ refresh });
 }
 .product-image-edit b {
   display: block;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #9a704c;
 }
 .product-image-edit span {
   display: block;
   color: #b89a7e;
-  font-size: 10px;
+  font-size: 12.5px;
   margin: 7px 0 12px;
 }
 .product-image-edit input {
   max-width: 100%;
   width: 240px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #aa8664;
 }
 .product-enabled {
@@ -1555,7 +1555,7 @@ defineExpose({ refresh });
   .product-library-heading span {
     display: block;
     margin-top: 6px;
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .product-filters {
     padding: 0 15px 16px;
@@ -1586,7 +1586,7 @@ defineExpose({ refresh });
   }
   .product-editor input[type="datetime-local"] {
     padding: 10px 5px;
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .product-pagination {
     padding: 15px;

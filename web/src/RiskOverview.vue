@@ -59,7 +59,7 @@ defineProps({ risk: Object });
   grid-column: 1 / -1;
   display: flex;
   gap: 15px;
-  font-size: 9px;
+  font-size: 12px;
   color: #b59c76;
   margin-top: 4px;
 }
@@ -69,7 +69,7 @@ defineProps({ risk: Object });
 }
 .risk-factor-hits summary {
   cursor: pointer;
-  font-size: 9px;
+  font-size: 12px;
   color: #b79a70;
 }
 .risk-factor-hits pre {
@@ -84,7 +84,7 @@ defineProps({ risk: Object });
   color: #a98d64;
 }
 .risk-overview {
-  border: 1px solid #ecd7bc;
+  border: 0;
   background: #fff7e8;
   border-radius: 12px;
   padding: 20px;
@@ -96,12 +96,12 @@ defineProps({ risk: Object });
   color: #b39772;
 }
 .risk-overview h3 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #9c7649;
 }
 .risk-overview header > span {
-  font-size: 11px;
+  font-size: 13px;
   cursor: help;
 }
 .risk-overview-score {
@@ -116,12 +116,12 @@ defineProps({ risk: Object });
   font-weight: 600;
 }
 .risk-overview-score small {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #bd9b72;
 }
 .risk-overview-score > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b29572;
   padding: 5px 8px;
   background: #f7ecd7;
@@ -134,12 +134,12 @@ defineProps({ risk: Object });
 }
 .risk-overview-parts span {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #ba9d77;
   margin-bottom: 7px;
 }
 .risk-overview-parts b {
-  font-size: 11px;
+  font-size: 13px;
   color: #ac885c;
   font-weight: 500;
 }
@@ -155,20 +155,20 @@ defineProps({ risk: Object });
   margin: 12px 0;
 }
 .risk-overview-factors b {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 500;
   color: #ab8658;
 }
 .risk-overview-factors span {
-  font-size: 8px;
+  font-size: 11px;
   color: #bca17c;
   grid-column: 1;
 }
 .risk-overview-factors small {
-  font-size: 8px;
+  font-size: 11px;
 }
 .risk-overview-factors strong {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 500;
   color: #bc915c;
   grid-column: 2;
@@ -182,7 +182,7 @@ defineProps({ risk: Object });
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 8px;
+  font-size: 11px;
   color: #bfa584;
 }
 </style>

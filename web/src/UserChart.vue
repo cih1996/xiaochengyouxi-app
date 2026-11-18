@@ -176,7 +176,7 @@ const number = (value) => Number(value).toLocaleString("zh-CN");
   font-weight: 600;
 }
 .user-chart header > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b59a81;
   display: flex;
   gap: 10px;
@@ -184,7 +184,7 @@ const number = (value) => Number(value).toLocaleString("zh-CN");
   white-space: nowrap;
 }
 .user-chart header b {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
 }
 .user-chart svg {
@@ -199,7 +199,7 @@ const number = (value) => Number(value).toLocaleString("zh-CN");
 }
 .chart-tick {
   fill: #baa28b;
-  font-size: 10px;
+  font-size: 12.5px;
   font-family: inherit;
 }
 .chart-bar {
@@ -236,7 +236,7 @@ const number = (value) => Number(value).toLocaleString("zh-CN");
   flex-direction: column;
   gap: 16px;
   color: #b69c83;
-  font-size: 11px;
+  font-size: 13px;
 }
 .user-chart-empty > span {
   width: 46px;
@@ -262,10 +262,10 @@ const number = (value) => Number(value).toLocaleString("zh-CN");
     margin-bottom: 12px;
   }
   .user-chart h2 {
-    font-size: 13px;
+    font-size: 14px;
   }
   .user-chart header > span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .user-chart-empty {
     height: 180px;

@@ -15,6 +15,7 @@ const formats = [
   { id: "rewarded", label: "激励视频", hint: "大厅红包、红包雨大奖" },
   { id: "feed", label: "信息流", hint: "大厅消息流里的广告卡片" },
 ];
+const COLORS = { csj: "#f65331", kuaishou: "#f2a51a", baidu: "#3b7bd8", gdt: "#2e9e62" };
 const ids = computed(() => (cfg.value?.network_labels || []).map((n) => n.id));
 const labels = computed(() =>
   Object.fromEntries((cfg.value?.network_labels || []).map((n) => [n.id, n.label])),
@@ -63,22 +64,34 @@ async function save() {
     saving.value = false;
   }
 }
-// Share of first attempts each network gets under the current sliders (only usable networks count).
+const hasSecret = (id) => !!cfg.value.secret_source[id] || !!secrets.value[id];
+// A network takes part in a format only when it is on, configured, and (rewarded) can verify callbacks.
 function usable(id, format) {
   const n = cfg.value.networks[id];
   const code = format === "feed" ? n.feed : n.rewarded;
   if (!n.enabled || !n.app_id || !code) return false;
-  if (format === "rewarded" && !cfg.value.secret_source[id] && !secrets.value[id]) return false;
+  if (format === "rewarded" && !hasSecret(id)) return false;
   return true;
+}
+function reason(id, format) {
+  const n = cfg.value.networks[id];
+  if (!n.enabled) return "未开启";
+  if (!n.app_id) return "缺 AppID";
+  if (!(format === "feed" ? n.feed : n.rewarded)) return "缺代码位";
+  if (format === "rewarded" && !hasSecret(id)) return "缺回调密钥";
+  return "";
 }
 function share(format, id) {
   const rule = cfg.value[format];
   if (!usable(id, format)) return 0;
-  const total = Object.keys(cfg.value.networks)
+  const total = ids.value
     .filter((n) => usable(n, format))
     .reduce((sum, n) => sum + (rule.weights[n] || 0), 0);
   return total ? Math.round(((rule.weights[id] || 0) * 1000) / total) / 10 : 0;
 }
+const readyCount = computed(() =>
+  cfg.value ? ids.value.filter((id) => usable(id, "rewarded") || usable(id, "feed")).length : 0,
+);
 function move(format, index, step) {
   const order = cfg.value[format].order;
   const target = index + step;
@@ -95,63 +108,73 @@ async function copy(id, text) {
   }
 }
 const secretLabel = (id) =>
-  ({ admin: "已在后台设置", env: "使用服务器环境变量" })[cfg.value.secret_source[id]] || "未设置";
+  ({ admin: "已设置", env: "服务器环境变量" })[cfg.value.secret_source[id]] || "未设置";
 onMounted(refresh);
 onUnmounted(() => controller.abort());
 defineExpose({ refresh });
 </script>
 
 <template>
-  <section class="admin-card ad-admin">
+  <div class="ad-page">
     <div v-if="error" class="form-error" role="alert">{{ error }}</div>
     <div v-if="notice" class="ad-notice"><Icon name="check" :size="15" />{{ notice }}</div>
-    <p v-if="!cfg && !error" class="ad-muted">正在读取广告配置…</p>
+    <section v-if="!cfg && !error" class="admin-card ad-card"><p class="ad-muted">正在读取广告配置…</p></section>
+
     <form v-if="cfg" @submit.prevent="save">
-      <header class="ad-head">
-        <div>
-                    <p>
-            每次拉广告前，App 先向服务器要“本次可以试哪几家”。按下面的比例选第一家，没填充时依次换下一家。
-            改完保存即生效，不用发新版。
-          </p>
+      <section class="admin-card ad-card">
+        <header class="ad-card-head">
+          <div>
+            <h2>投放总控</h2>
+            <p>每次拉广告前 App 先向服务器要“本次可以试哪几家”，按下方比例选首选，没填充时依次换下一家。保存即生效，不用发新版。</p>
+          </div>
+          <div class="ad-summary">
+            <span><b>{{ readyCount }}</b> / {{ ids.length }} 家已就绪</span>
+            <span :class="cfg.ad_mode === 'csj' ? 'ok' : 'warn'">{{ cfg.ad_mode === "csj" ? "正式广告模式" : "演示模式" }}</span>
+          </div>
+        </header>
+        <div class="ad-toggles">
+          <div class="ad-toggle-row">
+            <div>
+              <b>广告总开关</b>
+              <p>关闭后所有用户都拿不到广告，红包视频和信息流都会暂停。</p>
+            </div>
+            <label class="ad-switch"><input v-model="cfg.enabled" type="checkbox" aria-label="广告总开关" /><span></span></label>
+          </div>
+          <div class="ad-toggle-row">
+            <div>
+              <b>命中风控不返回广告</b>
+              <p>账户被限制，或近期设备核验结果为“复核/拒绝”时，按“暂无广告”处理；用户端只看到普通的无广告提示，金币不变。</p>
+            </div>
+            <div class="ad-toggle-side">
+              <label v-if="cfg.risk_block" class="ad-window">
+                近 <input v-model.number="cfg.risk_window_hours" type="number" min="1" max="720" aria-label="风控判断时间范围（小时）" /> 小时
+              </label>
+              <label class="ad-switch"><input v-model="cfg.risk_block" type="checkbox" aria-label="命中风控不返回广告" /><span></span></label>
+            </div>
+          </div>
         </div>
-      </header>
+        <p v-if="cfg.ad_mode !== 'csj'" class="ad-warn">
+          当前服务器是演示模式（ORANGE_AD_MODE={{ cfg.ad_mode }}），平台回调不会入账。
+        </p>
+      </section>
 
-      <div class="ad-switches">
-        <label class="ad-switch">
-          <input v-model="cfg.enabled" type="checkbox" />
-          <span><b>广告总开关</b><small>关闭后所有用户都拿不到广告（红包和信息流都会暂停）</small></span>
-        </label>
-        <label class="ad-switch">
-          <input v-model="cfg.risk_block" type="checkbox" />
-          <span>
-            <b>命中风控不返回广告</b>
-            <small>账户被限制、或近期设备风控为“复核/拒绝”时，直接按“暂无广告”处理；用户端没有任何提示，金币不变。</small>
-          </span>
-        </label>
-        <label v-if="cfg.risk_block" class="ad-inline">
-          风控判断时间范围
-          <input v-model.number="cfg.risk_window_hours" type="number" min="1" max="720" />
-          小时内
-        </label>
+      <div class="ad-section-title">
+        <h3>广告平台</h3>
+        <p>激励视频必须填回调密钥才会被分配（金币只在平台服务器回调验签通过后到账）。修改 AppID 后，用户重新打开 App 才会生效。</p>
       </div>
-      <p v-if="cfg.ad_mode !== 'csj'" class="ad-warn">
-        当前服务器是演示广告模式（ORANGE_AD_MODE={{ cfg.ad_mode }}），平台回调不会入账。
-      </p>
-
-      <h3>广告平台</h3>
       <div class="ad-networks">
-        <article v-for="id in ids" :key="id" class="ad-net" :class="{ off: !cfg.networks[id].enabled }">
-          <header>
-            <label class="ad-switch compact">
-              <input v-model="cfg.networks[id].enabled" type="checkbox" />
+        <section v-for="id in ids" :key="id" class="admin-card ad-card ad-net" :class="{ off: !cfg.networks[id].enabled }">
+          <header class="ad-net-head">
+            <div class="ad-net-name">
+              <i :style="{ background: COLORS[id] }"></i>
               <b>{{ labels[id] }}</b>
-            </label>
-            <span class="ad-tag" :class="cfg.secret_source[id] ? 'ok' : ''">回调密钥：{{ secretLabel(id) }}</span>
+              <span class="chip" :class="usable(id, 'rewarded') ? 'ok' : ''">激励视频{{ usable(id, "rewarded") ? "就绪" : "：" + reason(id, "rewarded") }}</span>
+              <span class="chip" :class="usable(id, 'feed') ? 'ok' : ''">信息流{{ usable(id, "feed") ? "就绪" : "：" + reason(id, "feed") }}</span>
+            </div>
+            <label class="ad-switch"><input v-model="cfg.networks[id].enabled" type="checkbox" :aria-label="`开启${labels[id]}`" /><span></span></label>
           </header>
           <div class="ad-fields">
             <label>AppID<input v-model="cfg.networks[id].app_id" maxlength="32" placeholder="平台后台的应用 ID" /></label>
-            <label>激励视频代码位<input v-model="cfg.networks[id].rewarded" maxlength="32" placeholder="不填则不参与激励视频" /></label>
-            <label>信息流代码位<input v-model="cfg.networks[id].feed" maxlength="32" placeholder="模板信息流，不填则不参与" /></label>
             <label>
               回调密钥
               <input
@@ -159,121 +182,189 @@ defineExpose({ refresh });
                 type="password"
                 autocomplete="new-password"
                 maxlength="128"
-                :placeholder="cfg.secret_source[id] ? '已设置，留空保持不变' : '平台生成的安全密钥'"
+                :placeholder="cfg.secret_source[id] ? `${secretLabel(id)}，留空保持不变` : '平台生成的安全密钥'"
               />
             </label>
+            <label>激励视频代码位<input v-model="cfg.networks[id].rewarded" maxlength="32" placeholder="不填则不参与激励视频" /></label>
+            <label>信息流代码位<input v-model="cfg.networks[id].feed" maxlength="32" placeholder="模板信息流，不填则不参与" /></label>
           </div>
           <div class="ad-callback">
             <div class="ad-callback-head">
               <b>服务器回调地址</b>
-              <button type="button" class="outline small" @click="copy(id, cfg.callbacks[id].url)">
-                <Icon :name="copied === id ? 'check' : 'list'" :size="13" />{{ copied === id ? "已复制" : "复制" }}
+              <button type="button" class="ad-copy" @click="copy(id, cfg.callbacks[id].url)">
+                <Icon :name="copied === id ? 'check' : 'list'" :size="13" />{{ copied === id ? "已复制" : "复制地址" }}
               </button>
             </div>
             <code>{{ cfg.callbacks[id].url }}</code>
             <p>{{ cfg.callbacks[id].how }}</p>
           </div>
           <label v-if="cfg.secret_source[id] === 'admin'" class="ad-clear">
-            <input v-model="clear" type="checkbox" :value="id" />清除后台保存的回调密钥
+            <input v-model="clear" type="checkbox" :value="id" />保存时清除后台保存的回调密钥
           </label>
-        </article>
+        </section>
       </div>
-      <p class="ad-muted">
-        激励视频必须配置回调密钥，否则该平台不会被分配（金币只在平台服务器回调验签通过后到账）。修改 AppID 后，用户需要重新打开 App 才会用新的 AppID 初始化。
-      </p>
 
-      <h3>流量分配</h3>
+      <div class="ad-section-title">
+        <h3>流量分配</h3>
+        <p>按概率：右侧百分比是“首选该平台”的实际概率，权重 0 的平台不参与，首选没填充时按权重从高到低换下一家。按顺序：始终从第一家开始依次尝试。</p>
+      </div>
       <div class="ad-rules">
-        <article v-for="f in formats" :key="f.id" class="ad-rule">
-          <header>
+        <section v-for="f in formats" :key="f.id" class="admin-card ad-card">
+          <header class="ad-rule-head">
             <div><b>{{ f.label }}</b><small>{{ f.hint }}</small></div>
-            <div class="ad-mode" role="radiogroup" :aria-label="`${f.label}分配方式`">
-              <label><input v-model="cfg[f.id].mode" type="radio" value="weighted" />按概率</label>
-              <label><input v-model="cfg[f.id].mode" type="radio" value="ordered" />按顺序</label>
+            <div class="ad-seg" role="radiogroup" :aria-label="`${f.label}分配方式`">
+              <button type="button" role="radio" :aria-checked="cfg[f.id].mode === 'weighted'" :class="{ on: cfg[f.id].mode === 'weighted' }" @click="cfg[f.id].mode = 'weighted'">按概率</button>
+              <button type="button" role="radio" :aria-checked="cfg[f.id].mode === 'ordered'" :class="{ on: cfg[f.id].mode === 'ordered' }" @click="cfg[f.id].mode = 'ordered'">按顺序</button>
             </div>
           </header>
-          <template v-if="cfg[f.id].mode === 'weighted'">
+          <div v-if="cfg[f.id].mode === 'weighted'" class="ad-sliders">
             <div v-for="id in ids" :key="id" class="ad-slider" :class="{ dim: !usable(id, f.id) }">
-              <span>{{ labels[id] }}</span>
-              <input v-model.number="cfg[f.id].weights[id]" type="range" min="0" max="100" step="5" :aria-label="`${labels[id]} ${f.label}权重`" />
+              <span class="ad-slider-name"><i :style="{ background: COLORS[id] }"></i>{{ labels[id] }}</span>
+              <input
+                v-model.number="cfg[f.id].weights[id]"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                :style="{ '--fill': `${cfg[f.id].weights[id] || 0}%`, '--tint': COLORS[id] }"
+                :aria-label="`${labels[id]} ${f.label}权重`"
+              />
               <output>{{ cfg[f.id].weights[id] || 0 }}</output>
-              <em>{{ usable(id, f.id) ? `${share(f.id, id)}%` : "未就绪" }}</em>
+              <em>{{ usable(id, f.id) ? `${share(f.id, id)}%` : reason(id, f.id) }}</em>
             </div>
-            <p class="ad-muted">右侧百分比是“首选该平台”的实际概率；权重为 0 的平台不参与。首选没填充时按权重从高到低换下一家。</p>
-          </template>
+            <div class="ad-share-bar" aria-hidden="true">
+              <i v-for="id in ids" v-show="share(f.id, id) > 0" :key="id" :style="{ width: `${share(f.id, id)}%`, background: COLORS[id] }"></i>
+            </div>
+          </div>
           <ol v-else class="ad-order">
             <li v-for="(id, index) in cfg[f.id].order" :key="id" :class="{ dim: !usable(id, f.id) }">
-              <span>{{ index + 1 }}. {{ labels[id] }}<small v-if="!usable(id, f.id)">（未就绪，跳过）</small></span>
-              <span>
-                <button type="button" class="outline small" :disabled="index === 0" @click="move(f.id, index, -1)">上移</button>
-                <button type="button" class="outline small" :disabled="index === cfg[f.id].order.length - 1" @click="move(f.id, index, 1)">下移</button>
+              <span class="ad-slider-name">
+                <em>{{ index + 1 }}</em><i :style="{ background: COLORS[id] }"></i>{{ labels[id] }}
+                <small v-if="!usable(id, f.id)">（{{ reason(id, f.id) }}，跳过）</small>
+              </span>
+              <span class="ad-order-btns">
+                <button type="button" :disabled="index === 0" :aria-label="`${labels[id]}上移`" @click="move(f.id, index, -1)">↑</button>
+                <button type="button" :disabled="index === cfg[f.id].order.length - 1" :aria-label="`${labels[id]}下移`" @click="move(f.id, index, 1)">↓</button>
               </span>
             </li>
           </ol>
-        </article>
+        </section>
       </div>
-      <button class="primary" :disabled="saving"><Icon name="check" :size="17" />保存广告配置</button>
+
+      <div class="ad-savebar">
+        <span>修改后点击保存，新的广告请求立即生效</span>
+        <button class="primary" :disabled="saving"><Icon name="check" :size="17" />{{ saving ? "保存中…" : "保存广告配置" }}</button>
+      </div>
     </form>
-  </section>
+  </div>
 </template>
 
 <style scoped>
-.ad-admin h2 { margin: 0 0 6px; }
-.ad-admin h3 { margin: 22px 0 10px; font-size: 15px; }
-.ad-head p, .ad-muted { color: #9a8274; font-size: 13px; line-height: 1.7; margin: 0; }
-.ad-notice { display: flex; gap: 6px; align-items: center; color: #2f8a4c; background: #eefaf1; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
-.ad-warn { background: #fff4e5; color: #a5520b; border-radius: 10px; padding: 10px 12px; font-size: 13px; }
-.ad-switches { display: grid; gap: 10px; margin: 16px 0 6px; }
-.ad-switch { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
-.ad-switch input { margin-top: 3px; }
-.ad-switch span { display: grid; gap: 2px; }
-.ad-switch small { color: #9a8274; font-size: 12px; line-height: 1.6; }
-.ad-switch.compact { align-items: center; }
-.ad-switch.compact input { margin: 0; }
-.ad-inline { display: flex; gap: 8px; align-items: center; font-size: 13px; color: #6d5547; padding-left: 26px; }
-.ad-inline input { width: 80px; }
-.ad-networks { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-.ad-net { border: 1px solid #f1e3d8; border-radius: 14px; padding: 14px; display: grid; gap: 12px; background: #fff; }
-.ad-net.off { background: #fcf9f6; }
-.ad-net > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.ad-tag { font-size: 12px; color: #a08779; background: #f7efe8; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
-.ad-tag.ok { color: #2f8a4c; background: #eefaf1; }
-.ad-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ad-fields label { display: grid; gap: 4px; font-size: 12px; color: #8a6f61; }
-.ad-callback { background: #fbf6f1; border-radius: 10px; padding: 10px; display: grid; gap: 6px; }
-.ad-callback-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
-.ad-callback code { font-size: 12px; word-break: break-all; color: #3d2b22; background: #fff; border-radius: 8px; padding: 8px; user-select: all; }
-.ad-callback p { margin: 0; font-size: 12px; color: #9a8274; line-height: 1.6; }
-.ad-clear { font-size: 12px; color: #b0533a; display: flex; gap: 6px; align-items: center; }
-.ad-rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; margin-bottom: 16px; }
-.ad-rule { border: 1px solid #f1e3d8; border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
-.ad-rule > header { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-.ad-rule > header > div:first-child { display: grid; gap: 2px; }
-.ad-rule small { color: #9a8274; font-size: 12px; }
-.ad-mode { display: flex; gap: 10px; font-size: 13px; }
-.ad-mode label { display: flex; gap: 4px; align-items: center; cursor: pointer; }
-.ad-slider { display: grid; grid-template-columns: 56px 1fr 34px 56px; gap: 8px; align-items: center; font-size: 13px; }
-.ad-slider input { accent-color: #f65331; width: 100%; }
-.ad-slider output { text-align: right; color: #6d5547; }
-.ad-slider em { font-style: normal; text-align: right; font-weight: 600; color: #f65331; }
-.ad-slider.dim em { color: #c4b2a6; font-weight: 400; }
-.ad-slider.dim span { color: #c4b2a6; }
-.ad-order { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.ad-order li { display: flex; justify-content: space-between; align-items: center; background: #fbf6f1; border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+.ad-card { padding: 18px 20px; margin-bottom: 12px; }
+.ad-card h2 { font-size: 17px; color: #6f4b33; margin: 0 0 6px; }
+.ad-card-head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 8px; }
+.ad-card-head p, .ad-muted { color: #9a8274; font-size: 14px; line-height: 1.75; margin: 0; max-width: 760px; }
+.ad-summary { display: flex; gap: 8px; flex-shrink: 0; }
+.ad-summary span { font-size: 13.5px; color: #8a6f61; background: #f7efe8; border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
+.ad-summary b { color: #f65331; font-size: 14px; }
+.ad-summary .ok { background: #eefaf1; color: #2f8a4c; }
+.ad-summary .warn { background: #fff4e5; color: #a5520b; }
+.ad-notice { display: flex; gap: 6px; align-items: center; color: #2f8a4c; background: #eefaf1; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 14px; }
+.ad-warn { background: #fff4e5; color: #a5520b; border-radius: 10px; padding: 10px 14px; font-size: 14px; margin: 14px 0 0; }
+
+.ad-toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; border-top: 1px solid #f2e8d9; padding: 18px 0; }
+.ad-toggle-row:last-child { padding-bottom: 4px; }
+.ad-toggle-row b { font-size: 14px; color: #6f4b33; }
+.ad-toggle-row p { font-size: 14px; color: #a8907f; margin: 6px 0 0; line-height: 1.65; max-width: 680px; }
+.ad-toggle-side { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+.ad-window { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #7d685c; margin: 0; font-weight: 400; white-space: nowrap; }
+.ad-window input { width: 72px; margin: 0; padding: 7px 10px; text-align: center; }
+
+.ad-switch { position: relative; display: block; width: 42px; height: 24px; flex-shrink: 0; margin: 0; }
+.ad-switch input { opacity: 0; width: 100%; height: 100%; position: absolute; inset: 0; margin: 0; padding: 0; cursor: pointer; }
+.ad-switch > span { pointer-events: none; display: block; height: 24px; border-radius: 30px; background: #dfd4c3; transition: background 0.2s; }
+.ad-switch > span::after { content: ""; position: absolute; height: 18px; width: 18px; top: 3px; left: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px #98714824; }
+.ad-switch input:checked + span { background: #ec985b; }
+.ad-switch input:checked + span::after { transform: translateX(18px); }
+.ad-switch input:focus-visible + span { outline: 2px solid #d18448; outline-offset: 3px; }
+
+.ad-section-title { display: flex; align-items: baseline; gap: 14px; margin: 6px 2px 8px; flex-wrap: wrap; }
+.ad-section-title h3 { font-size: 16px; color: #5d4030; margin: 0; }
+.ad-section-title p { font-size: 14px; color: #a8907f; margin: 0; line-height: 1.6; flex: 1; min-width: 280px; }
+
+.ad-networks, .ad-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.ad-net { display: grid; gap: 16px; align-content: start; }
+.ad-net.off { background: #fcf9f5; }
+.ad-net.off .ad-fields, .ad-net.off .ad-callback { opacity: 0.72; }
+.ad-net-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.ad-net-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.ad-net-name > i, .ad-slider-name i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+.ad-net-name b { font-size: 16px; color: #4f3627; margin-right: 4px; }
+.chip { font-size: 13px; color: #a08779; background: #f7efe8; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.chip.ok { color: #2f8a4c; background: #eefaf1; }
+.ad-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.ad-fields label { margin: 0; display: grid; gap: 6px; font-size: 13.5px; }
+.ad-fields input { margin: 0; padding: 10px 12px; font-size: 14px; border-radius: 10px; }
+.ad-callback { background: #fbf6f1; border: 0; border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+.ad-callback-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #6f4b33; }
+.ad-copy { display: inline-flex; gap: 5px; align-items: center; border: 1px solid #ecdccd; background: #fff; color: #b0623f; border-radius: 8px; padding: 4px 10px; font-size: 13.5px; cursor: pointer; }
+.ad-copy:hover { border-color: #ef916b; }
+.ad-callback code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; line-height: 1.6; word-break: break-all; color: #3d2b22; background: #fff; border-radius: 8px; padding: 9px 11px; user-select: all; }
+.ad-callback p { margin: 0; font-size: 13.5px; color: #9a8274; line-height: 1.65; }
+.ad-clear { display: flex; gap: 6px; align-items: center; margin: 0; font-size: 13.5px; color: #b0533a; font-weight: 400; }
+.ad-clear input { width: auto; margin: 0; padding: 0; }
+
+.ad-rule-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 18px; }
+.ad-rule-head > div:first-child { display: grid; gap: 3px; }
+.ad-rule-head b { font-size: 15px; color: #4f3627; }
+.ad-rule-head small { color: #a8907f; font-size: 13.5px; }
+.ad-seg { display: flex; background: #f7efe8; border-radius: 999px; padding: 3px; flex-shrink: 0; }
+.ad-seg button { border: 0; background: transparent; border-radius: 999px; padding: 6px 14px; font-size: 14px; color: #8a6f61; cursor: pointer; }
+.ad-seg button.on { background: #fff; color: #f65331; font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.ad-sliders { display: grid; gap: 14px; }
+.ad-slider { display: grid; grid-template-columns: 78px minmax(0, 1fr) 36px 92px; gap: 14px; align-items: center; font-size: 14px; }
+.ad-slider-name { display: flex; align-items: center; gap: 7px; color: #5d4030; }
+.ad-slider input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 6px; margin: 0; padding: 0; border: 0; border-radius: 3px; box-shadow: none;
+  background: linear-gradient(90deg, var(--tint) var(--fill), #efe5dc var(--fill));
+}
+.ad-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--tint); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); cursor: pointer; }
+.ad-slider input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--tint); cursor: pointer; }
+.ad-slider output { text-align: right; color: #7d685c; font-variant-numeric: tabular-nums; }
+.ad-slider em { font-style: normal; text-align: right; font-weight: 600; color: #4f3627; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ad-slider.dim .ad-slider-name, .ad-slider.dim output { color: #c4b2a6; }
+.ad-slider.dim em { color: #c4b2a6; font-weight: 400; font-size: 13.5px; }
+.ad-slider.dim input[type="range"] { filter: grayscale(0.85); opacity: 0.55; }
+.ad-share-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #f3e9df; gap: 2px; margin-top: 4px; }
+.ad-share-bar i { display: block; height: 100%; }
+.ad-order { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ad-order li { display: flex; justify-content: space-between; align-items: center; background: #fbf6f1; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+.ad-order li em { font-style: normal; width: 20px; height: 20px; border-radius: 50%; background: #fff; color: #b0623f; display: inline-grid; place-items: center; font-size: 13.5px; font-weight: 600; }
 .ad-order li.dim { color: #b9a497; }
-.ad-order li span:last-child { display: flex; gap: 6px; }
-button.small { padding: 4px 8px; font-size: 12px; display: inline-flex; gap: 4px; align-items: center; }
-@media (max-width: 560px) {
-  .ad-fields { grid-template-columns: 1fr; }
+.ad-order small { color: #b9a497; }
+.ad-order-btns { display: flex; gap: 6px; }
+.ad-order-btns button { width: 30px; height: 28px; border: 1px solid #ecdccd; background: #fff; border-radius: 8px; cursor: pointer; color: #8a6f61; }
+.ad-order-btns button:disabled { opacity: 0.35; cursor: default; }
+
+.ad-savebar {
+  position: sticky; bottom: 16px; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  background: #fffdfaf2; backdrop-filter: blur(6px); border: 1px solid #eee4d7; border-radius: 16px; padding: 12px 14px 12px 22px;
+  box-shadow: 0 8px 24px rgba(120, 80, 50, 0.08);
+}
+.ad-savebar span { font-size: 14px; color: #a8907f; }
+.ad-savebar .primary { width: auto; margin: 0; padding: 11px 22px; }
+
+@media (max-width: 1180px) {
   .ad-networks, .ad-rules { grid-template-columns: 1fr; }
 }
-/* Global form styles stretch inputs to full width; switches and sliders here stay compact. */
-.ad-admin label { margin-bottom: 0; }
-.ad-admin input[type="checkbox"],
-.ad-admin input[type="radio"] { width: auto; flex: none; margin: 3px 0 0; padding: 0; accent-color: #f65331; }
-.ad-admin input[type="range"] { padding: 0; margin: 0; border: 0; background: transparent; box-shadow: none; }
-.ad-fields input { margin-top: 0; padding: 9px 10px; font-size: 13px; }
-.ad-inline input { margin: 0; padding: 7px 10px; }
-.ad-switch b { white-space: nowrap; }
-.ad-mode input { margin: 0; }
+@media (max-width: 640px) {
+  .ad-card { padding: 18px 16px; }
+  .ad-card-head { flex-direction: column; }
+  .ad-toggle-row { align-items: flex-start; }
+  .ad-toggle-side { flex-direction: column-reverse; align-items: flex-end; gap: 10px; }
+  .ad-fields { grid-template-columns: 1fr; }
+  .ad-slider { grid-template-columns: 64px minmax(0, 1fr) 30px 70px; gap: 10px; }
+  .ad-savebar span { display: none; }
+  .ad-savebar .primary { width: 100%; justify-content: center; }
+}
 </style>

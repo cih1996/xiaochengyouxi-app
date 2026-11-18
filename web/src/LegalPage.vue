@@ -1,5 +1,63 @@
 <script setup>
+import { onMounted, nextTick } from "vue";
 defineProps({ type: String });
+// The app's “第三方 SDK 清单” entry opens /privacy#sdk.
+onMounted(async () => {
+  if (location.hash) {
+    await nextTick();
+    document.getElementById(location.hash.slice(1))?.scrollIntoView();
+  }
+});
+const sdks = [
+  {
+    name: "穿山甲广告 SDK",
+    company: "北京巨量引擎网络技术有限公司",
+    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
+    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态与运营商、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    link: "https://www.csjplatform.com/privacy/partner",
+    linkText: "穿山甲 SDK 隐私政策",
+  },
+  {
+    name: "快手广告 SDK（快手联盟）",
+    company: "北京快手广告有限公司",
+    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
+    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    link: "https://u.kuaishou.com/",
+    linkText: "快手联盟",
+  },
+  {
+    name: "百度广告 SDK（百青藤）",
+    company: "北京百度网讯科技有限公司",
+    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
+    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    link: "https://union.baidu.com/bqt/#/legal/policies",
+    linkText: "百度联盟隐私政策",
+  },
+  {
+    name: "优量汇广告 SDK",
+    company: "深圳市腾讯计算机系统有限公司",
+    purpose: "激励视频、信息流广告的展示、效果统计与反作弊",
+    data: "OAID（匿名设备标识符）、设备型号与品牌、系统版本、屏幕信息、网络状态、IP 地址、应用信息、广告展示与点击记录、崩溃与性能数据",
+    link: "https://e.qq.com/dev/help_detail.html?cid=2005&pid=5983",
+    linkText: "优量汇 SDK 隐私保护声明",
+  },
+  {
+    name: "知衡 DeviceTrust SDK",
+    company: "广西奇易电子商务有限公司（自研）",
+    purpose: "识别作弊工具、异常设备和批量注册，保护账户与奖励安全",
+    data: "ANDROID_ID、Widevine 设备标识的不可逆摘要（原值不上传）、设备品牌型号与系统信息、指定风险工具是否安装、无障碍服务状态、调试状态与本机端口、局域网内网地址/网关/DNS、应用版本与签名摘要",
+    link: "",
+    linkText: "见本政策“设备与安全核验”",
+  },
+  {
+    name: "腾讯云短信",
+    company: "腾讯云计算（北京）有限责任公司",
+    purpose: "发送注册、登录、找回密码验证码",
+    data: "手机号、验证码内容（仅在您获取验证码时）",
+    link: "",
+    linkText: "见腾讯云官网《隐私声明》",
+  },
+];
 </script>
 
 <template>
@@ -12,7 +70,8 @@ defineProps({ type: String });
     <main class="legal-document">
       <h1>{{ type === "privacy" ? "隐私政策" : "用户协议" }}</h1>
       <p class="legal-date">
-        更新日期：2026年11月12日 · 生效日期：2026年11月12日 · 版本：1.0
+        <template v-if="type === 'privacy'">更新日期：2026年11月18日 · 生效日期：2026年11月18日 · 版本：1.5</template>
+        <template v-else>更新日期：2026年11月12日 · 生效日期：2026年11月12日 · 版本：1.0</template>
       </p>
       <template v-if="type === 'privacy'">
         <p>
@@ -33,37 +92,32 @@ defineProps({ type: String });
           App
           进程结束后不恢复上次的大厅卡片。用于核对金币的奖励记录和账户明细另行保存在服务端。
         </p>
-        <h2>三、广告与第三方服务</h2>
+        <h2 id="sdk">三、广告与第三方 SDK</h2>
         <p>
-          Android App 的激励视频和信息流广告接入以下广告 SDK，每次请求由服务端按运营配置选择其中一家：
+          Android App 接入下列第三方 SDK。我们在您阅读并同意本政策后才初始化这些 SDK；您不同意时，App 不会初始化它们。
+          激励视频和信息流广告每次由服务端按运营配置选择其中一家广告 SDK 提供。
         </p>
-        <ul>
-          <li>
-            穿山甲广告 SDK，提供方为北京巨量引擎网络技术有限公司及其关联方，详见
-            <a href="https://www.csjplatform.com/privacy/partner" target="_blank" rel="noopener">穿山甲广告 SDK 隐私政策</a>；
-          </li>
-          <li>
-            快手广告 SDK（快手联盟），提供方为北京快手广告有限公司及其关联方，详见
-            <a href="https://u.kuaishou.com/" target="_blank" rel="noopener">快手联盟</a>公布的 SDK 隐私政策；
-          </li>
-          <li>
-            百度广告 SDK（百青藤），提供方为北京百度网讯科技有限公司及其关联方，详见
-            <a href="https://union.baidu.com/bqt/#/legal/policies" target="_blank" rel="noopener">百度联盟隐私政策</a>；
-          </li>
-          <li>
-            优量汇广告 SDK，提供方为深圳市腾讯计算机系统有限公司及其关联方，详见
-            <a href="https://e.qq.com/dev/help_detail.html?cid=2005&pid=5983" target="_blank" rel="noopener">优量汇 SDK 隐私保护声明</a>。
-          </li>
-        </ul>
+        <div class="sdk-table-wrap">
+          <table class="sdk-table">
+            <thead><tr><th>SDK 名称</th><th>提供方</th><th>使用目的</th><th>收集的个人信息</th><th>隐私政策</th></tr></thead>
+            <tbody>
+              <tr v-for="sdk in sdks" :key="sdk.name">
+                <td><b>{{ sdk.name }}</b></td>
+                <td>{{ sdk.company }}</td>
+                <td>{{ sdk.purpose }}</td>
+                <td>{{ sdk.data }}</td>
+                <td><a v-if="sdk.link" :href="sdk.link" target="_blank" rel="noopener">{{ sdk.linkText }}</a><span v-else>{{ sdk.linkText }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <p>
-          SDK 用于展示广告、统计广告效果和防止作弊，可能处理设备型号、系统与屏幕信息、设备标识（如 OAID）、网络状态、IP
-          地址、应用信息、广告展示点击记录及崩溃性能数据，具体以接入版本和授权配置为准。当前 Android
-          版本已通过各 SDK 的隐私配置关闭定位、应用安装列表、电话状态、Wi-Fi 详情、MAC
-          地址、麦克风及传感器等可选读取，不申请电话、定位等敏感权限，并关闭个性化广告。观看激励视频时，我们会把您的账号编号和本次奖励编号传给提供该广告的平台，平台在您看完后回传给我们核对奖励。SDK
-          在您同意 App 隐私政策后初始化。您可以在手机系统设置中管理已授予的权限，也可以停止使用相关广告功能。
+          <b>关于 OAID：</b>OAID（开放匿名设备标识符）是手机系统提供的、可由您重置的匿名设备标识，不能直接识别您的身份。上述四家广告 SDK
+          会读取 OAID，用于广告投放与频次控制、广告效果统计以及识别虚假点击等作弊行为。您可以在手机“设置 → 隐私 → 广告与隐私”（不同品牌名称略有差异）中重置或限制 OAID。
         </p>
         <p>
-          获取短信验证码时，我们通过腾讯云短信服务（腾讯云计算（北京）有限责任公司）向您的手机号发送验证码。
+          我们已通过各广告 SDK 的隐私配置关闭定位、应用安装列表、电话状态、Wi-Fi 详情、MAC
+          地址、麦克风及传感器等可选读取，不申请电话、定位等敏感权限，并关闭个性化广告。观看激励视频时，我们会把您的账号编号和本次奖励编号传给提供该广告的平台，平台在您看完后回传给我们核对奖励。您可以在手机系统设置中管理已授予的权限，也可以停止使用相关广告功能。
         </p>
         <p>
           网页不加载 Android 广告 SDK。广告领取功能按页面和 App
@@ -179,3 +233,10 @@ defineProps({ type: String });
     </main>
   </div>
 </template>
+
+<style scoped>
+.sdk-table-wrap { overflow-x: auto; margin: 12px 0; }
+.sdk-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6; min-width: 640px; }
+.sdk-table th, .sdk-table td { border: 1px solid #eadfd5; padding: 8px 10px; text-align: left; vertical-align: top; }
+.sdk-table th { background: #fff4ea; color: #7d4c35; white-space: nowrap; }
+</style>

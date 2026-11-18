@@ -42,14 +42,12 @@ const groups = [
       },
     ],
   },
-  {
-    title: "核查分数",
-    fields: [
-      { key: "review_score", label: "待核查分数", min: 0, max: 100 },
-      { key: "hold_score", label: "暂缓分数", min: 0, max: 100 },
-    ],
-  },
 ];
+const synced = () => policy.value?.score_source?.source === "DeviceTrust";
+const syncedAt = () =>
+  policy.value?.score_source?.synced_at
+    ? new Date(policy.value.score_source.synced_at).toLocaleString("zh-CN", { hour12: false })
+    : "";
 const weights = [
   { key: "click_frequency", label: "点击密集" },
   { key: "regular_intervals", label: "间隔规律" },
@@ -109,12 +107,12 @@ defineExpose({ refresh });
       <div class="behavior-policy-mode">
         <label
           >处置方式<select v-model="policy.mode" aria-label="行为处置方式">
-            <option value="observe">观察</option>
-            <option value="review">待核查</option>
-            <option value="hold">暂缓</option>
+            <option value="observe">仅观察（只记录告警）</option>
+            <option value="review">待核查（达到复核线限制领取）</option>
+            <option value="hold">暂缓（达到限制线直接限制）</option>
           </select></label
         ><span
-          title="证据达到阈值后按所选方式处理，样本不足时保持待评估。"
+          title="行为分数达到下方同步的复核线/限制线后按所选方式处理，样本不足时保持待评估。人工放行的账号和审核账号不会被自动限制。"
           tabindex="0"
           >ⓘ</span
         >
@@ -154,6 +152,27 @@ defineExpose({ refresh });
           /></label>
         </div>
       </section>
+      <section class="behavior-policy-group behavior-score-sync">
+        <h3>风险分级线 <small>同步自 DeviceTrust，无需在这里设置</small></h3>
+        <div class="behavior-score-lines">
+          <div>
+            <span>复核线</span>
+            <b>{{ policy.review_score }}<small> 分</small></b>
+            <em>行为分数达到即标“中风险”；“待核查”模式下限制领取、不出广告</em>
+          </div>
+          <div>
+            <span>限制线</span>
+            <b>{{ policy.hold_score }}<small> 分</small></b>
+            <em>达到即标“高风险”；“暂缓”模式下直接限制账号</em>
+          </div>
+        </div>
+        <p v-if="synced()" class="behavior-score-note">
+          与设备核验使用同一套分数线，跟随 DeviceTrust 平台策略自动更新（最近同步 {{ syncedAt() }}）。如需调整，请在 DeviceTrust 平台修改。
+        </p>
+        <p v-else class="behavior-score-note warn">
+          暂未取得 DeviceTrust 核验结果，先使用默认分数线；有用户完成设备核验后自动同步平台设置。
+        </p>
+      </section>
       <footer>
         <button class="primary" :disabled="saving">
           <Icon name="check" :size="15" />{{ saving ? "保存中…" : "保存策略" }}
@@ -165,8 +184,8 @@ defineExpose({ refresh });
 </template>
 <style scoped>
 .behavior-policy {
-  padding: 25px 28px;
-  max-width: 1050px;
+  padding: 18px 20px;
+  max-width: none;
 }
 .behavior-policy form > header {
   display: flex;
@@ -190,7 +209,7 @@ defineExpose({ refresh });
   accent-color: #dda167;
 }
 .behavior-policy header > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #baa180;
 }
 .behavior-policy-mode {
@@ -204,19 +223,19 @@ defineExpose({ refresh });
   align-items: center;
   gap: 13px;
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #b09676;
   font-weight: 400;
 }
 .behavior-policy-mode select {
-  width: 136px;
+  width: 260px;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 13px;
   margin: 0;
 }
 .behavior-policy-mode > span {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #baa482;
   cursor: help;
 }
@@ -225,7 +244,7 @@ defineExpose({ refresh });
   padding: 23px 0 5px;
 }
 .behavior-policy-group h3 {
-  font-size: 13px;
+  font-size: 14px;
   color: #9a754d;
   margin-bottom: 20px;
   font-weight: 600;
@@ -236,13 +255,13 @@ defineExpose({ refresh });
   gap: 0 23px;
 }
 .behavior-policy-group label {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b09677;
   font-weight: 400;
   margin-bottom: 20px;
 }
 .behavior-policy-group input {
-  font-size: 12px;
+  font-size: 13.5px;
   padding: 10px 12px;
   margin-top: 8px;
   border-radius: 9px;
@@ -256,7 +275,7 @@ defineExpose({ refresh });
   justify-content: flex-end;
 }
 .behavior-policy footer .primary {
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 9px;
   padding: 11px 17px;
 }
@@ -265,17 +284,17 @@ defineExpose({ refresh });
   align-items: center;
   gap: 7px;
   background: #edf5e8;
-  border: 1px solid #d9e8cf;
+  border: 0;
   color: #91a27b;
   padding: 12px;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 13px;
   margin-bottom: 18px;
 }
 .behavior-policy-loading {
   padding: 50px;
   text-align: center;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #baa184;
 }
 @media (max-width: 650px) {
@@ -287,14 +306,24 @@ defineExpose({ refresh });
     gap: 0 15px;
   }
   .behavior-policy-group label {
-    font-size: 9px;
+    font-size: 12px;
   }
   .behavior-policy-group input {
-    font-size: 11px;
+    font-size: 13px;
     padding: 10px;
   }
   .behavior-policy-enable {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
+.behavior-score-sync h3 small { font-size: 13.5px; font-weight: 400; color: #a8907f; margin-left: 8px; }
+.behavior-score-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.behavior-score-lines > div { display: grid; gap: 4px; background: #fbf6f1; border: 0; border-radius: 12px; padding: 12px 14px; }
+.behavior-score-lines span { font-size: 13.5px; color: #a8907f; }
+.behavior-score-lines b { font-size: 22px; color: #4f3627; font-variant-numeric: tabular-nums; }
+.behavior-score-lines b small { font-size: 13.5px; color: #a8907f; font-weight: 400; }
+.behavior-score-lines em { font-style: normal; font-size: 13.5px; color: #8a6f61; line-height: 1.6; }
+.behavior-score-note { margin: 10px 0 0; font-size: 14px; color: #8a6f61; line-height: 1.7; }
+.behavior-score-note.warn { color: #a5520b; }
+@media (max-width: 640px) { .behavior-score-lines { grid-template-columns: 1fr; } }
 </style>

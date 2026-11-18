@@ -121,7 +121,7 @@ defineExpose({ refresh });
 </script>
 
 <template>
-  <section class="admin-card ad-stats">
+  <div class="ad-stats">
     <div v-if="error" class="form-error" role="alert">{{ error }}</div>
     <header class="st-head">
       <div>
@@ -255,47 +255,47 @@ defineExpose({ refresh });
         <button type="button" class="outline" :disabled="detail.page * detail.page_size >= detail.total" @click="loadDetail(detail.page + 1).catch(fail)">下一页</button>
       </div>
     </article>
-  </section>
+  </div>
 </template>
 
 <style scoped>
 .ad-stats h2 { margin: 0 0 6px; }
-.st-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-.st-head p, .st-muted { color: #9a8274; font-size: 13px; line-height: 1.7; margin: 0; max-width: 720px; }
+.st-head { margin-bottom: 4px; display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.st-head p, .st-muted { color: #9a8274; font-size: 14px; line-height: 1.7; margin: 0; max-width: 720px; }
 .st-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-.st-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
-.st-tile { border: 1px solid #f1e3d8; border-radius: 14px; padding: 12px; display: grid; gap: 4px; background: #fff; }
-.st-tile span { font-size: 12px; color: #9a8274; }
+.st-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 18px 0; }
+.st-tile { border: 0; border-radius: 16px; padding: 16px 18px; display: grid; gap: 4px; background: #fff; }
+.st-tile span { font-size: 13.5px; color: #9a8274; }
 .st-tile b { font-size: 22px; color: #3d2b22; font-variant-numeric: tabular-nums; }
-.st-tile small { font-size: 12px; color: #b49c8e; }
-.st-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 12px; }
-.st-card { border: 1px solid #f1e3d8; border-radius: 14px; padding: 14px; margin-bottom: 12px; background: #fff; min-width: 0; }
+.st-tile small { font-size: 13.5px; color: #b49c8e; }
+.st-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 0 12px; }
+.st-card { border: 0; border-radius: 17px; padding: 16px 18px; margin-bottom: 12px; background: #fffdfa; min-width: 0; }
 .st-card > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .st-sub { margin-top: 16px; }
 .st-seg { display: flex; gap: 4px; background: #f7efe8; border-radius: 999px; padding: 3px; }
-.st-seg button { border: 0; background: transparent; border-radius: 999px; padding: 4px 10px; font-size: 12px; color: #8a6f61; cursor: pointer; }
+.st-seg button { border: 0; background: transparent; border-radius: 999px; padding: 4px 10px; font-size: 13.5px; color: #8a6f61; cursor: pointer; }
 .st-seg button.on { background: #fff; color: #f65331; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 .st-chart { width: 100%; height: auto; display: block; }
 .st-chart .grid { stroke: #f3e8df; }
-.st-chart .axis { fill: #b49c8e; font-size: 11px; }
+.st-chart .axis { fill: #b49c8e; font-size: 13px; }
 .st-chart .line { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
 .st-chart .cursor { stroke: #d9c7ba; stroke-dasharray: 3 3; }
-.st-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #6d5547; margin-top: 6px; }
+.st-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; color: #6d5547; margin-top: 6px; }
 .st-legend span { display: flex; gap: 5px; align-items: center; }
 .st-legend i, .st-share i, .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 .dot { margin-right: 6px; }
 .st-stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #f7efe8; gap: 2px; }
 .st-stack i { display: block; height: 100%; }
-.st-share { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; font-size: 13px; }
+.st-share { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; font-size: 14px; }
 .st-share li { display: grid; grid-template-columns: 1fr auto 56px; gap: 8px; align-items: center; }
 .st-share li span { display: flex; gap: 6px; align-items: center; }
 .st-share em { font-style: normal; color: #9a8274; text-align: right; }
-.st-funnel { display: grid; gap: 6px; font-size: 12px; }
+.st-funnel { display: grid; gap: 6px; font-size: 13.5px; }
 .st-funnel div { display: grid; grid-template-columns: 70px 1fr 48px; gap: 8px; align-items: center; }
 .st-funnel i { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #ff9a62, #f65331); }
 .st-funnel b { text-align: right; font-variant-numeric: tabular-nums; }
 .st-table-wrap { overflow-x: auto; }
-.st-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+.st-table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; }
 .st-table th { text-align: left; color: #9a8274; font-weight: 500; padding: 8px 10px; border-bottom: 1px solid #f1e3d8; }
 .st-table td { padding: 8px 10px; border-bottom: 1px solid #f8f0ea; font-variant-numeric: tabular-nums; }
 .st-table td.msg { white-space: normal; min-width: 160px; max-width: 320px; color: #6d5547; }
@@ -304,9 +304,9 @@ defineExpose({ refresh });
 .bar i { display: block; height: 100%; }
 .st-detail-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .st-detail-filters input { width: 120px; }
-.st-pager { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 10px; font-size: 13px; color: #8a6f61; }
+.st-pager { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 10px; font-size: 14px; color: #8a6f61; }
 .linkish { border: 0; background: none; color: #f65331; cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
 @media (max-width: 860px) { .st-grid { grid-template-columns: 1fr; } }
-.st-filters select, .st-detail-filters select { width: auto; padding: 8px 10px; font-size: 13px; }
-.st-detail-filters input { padding: 8px 10px; font-size: 13px; }
+.st-filters select, .st-detail-filters select { width: auto; padding: 8px 10px; font-size: 14px; }
+.st-detail-filters input { padding: 8px 10px; font-size: 14px; }
 </style>

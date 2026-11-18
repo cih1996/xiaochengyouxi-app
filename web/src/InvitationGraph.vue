@@ -585,14 +585,14 @@ defineExpose({ refresh });
 }
 .graph-toolbar input:not([type="checkbox"]) {
   padding: 10px 12px;
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 8px;
   min-width: 0;
   flex: 1;
 }
 .graph-toolbar .outline {
   padding: 10px 13px;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 8px;
 }
 .graph-depth {
@@ -604,14 +604,14 @@ defineExpose({ refresh });
   align-items: center;
   gap: 7px;
   margin: 0;
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #b09377;
 }
 .graph-depth select {
   width: 61px;
   padding: 9px 5px;
-  font-size: 10px;
+  font-size: 12.5px;
   border-radius: 8px;
   margin: 0;
 }
@@ -620,13 +620,13 @@ defineExpose({ refresh });
   align-items: center;
   gap: 5px;
   color: #b38c66;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .graph-device-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 400;
   color: #aa8a6b;
   margin: 0;
@@ -658,7 +658,7 @@ defineExpose({ refresh });
   align-items: center;
   padding: 13px 15px;
   border-bottom: 1px solid #f3e9dd;
-  font-size: 11px;
+  font-size: 13px;
   text-align: left;
 }
 .graph-search-results b {
@@ -671,12 +671,12 @@ defineExpose({ refresh });
 .graph-search-results small {
   margin-left: auto;
   color: #c1aa90;
-  font-size: 9px;
+  font-size: 12px;
 }
 .graph-search-results > p {
   padding: 19px;
   text-align: center;
-  font-size: 11px;
+  font-size: 13px;
   color: #b69b7f;
 }
 .graph-canvas {
@@ -733,24 +733,24 @@ defineExpose({ refresh });
 }
 .graph-avatar-letter {
   fill: #bd8b5c;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .graph-node-name {
   fill: #846044;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 .graph-node-phone {
   fill: #b69a7e;
-  font-size: 8px;
+  font-size: 11px;
 }
 .graph-node-coins {
   fill: #d39b60;
-  font-size: 9px;
+  font-size: 12px;
 }
 .graph-node-risk {
   fill: #a7957e;
-  font-size: 8px;
+  font-size: 11px;
 }
 .graph-node-risk.high {
   fill: #cd7860;
@@ -766,7 +766,7 @@ defineExpose({ refresh });
 }
 .graph-more-text {
   fill: #fffaf1;
-  font-size: 8px;
+  font-size: 11px;
 }
 .graph-loading {
   position: absolute;
@@ -776,7 +776,7 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #b69a7a;
 }
 .graph-empty {
@@ -787,7 +787,7 @@ defineExpose({ refresh });
   align-items: center;
   justify-content: center;
   color: #c0a386;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .graph-zoom {
   position: absolute;
@@ -796,7 +796,7 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #e8d9c5;
+  border: 0;
   border-radius: 9px;
   background: #fffdf6f5;
   padding: 5px;
@@ -812,7 +812,7 @@ defineExpose({ refresh });
   color: #ad875e;
 }
 .graph-zoom span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b79b7b;
   min-width: 35px;
   text-align: center;
@@ -826,7 +826,7 @@ defineExpose({ refresh });
   flex-wrap: wrap;
   max-width: 65%;
   color: #b59b7e;
-  font-size: 9px;
+  font-size: 12px;
   pointer-events: none;
 }
 .graph-legend > span {
@@ -873,7 +873,7 @@ defineExpose({ refresh });
   display: flex;
   gap: 7px;
   align-items: center;
-  font-size: 11px;
+  font-size: 13px;
   color: #b29475;
   margin-top: 9px;
 }
@@ -888,7 +888,7 @@ defineExpose({ refresh });
 }
 .graph-profile-metrics span {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #b59b7f;
   margin-bottom: 8px;
 }
@@ -898,7 +898,7 @@ defineExpose({ refresh });
   font-weight: 600;
 }
 .graph-profile-metrics b.graph-time {
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.8;
   font-weight: 400;
   color: #9a7857;
@@ -907,7 +907,7 @@ defineExpose({ refresh });
   margin-top: 23px;
 }
 .graph-profile-section h3 {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #90704f;
   font-weight: 600;
   margin-bottom: 13px;
@@ -930,7 +930,7 @@ defineExpose({ refresh });
   max-width: 100%;
 }
 .graph-profile-section article > p {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b49a7b;
   margin: 8px 0;
 }
@@ -938,7 +938,7 @@ defineExpose({ refresh });
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 8px;
+  font-size: 11px;
   color: #bea78b;
 }
 .graph-profile-section .graph-related-users {
@@ -949,11 +949,11 @@ defineExpose({ refresh });
   display: flex;
   gap: 3px;
   align-items: center;
-  font-size: 9px;
+  font-size: 12px;
   color: #b79067;
 }
 .graph-no-data {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #bea88d;
 }
 .graph-profile dl {
@@ -964,7 +964,7 @@ defineExpose({ refresh });
   justify-content: space-between;
   gap: 10px;
   margin: 12px 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 .graph-profile dt {
   color: #b79b7c;
@@ -978,7 +978,7 @@ defineExpose({ refresh });
   display: flex;
   gap: 4px;
   align-items: center;
-  font-size: 9px;
+  font-size: 12px;
 }
 .graph-profile-actions {
   display: flex;
@@ -989,7 +989,7 @@ defineExpose({ refresh });
 .graph-profile-actions > .primary,
 .graph-profile-actions > .outline {
   flex: 1;
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 10px 11px;
   border-radius: 8px;
 }
@@ -1000,12 +1000,12 @@ defineExpose({ refresh });
   justify-content: center;
   width: 100%;
   margin-top: 7px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #bb9166;
   padding: 7px;
 }
 .graph-profile-loading {
-  font-size: 11px;
+  font-size: 13px;
   color: #bba386;
   padding: 25px 0;
 }
@@ -1035,7 +1035,7 @@ defineExpose({ refresh });
     height: 600px;
   }
   .graph-legend {
-    font-size: 8px;
+    font-size: 11px;
     left: 14px;
     bottom: 66px;
     max-width: 88%;
@@ -1059,10 +1059,10 @@ defineExpose({ refresh });
     grid-template-columns: 1fr 1fr;
   }
   .graph-profile-section article > div {
-    font-size: 9px;
+    font-size: 12px;
   }
   .graph-profile dl > div {
-    font-size: 10px;
+    font-size: 12.5px;
   }
 }
 </style>

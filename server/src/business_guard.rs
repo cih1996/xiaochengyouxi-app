@@ -167,7 +167,7 @@ pub(super) fn planned_operation(uid: i64, kind: &str, event: &str, normalized: &
 fn unavailable(reference: &str) -> ApiError {
     ApiError(
         StatusCode::SERVICE_UNAVAILABLE,
-        format!("服务暂不可用，请稍后再试。参考号：{reference}"),
+        format!("服务暂时繁忙，请稍后再试。\n如需帮助请联系客服，参考号：{reference}"),
         None,
     )
 }

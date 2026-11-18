@@ -381,7 +381,7 @@ onUnmounted(() => {
   max-height: 95vh;
   overflow-y: auto;
   background: #fdfaf4;
-  border: 1px solid #e9d8bf;
+  border: 0;
   border-radius: 20px;
   padding: 24px 27px;
 }
@@ -396,7 +396,7 @@ onUnmounted(() => {
   color: #785336;
 }
 .behavior-replay > header > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b39b7c;
   cursor: help;
 }
@@ -435,7 +435,7 @@ onUnmounted(() => {
   border-radius: 9px;
 }
 .replay-controls > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #a78b69;
   font-variant-numeric: tabular-nums;
   flex: 1;
@@ -443,7 +443,7 @@ onUnmounted(() => {
 .replay-controls select {
   padding: 7px 6px;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12.5px;
   width: 53px;
   border-color: #e3cfb4;
   color: #a17e54;
@@ -462,14 +462,14 @@ onUnmounted(() => {
   gap: 6px;
   align-items: center;
   color: #9ba785;
-  font-size: 10px;
+  font-size: 12.5px;
   margin-top: 17px;
 }
 .replay-side {
   min-width: 0;
 }
 .replay-side h3 {
-  font-size: 13px;
+  font-size: 14px;
   color: #8b6847;
   font-weight: 600;
 }
@@ -484,12 +484,12 @@ onUnmounted(() => {
   gap: 15px;
 }
 .replay-session dt {
-  font-size: 9px;
+  font-size: 12px;
   color: #b79d7e;
   margin-bottom: 6px;
 }
 .replay-session dd {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #9d7d58;
   margin: 0;
   overflow-wrap: anywhere;
@@ -502,7 +502,7 @@ onUnmounted(() => {
   text-align: left;
 }
 .replay-session > p {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.8;
   color: #ba9c77;
   margin-top: 12px;
@@ -513,7 +513,7 @@ onUnmounted(() => {
 }
 .replay-alerts article {
   margin-top: 12px;
-  border: 1px solid #ecd3b6;
+  border: 0;
   border-radius: 9px;
   padding: 13px;
   background: #fff4e3;
@@ -525,39 +525,39 @@ onUnmounted(() => {
   margin-bottom: 10px;
 }
 .replay-alerts header b {
-  font-size: 13px;
+  font-size: 14px;
   color: #bd8b53;
 }
 .replay-alerts header span {
-  font-size: 9px;
+  font-size: 12px;
   color: #b69a76;
 }
 .replay-alerts article > div {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #ab865c;
   line-height: 2;
 }
 .replay-alerts article > div b {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
 }
 .replay-failures details {
   margin-top: 10px;
   padding: 10px;
-  border: 1px solid #ebd6c1;
+  border: 0;
   border-radius: 8px;
   background: #fff7ed;
 }
 .replay-failures summary {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #ba8e60;
   cursor: pointer;
 }
 .replay-failures p {
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.8;
   color: #ae8560;
   overflow-wrap: anywhere;
@@ -565,7 +565,7 @@ onUnmounted(() => {
 }
 .replay-failures small {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   color: #bda387;
   margin-top: 8px;
   overflow-wrap: anywhere;
@@ -581,7 +581,7 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 .replay-events h3 small {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #b99e7b;
   margin-left: 7px;
@@ -589,7 +589,7 @@ onUnmounted(() => {
 .replay-events > header select {
   width: 96px;
   padding: 7px;
-  font-size: 9px;
+  font-size: 12px;
   border-radius: 7px;
   color: #af906c;
   background: #fffaf0;
@@ -597,7 +597,7 @@ onUnmounted(() => {
 .replay-event-list {
   max-height: 430px;
   overflow-y: auto;
-  border: 1px solid #ede1ce;
+  border: 0;
   border-radius: 11px;
   background: #fffcf7;
 }
@@ -617,7 +617,7 @@ onUnmounted(() => {
   background: #fff0d9;
 }
 .replay-event-list time {
-  font-size: 9px;
+  font-size: 12px;
   color: #b99b77;
   font-variant-numeric: tabular-nums;
   padding-top: 2px;
@@ -627,18 +627,18 @@ onUnmounted(() => {
   min-width: 0;
 }
 .replay-event-list b {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #a27b51;
   font-weight: 500;
 }
 .replay-event-list > button > div > span {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #b49b7c;
   margin-top: 5px;
 }
 .replay-event-list small {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 400;
 }
 .replay-event-list .replay-operation {
@@ -651,7 +651,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #8da179;
 }
 .replay-unconfirmed {
@@ -661,7 +661,7 @@ onUnmounted(() => {
 }
 .replay-more {
   width: 100%;
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 10px;
   margin-top: 10px;
 }
@@ -673,13 +673,13 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 17px;
   color: #b59d7e;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .replay-empty b {
   font-weight: 500;
 }
 .replay-empty span {
-  font-size: 10px;
+  font-size: 12.5px;
 }
 @media (max-width: 850px) {
   .replay-grid {
@@ -709,7 +709,7 @@ onUnmounted(() => {
     font-size: 18px;
   }
   .behavior-replay > header > span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .replay-stage {
     padding: 20px 12px;

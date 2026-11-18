@@ -15,6 +15,9 @@ final class DeviceTrustClient {
   private final Activity activity;
   private final Api api;
   private boolean busy;
+  // Checks run one at a time; later requests wait instead of failing (e.g. tapping 签到 while the
+  // first-login check is still uploading).
+  private final java.util.ArrayDeque<Attempt> waiting = new java.util.ArrayDeque<>();
   private String startupError = "", startupCode = "";
 
   interface Ready {
@@ -94,12 +97,29 @@ final class DeviceTrustClient {
       failure.failed("请先阅读并同意隐私政策。");
       return;
     }
+    Attempt attempt = new Attempt(kind, intent, api.token, ready, failure);
     if (busy) {
-      failure.failed("服务正在准备，请稍后再试。");
+      if (waiting.size() >= 4) {
+        failure.failed("操作有点频繁，请稍后再试。");
+        return;
+      }
+      waiting.add(attempt);
       return;
     }
     busy = true;
-    new Attempt(kind, intent, api.token, ready, failure).start();
+    attempt.start();
+  }
+
+  /** Marks the current check finished and starts the next queued one, if still relevant. */
+  private void next() {
+    busy = false;
+    while (!waiting.isEmpty()) {
+      Attempt attempt = waiting.poll();
+      if (activity.isDestroyed() || !attempt.token.equals(api.token)) continue;
+      busy = true;
+      attempt.start();
+      return;
+    }
   }
 
   void quoteReward(String taskId, Api.Result result, Api.Failure failure) {
@@ -161,7 +181,7 @@ final class DeviceTrustClient {
 
     boolean active() {
       if (activity.isDestroyed() || !token.equals(api.token)) {
-        busy = false;
+        next();
         return false;
       }
       return true;
@@ -257,14 +277,11 @@ final class DeviceTrustClient {
             String status = response.optString("status"),
                 reference = response.optString("reference", eventId);
             if (status.equals("recorded")) {
-              busy = false;
+              next();
               ready.done(eventId);
-            } else if (status.equals("review")) {
-              busy = false;
-              failure.failed(message("当前操作正在核查中，请稍后再试。", reference));
-            } else if (status.equals("restricted")) {
-              busy = false;
-              failure.failed(message("当前账户暂不能参与此活动。", reference));
+            } else if (status.equals("review") || status.equals("restricted")) {
+              next();
+              failure.failed(message(blocked(kind), reference));
             } else recordFailure("complete", "InvalidBusinessStatus");
           },
           httpFailure("complete"));
@@ -297,7 +314,7 @@ final class DeviceTrustClient {
           detail,
           message -> {
             if (!active()) return;
-            busy = false;
+            next();
             failure.failed(message);
           });
     }
@@ -316,9 +333,9 @@ final class DeviceTrustClient {
             "event_id", eventId, "kind", kind, "stage", stage, "code", errorCode, "detail", detail),
         result -> {
           JSONObject response = (JSONObject) result;
-          failure.failed(message("服务暂不可用，请稍后再试。", response.optString("reference", eventId)));
+          failure.failed(message("服务暂时繁忙，请稍后再试。", response.optString("reference", eventId)));
         },
-        ignored -> failure.failed(message("服务暂不可用，请稍后再试。", eventId)));
+        ignored -> failure.failed(message("服务暂时繁忙，请稍后再试。", eventId)));
   }
 
   private static String code(Throwable error) {
@@ -347,6 +364,22 @@ final class DeviceTrustClient {
   }
 
   private static String message(String text, String reference) {
-    return reference.isEmpty() ? text : text + "\n处理编号：" + reference;
+    return reference.isEmpty() ? text : text + "\n如需帮助请联系客服，参考号：" + reference;
+  }
+
+  /** Plain wording for an operation the risk check did not let through (no risk jargon). */
+  private static String blocked(String kind) {
+    switch (kind) {
+      case "check_in":
+        return "今天的签到暂时没能完成，请稍后再试。";
+      case "reward":
+        return "这个红包暂时领不了，请稍后再试。";
+      case "withdraw":
+        return "提现暂时无法提交，请稍后再试。";
+      case "rain":
+        return "这场红包雨暂时参与不了，请稍后再试。";
+      default:
+        return "这次操作暂时没能完成，请稍后再试。";
+    }
   }
 }

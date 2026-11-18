@@ -123,7 +123,6 @@ defineExpose({ refresh });
     <form v-if="layout" @submit.prevent="save">
       <header>
         <div>
-          <h2>首页入口</h2>
           <p>
             大厅图标入口和右下角悬浮入口默认不显示，只用于运营活动；签到、捡漏、提现等已有入口无需重复添加。名称、角标、图标都按活动自行填写或上传。网页活动填 <code>/activity/xxx.html</code>
             这类站内路径，或允许域名（{{ hosts }}）下的 https 地址。时间留空表示不限，格式如
@@ -241,7 +240,7 @@ defineExpose({ refresh });
 .home-admin header p,
 .home-muted {
   color: #9a8274;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
   margin: 0;
 }
@@ -256,7 +255,7 @@ defineExpose({ refresh });
 }
 .home-item,
 .home-floating {
-  border: 1px solid #f0e2d6;
+  border: 0;
   border-radius: 14px;
   padding: 12px 14px;
   background: #fffdfb;
@@ -278,7 +277,7 @@ defineExpose({ refresh });
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
 }
 .home-order {
   display: flex;
@@ -302,7 +301,7 @@ defineExpose({ refresh });
 .home-grid label {
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #8a7266;
   min-width: 0;
 }
@@ -316,7 +315,7 @@ defineExpose({ refresh });
 .home-image {
   display: grid;
   gap: 4px;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #8a7266;
 }
 .home-image > div {
@@ -334,7 +333,7 @@ defineExpose({ refresh });
 .home-upload {
   cursor: pointer;
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .home-clear {
   border: 0;
@@ -360,4 +359,10 @@ defineExpose({ refresh });
     grid-template-columns: 1fr 1fr;
   }
 }
+/* Card padding and compact controls (global form styles stretch inputs to full width). */
+.home-admin { padding: 18px 20px; }
+.home-admin form > header button { white-space: nowrap; flex-shrink: 0; display: inline-flex; gap: 6px; align-items: center; }
+.home-switch { white-space: nowrap; margin: 0; }
+.home-switch input[type="checkbox"] { width: auto; margin: 0; padding: 0; accent-color: #f65331; }
+.home-item, .home-floating { padding: 16px 18px; }
 </style>

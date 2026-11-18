@@ -41,6 +41,7 @@ mod rain;
 mod reward_policy;
 mod risk;
 mod sms_channel;
+mod trace_lookup;
 mod user_admin;
 mod user_stats;
 mod withdraw_rules;
@@ -277,6 +278,36 @@ fn password_hash(password: &str) -> Result<String, ApiError> {
         .hash_password(password.as_bytes(), &SaltString::generate(&mut OsRng))
         .map(|x| x.to_string())
         .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, e.to_string(), None))
+}
+/// The fixed app-store review account (ORANGE_REVIEW_LOGIN_PHONE). Reviewers use rooted or
+/// debug-enabled test devices, so automatic risk restrictions and the quiet ad block skip this
+/// account; risk events are still recorded for the admin.
+pub(crate) fn is_review_account(db: &Connection, uid: i64) -> Result<bool, ApiError> {
+    let Some(review) = env_value("ORANGE_REVIEW_LOGIN_PHONE") else {
+        return Ok(false);
+    };
+    let phone: Option<String> = db
+        .query_row("SELECT phone FROM users WHERE id=?1", [uid], |r| r.get(0))
+        .optional()?;
+    Ok(phone.is_some_and(|p| p == review))
+}
+/// Accounts whose risk hits are approved automatically instead of restricted: the store review
+/// account, and accounts an admin has explicitly set back to normal ("人工放行"). Returns the
+/// note sent to DeviceTrust with the approval. Automatic sources never count as a manual release.
+pub(crate) fn trusted_override(db: &Connection, uid: i64) -> Result<Option<String>, ApiError> {
+    if is_review_account(db, uid)? {
+        return Ok(Some("应用市场审核账号，自动放行".into()));
+    }
+    let manual: Option<(String, String)> = db
+        .query_row(
+            "SELECT updated_by,reason FROM account_restrictions WHERE user_id=?1 AND status='active'",
+            [uid],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?;
+    Ok(manual
+        .filter(|(by, _)| !["DeviceTrust", "BehaviorAudit"].contains(&by.as_str()))
+        .map(|(by, reason)| format!("后台人工放行（{by}）：{reason}")))
 }
 fn validate_phone(phone: &str) -> Result<(), ApiError> {
     if phone.len() != 11 || !phone.starts_with('1') || !phone.bytes().all(|c| c.is_ascii_digit()) {
@@ -1513,7 +1544,7 @@ fn verify_csj_callback(
     };
     let get = |key: &str| query.get(key).map(String::as_str).unwrap_or("");
     let trans_id = get("trans_id");
-    if trans_id.is_empty() || get("user_id").is_empty() || get("reward_name").is_empty() {
+    if trans_id.is_empty() || get("user_id").is_empty() {
         return Ok(callback_rejected("缺少奖励回调参数"));
     }
     let expected = format!(
@@ -1523,24 +1554,9 @@ fn verify_csj_callback(
     if !equal_secret(&expected, get("sign")) {
         return Ok(callback_rejected("签名不匹配"));
     }
-    if get("reward_amount")
-        .parse::<i64>()
-        .ok()
-        .filter(|v| *v > 0)
-        .is_none()
-    {
-        return Ok(callback_rejected("奖励数量必须大于 0"));
-    }
-    let expected: (String, i64) = db.query_row(
-        "SELECT name,amount FROM csj_reward_config WHERE id=1",
-        [],
-        |r| Ok((r.get(0)?, r.get(1)?)),
-    )?;
-    if get("reward_name") != expected.0
-        || get("reward_amount").parse::<i64>().ok() != Some(expected.1)
-    {
-        return Ok(callback_rejected("广告平台奖励配置不匹配"));
-    }
+    // Coins come from the server-locked (random) quote on the reward session, not from the
+    // platform's reward name/amount, so those are not compared — signature, session ownership,
+    // expiry and a unique trans_id are what make the callback trustworthy.
     drop(db);
     let decision = ad_mediation::accept_reward(state, "csj", trans_id, get("user_id"), get("extra"))?;
     if !decision.valid {
@@ -2430,6 +2446,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(withdraw_rules::admin_routes())
         .merge(ad_mediation::admin_routes())
         .merge(sms_channel::admin_routes())
+        .merge(trace_lookup::admin_routes())
         .merge(reward_policy::admin_routes())
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())

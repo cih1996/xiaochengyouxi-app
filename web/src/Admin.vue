@@ -16,6 +16,7 @@ import WithdrawRulesAdmin from "./WithdrawRulesAdmin.vue";
 import AdConfigAdmin from "./AdConfigAdmin.vue";
 import AdStats from "./AdStats.vue";
 import SmsAdmin from "./SmsAdmin.vue";
+import TraceLookup from "./TraceLookup.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
 defineEmits(["back"]);
@@ -608,6 +609,7 @@ onMounted(load);
         </button>
         <span>工作台 <Icon name="arrow" :size="13" /> {{ label(tab) }}</span>
         <div class="admin-topbar-actions">
+          <TraceLookup :api="api" @open-user="openUser" @unauthorized="fail" />
           <button
             v-if="adminAccount?.auth_required"
             class="admin-account-entry"
@@ -1147,7 +1149,6 @@ onMounted(load);
         </section>
         <section v-if="tab === 'account-deletions'" class="admin-card">
           <div class="admin-card-header">
-            <h2>注销申请</h2>
             <span class="table-count">{{ accountDeletions.length }} 条待审核</span>
           </div>
           <div class="table-scroll">
@@ -1259,7 +1260,6 @@ onMounted(load);
         >
           <div class="strategy-heading">
             <div>
-              <h2>大厅推送策略</h2>
               <p>红包与好物，按你设定的节奏出现。</p>
             </div>
             <label class="toggle-label"
@@ -1328,17 +1328,16 @@ onMounted(load);
             </button>
           </form>
         </section>
+        <div v-if="tab === 'settings'" class="settings-page">
         <RewardPolicy
-          v-if="tab === 'settings'"
           ref="rewardPolicy"
           :api="api"
           @unauthorized="fail"
         />
-        <section
-          v-if="tab === 'settings'"
-          class="admin-card admin-form settings-form"
-        >
+        <div class="settings-grid">
+        <section class="admin-card admin-form settings-form">
           <h2>领取与提现</h2>
+          <p>每天可领取的激励红包次数和新用户的注册方式。</p>
           <form @submit.prevent="save">
             <div class="form-two-cols">
               <label
@@ -1368,32 +1367,8 @@ onMounted(load);
             </button>
           </form>
         </section>
-        <section
-          v-if="tab === 'settings'"
-          class="admin-card admin-form settings-form ad-reward-settings"
-        >
-          <h2>广告奖励校验</h2>
-          <p>填写穿山甲代码位配置的奖励名称与数量。用户金币按奖励策略发放。</p>
-          <form @submit.prevent="save">
-            <div class="form-two-cols">
-              <label
-                >平台奖励名称<input
-                  v-model="settings.csj_expected_reward_name"
-                  required
-              /></label>
-              <label
-                >平台奖励数量<input
-                  v-model.number="settings.csj_expected_reward_amount"
-                  type="number"
-                  min="1"
-                  required
-              /></label>
-            </div>
-            <button class="primary" :disabled="busy">
-              <Icon name="check" :size="17" />保存校验设置
-            </button>
-          </form>
-        </section>
+        </div>
+        </div>
       </div>
     </main>
     <AdminAccount
@@ -1413,7 +1388,7 @@ onMounted(load);
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #bb9166;
   padding: 8px 0;
   margin-right: 15px;
@@ -1442,7 +1417,7 @@ onMounted(load);
   width: 100%;
   border-radius: 10px;
   color: #a18b75;
-  font-size: 12px;
+  font-size: 13.5px;
   text-align: left;
 }
 .admin-nav-group-toggle > span {
@@ -1475,7 +1450,7 @@ onMounted(load);
   text-align: left;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 13px;
   color: #b49a80;
   position: relative;
 }
@@ -1533,7 +1508,7 @@ onMounted(load);
     gap: 5px;
   }
   .admin-sidebar nav button {
-    font-size: 12px;
+    font-size: 13.5px;
     gap: 12px;
     justify-content: flex-start;
     padding: 12px 16px;
@@ -1542,14 +1517,14 @@ onMounted(load);
     width: 18px;
   }
   .admin-sidebar nav .admin-nav-children > button {
-    font-size: 11px;
+    font-size: 13px;
     padding: 10px 12px;
   }
   .admin-sidebar nav .admin-group-chevron {
     width: 13px;
   }
   .admin-sidebar-footer > button {
-    font-size: 10px;
+    font-size: 12.5px;
     justify-content: flex-start;
   }
   .admin-sidebar-footer > span {
@@ -1603,7 +1578,7 @@ onMounted(load);
   align-items: center;
   gap: 6px;
   color: #b08d6d;
-  font-size: 11px;
+  font-size: 13px;
   padding: 8px 0;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1635,13 +1610,53 @@ onMounted(load);
   }
 }
 .settings-form > h2 {
-  margin-bottom: 24px;
+  margin-bottom: 6px;
+  font-size: 17px;
+  color: #6f4b33;
 }
-.ad-reward-settings {
-  margin-top: 24px;
+.settings-form > p {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #a8907f;
 }
-.ad-reward-settings > h2 {
+/* 运营设置: one full-width policy card, then the two small forms side by side. */
+.settings-page {
+  display: grid;
+  gap: 12px;
+}
+.settings-page .reward-policy {
+  max-width: none;
   margin-bottom: 0;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.settings-grid .settings-form {
+  max-width: none;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+}
+.settings-grid .settings-form form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.settings-grid .settings-form .primary {
+  margin-top: auto;
+  align-self: flex-start;
+  width: auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+@media (max-width: 1100px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .user-list-search {
   display: flex;
@@ -1667,12 +1682,12 @@ onMounted(load);
   box-shadow: none;
   background: transparent;
   padding: 12px 0;
-  font-size: 12px;
+  font-size: 13.5px;
   min-width: 0;
 }
 .user-list-search > .primary,
 .user-list-search > .outline {
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 9px;
   padding: 11px 17px;
   flex-shrink: 0;
@@ -1693,7 +1708,7 @@ onMounted(load);
   align-items: center;
   gap: 6px;
   color: #c59059;
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 .user-list-pagination {
@@ -1702,7 +1717,7 @@ onMounted(load);
   justify-content: space-between;
   padding: 18px 23px;
   border-top: 1px solid #f1e7da;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b29a7b;
 }
 .user-list-pagination > div {
@@ -1715,7 +1730,7 @@ onMounted(load);
   border-radius: 7px;
   background: #fffaf2;
   color: #ab8d68;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .user-list-search .user-list-filters {
   display: grid;
@@ -1731,14 +1746,14 @@ onMounted(load);
   margin-top: 7px;
 }
 .user-list-filters label {
-  font-size: 9px;
+  font-size: 12px;
   color: #b59a76;
   margin: 0;
   min-width: 0;
 }
 .user-list-filters input,
 .user-list-filters select {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 10px 8px;
   border: 1px solid #e9d9c2;
   background: #fffdf7;
@@ -1755,7 +1770,7 @@ onMounted(load);
   color: #bd8d54;
 }
 .user-account-status {
-  font-size: 9px;
+  font-size: 12px;
   border: 1px solid #eaddc8;
   border-radius: 5px;
   padding: 4px 7px;
@@ -1780,20 +1795,20 @@ onMounted(load);
   white-space: nowrap;
 }
 .user-risk-summary > b {
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 500;
   color: #b88a55;
 }
 .user-risk-summary > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #b69a76;
 }
 .user-risk-summary > small {
-  font-size: 8px;
+  font-size: 11px;
   color: #c7af92;
 }
 .user-no-risk {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #c3ab8c;
 }
 @media (max-width: 1200px) {
@@ -1808,7 +1823,7 @@ onMounted(load);
   }
   .user-list-filters input,
   .user-list-filters select {
-    font-size: 10px;
+    font-size: 12.5px;
     padding: 9px 7px;
   }
 }
@@ -1823,7 +1838,7 @@ onMounted(load);
     flex-basis: 100%;
   }
   .user-list-search input {
-    font-size: 11px;
+    font-size: 13px;
   }
   .user-list-search > .primary,
   .user-list-search > .outline {
@@ -1860,7 +1875,7 @@ onMounted(load);
   padding-right: 0;
 }
 .user-warning-summary span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b39770;
   line-height: 1.7;
 }
@@ -1874,7 +1889,7 @@ onMounted(load);
   color: #c6a477;
 }
 .user-warning-summary small {
-  font-size: 9px;
+  font-size: 12px;
   color: #bda582;
 }
 .user-warning-summary > button:hover span {
@@ -1892,7 +1907,7 @@ onMounted(load);
     flex-wrap: wrap;
   }
   .user-warning-summary span {
-    font-size: 9px;
+    font-size: 12px;
     flex-basis: 100%;
   }
   .user-warning-summary b {

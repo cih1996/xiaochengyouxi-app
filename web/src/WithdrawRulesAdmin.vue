@@ -61,7 +61,6 @@ defineExpose({ refresh });
     <form v-if="rules" @submit.prevent="save">
       <header>
         <div>
-          <h2>提现档位</h2>
           <p>用户只能选择下面启用的固定金额。余额满档位金额才可提；次数填 0 表示不限。被驳回退回的申请不占次数。</p>
         </div>
         <button type="button" class="outline" @click="addTier">
@@ -102,7 +101,7 @@ defineExpose({ refresh });
 .rules-admin header p,
 .rules-muted {
   color: #9a8274;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
   margin: 0;
 }
@@ -118,7 +117,7 @@ defineExpose({ refresh });
   align-items: center;
 }
 .rules-head span {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #9a8274;
 }
 .rules-row input:not([type="checkbox"]) {
@@ -154,8 +153,11 @@ defineExpose({ refresh });
   .rules-row {
     grid-template-columns: 36px 1fr 1fr;
     padding: 10px;
-    border: 1px solid #f0e2d6;
+    border: 0;
     border-radius: 12px;
   }
 }
+.rules-admin { padding: 18px 20px; }
+.rules-admin form > header button { white-space: nowrap; flex-shrink: 0; display: inline-flex; gap: 6px; align-items: center; }
+.rules-check input[type="checkbox"] { width: auto; margin: 0; padding: 0; accent-color: #f65331; }
 </style>

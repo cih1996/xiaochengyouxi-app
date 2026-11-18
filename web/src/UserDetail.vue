@@ -1473,7 +1473,7 @@ defineExpose({ refresh: loadDetail });
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b78e62;
   white-space: nowrap;
 }
@@ -1484,7 +1484,7 @@ defineExpose({ refresh: loadDetail });
   display: flex;
   align-items: center;
   gap: 11px;
-  font-size: 11px;
+  font-size: 13px;
   color: #c3ac90;
   margin: -3px 0 21px;
 }
@@ -1509,7 +1509,7 @@ defineExpose({ refresh: loadDetail });
   gap: 10px;
   padding: 80px 20px;
   color: #b69a7a;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .ud-profile {
   display: flex;
@@ -1518,7 +1518,7 @@ defineExpose({ refresh: loadDetail });
   gap: 20px;
   padding: 23px 25px;
   background: #fffdf9;
-  border: 1px solid #eaddcc;
+  border: 0;
   border-radius: 18px;
 }
 .ud-identity {
@@ -1559,7 +1559,7 @@ defineExpose({ refresh: loadDetail });
   border: 1px solid #f0d7b2;
   border-radius: 5px;
   padding: 4px 7px;
-  font-size: 9px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .ud-status.subtle,
@@ -1584,11 +1584,11 @@ defineExpose({ refresh: loadDetail });
   gap: 13px;
   flex-wrap: wrap;
   color: #b69b7a;
-  font-size: 10px;
+  font-size: 12.5px;
   margin-top: 9px;
 }
 .ud-identity-meta button {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #a47a50;
   letter-spacing: 0.5px;
   padding: 0;
@@ -1602,28 +1602,28 @@ defineExpose({ refresh: loadDetail });
   color: #ba8a56;
   padding: 10px 13px;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 .ud-handling {
   display: flex;
   align-items: flex-end;
   gap: 15px;
-  border: 1px solid #ecd6b4;
+  border: 0;
   border-radius: 13px;
   padding: 19px 22px;
   background: #fff6e6;
   margin: 13px 0 0;
 }
 .ud-handling label {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #ac8a62;
   margin: 0;
   width: 150px;
 }
 .ud-handling input,
 .ud-handling select {
-  font-size: 12px;
+  font-size: 13.5px;
   border-color: #e8d4b7;
   background: #fffdf7;
   border-radius: 9px;
@@ -1633,7 +1633,7 @@ defineExpose({ refresh: loadDetail });
   flex: 1;
 }
 .ud-handling .primary {
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 9px;
   padding: 12px 16px;
   white-space: nowrap;
@@ -1645,7 +1645,7 @@ defineExpose({ refresh: loadDetail });
   margin: 19px 0;
 }
 .ud-stat {
-  border: 1px solid #ecdfce;
+  border: 0;
   border-radius: 15px;
   background: #fffdf9;
   padding: 18px 20px;
@@ -1656,7 +1656,7 @@ defineExpose({ refresh: loadDetail });
   gap: 10px;
   align-items: center;
   color: #b0926f;
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .ud-stat > span > svg {
   color: #c8a174;
@@ -1671,14 +1671,14 @@ defineExpose({ refresh: loadDetail });
   line-height: 1;
 }
 .ud-stat > b small {
-  font-size: 10px;
+  font-size: 12.5px;
   letter-spacing: 0;
   font-weight: 400;
   margin: 0 5px;
   color: #b39a79;
 }
 .ud-stat > p {
-  font-size: 9px;
+  font-size: 12px;
   color: #b69b79;
   margin-top: 13px;
   line-height: 1.8;
@@ -1714,7 +1714,7 @@ defineExpose({ refresh: loadDetail });
   justify-content: center;
   gap: 6px;
   padding: 10px 11px;
-  font-size: 11px;
+  font-size: 13px;
   color: #ab8f6e;
   border-radius: 8px;
   white-space: nowrap;
@@ -1729,7 +1729,7 @@ defineExpose({ refresh: loadDetail });
   font-weight: 600;
 }
 .ud-card {
-  border: 1px solid #ecdfcc;
+  border: 0;
   background: #fffdf8;
   border-radius: 16px;
   min-width: 0;
@@ -1750,7 +1750,7 @@ defineExpose({ refresh: loadDetail });
 }
 .ud-card-title > span,
 .ud-card-title > svg {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b49a78;
 }
 .ud-overview-grid {
@@ -1774,12 +1774,12 @@ defineExpose({ refresh: loadDetail });
   border: 0;
 }
 .ud-facts dt {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #bea487;
   margin-bottom: 9px;
 }
 .ud-facts dd {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #937251;
   margin: 0;
   overflow-wrap: anywhere;
@@ -1810,12 +1810,12 @@ defineExpose({ refresh: loadDetail });
   border-radius: 11px;
 }
 .ud-evidence-summary b {
-  font-size: 11px;
+  font-size: 13px;
   color: #947353;
   font-weight: 500;
 }
 .ud-evidence-summary p {
-  font-size: 9px;
+  font-size: 12px;
   color: #bea282;
   line-height: 1.8;
   margin-top: 5px;
@@ -1825,7 +1825,7 @@ defineExpose({ refresh: loadDetail });
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 9px;
+  font-size: 12px;
   color: #be9a70;
   white-space: nowrap;
 }
@@ -1839,12 +1839,12 @@ defineExpose({ refresh: loadDetail });
 .ud-collection-status > span {
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 12px;
   color: #b59a78;
   gap: 12px;
 }
 .ud-collection-status b {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   color: #b99e7d;
 }
@@ -1859,18 +1859,18 @@ defineExpose({ refresh: loadDetail });
   flex-wrap: wrap;
 }
 .ud-handling-record p {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #a5825e;
   flex-basis: 100%;
   line-height: 1.8;
 }
 .ud-handling-record > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b79a78;
 }
 .ud-no-handling {
   padding: 24px;
-  font-size: 11px;
+  font-size: 13px;
   color: #c1a98d;
 }
 .ud-availability-notes {
@@ -1880,7 +1880,7 @@ defineExpose({ refresh: loadDetail });
   margin-top: 18px;
   padding: 14px 17px;
   background: #f7efdf;
-  border: 1px solid #eddfc6;
+  border: 0;
   border-radius: 10px;
   color: #b99b75;
 }
@@ -1889,7 +1889,7 @@ defineExpose({ refresh: loadDetail });
   margin-top: 2px;
 }
 .ud-availability-notes p {
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.9;
 }
 .ud-filters {
@@ -1901,14 +1901,14 @@ defineExpose({ refresh: loadDetail });
   border-bottom: 1px solid #f0e4d1;
 }
 .ud-filters label {
-  font-size: 9px;
+  font-size: 12px;
   color: #b39877;
   margin: 0;
   min-width: 0;
 }
 .ud-filters input,
 .ud-filters select {
-  font-size: 11px;
+  font-size: 13px;
   padding: 10px 9px;
   min-height: 37px;
   border-radius: 8px;
@@ -1930,7 +1930,7 @@ defineExpose({ refresh: loadDetail });
 }
 .ud-filter-actions > .primary,
 .ud-filter-actions > .outline {
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 10px 18px;
   border-radius: 8px;
   min-height: 37px;
@@ -1939,7 +1939,7 @@ defineExpose({ refresh: loadDetail });
   display: flex;
   align-items: flex-start;
   gap: 7px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b59a78;
   line-height: 1.8;
   padding: 11px 23px;
@@ -1961,12 +1961,12 @@ defineExpose({ refresh: loadDetail });
   text-align: center;
 }
 .ud-empty b {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 400;
   color: #bfa17d;
 }
 .ud-empty > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #c7ad8d;
 }
 .ud-table-scroll {
@@ -1979,27 +1979,27 @@ defineExpose({ refresh: loadDetail });
   white-space: nowrap;
 }
 .ud-table-scroll th {
-  font-size: 9px;
+  font-size: 12px;
   color: #b69a75;
   padding: 13px 19px;
   background: #fbf4e9;
   border-top: 0;
 }
 .ud-table-scroll td {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #a08361;
   padding: 17px 19px;
   line-height: 1.7;
   border-bottom-color: #f3e9d9;
 }
 .ud-table-scroll td > b {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   display: block;
   color: #8c6b49;
 }
 .ud-table-scroll td > small {
-  font-size: 9px;
+  font-size: 12px;
   display: block;
   color: #c2a887;
   margin-top: 3px;
@@ -2007,7 +2007,7 @@ defineExpose({ refresh: loadDetail });
 .ud-table-scroll td.ud-amount {
   color: #cf9252;
   font-weight: 500;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .ud-table-scroll td.ud-amount.negative {
   color: #b19575;
@@ -2019,7 +2019,7 @@ defineExpose({ refresh: loadDetail });
   flex-wrap: wrap;
   color: #b18e65;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 0;
   text-align: left;
   overflow-wrap: anywhere;
@@ -2027,7 +2027,7 @@ defineExpose({ refresh: loadDetail });
 }
 .ud-id > small {
   font-family: Inter, "Microsoft YaHei", sans-serif;
-  font-size: 8px;
+  font-size: 11px;
   color: #c5ac8c;
   white-space: nowrap;
 }
@@ -2039,7 +2039,7 @@ defineExpose({ refresh: loadDetail });
   align-items: center;
   gap: 4px;
   color: #c3925d;
-  font-size: 11px;
+  font-size: 13px;
   padding: 0;
   white-space: nowrap;
 }
@@ -2049,14 +2049,14 @@ defineExpose({ refresh: loadDetail });
   gap: 7px;
 }
 .ud-related-accounts .ud-account-link {
-  font-size: 10px;
+  font-size: 12.5px;
 }
 .ud-view-evidence {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   color: #be965f;
-  font-size: 10px;
+  font-size: 12.5px;
   white-space: nowrap;
   padding: 0;
 }
@@ -2066,7 +2066,7 @@ defineExpose({ refresh: loadDetail });
   justify-content: space-between;
   padding: 16px 23px;
   border-top: 1px solid #eee1cc;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b29a77;
   gap: 14px;
 }
@@ -2079,7 +2079,7 @@ defineExpose({ refresh: loadDetail });
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 9px;
+  font-size: 12px;
   color: #b69b76;
   margin: 0;
 }
@@ -2088,14 +2088,14 @@ defineExpose({ refresh: loadDetail });
   padding: 7px 5px;
   border: 1px solid #e5d5bb;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12.5px;
   background: #fffaf1;
 }
 .ud-pagination button {
   border: 1px solid #e8d7bd;
   background: #fff9ee;
   color: #ad8d61;
-  font-size: 10px;
+  font-size: 12.5px;
   padding: 8px 12px;
   border-radius: 7px;
 }
@@ -2142,12 +2142,12 @@ defineExpose({ refresh: loadDetail });
   flex-wrap: wrap;
 }
 .ud-timeline h3 {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #93704a;
   font-weight: 500;
 }
 .ud-timeline time {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b89c77;
   margin-left: auto;
 }
@@ -2156,13 +2156,13 @@ defineExpose({ refresh: loadDetail });
   align-items: center;
   gap: 13px;
   flex-wrap: wrap;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #baa07e;
   margin: 11px 0 10px;
   line-height: 1.7;
 }
 .ud-timeline .ud-view-evidence {
-  font-size: 9px;
+  font-size: 12px;
 }
 .ud-record-overlay {
   position: fixed;
@@ -2181,7 +2181,7 @@ defineExpose({ refresh: loadDetail });
   scrollbar-width: thin;
   background: #fffaf2;
   border-left: 1px solid #ead7b8;
-  padding: 27px 30px;
+  padding: 18px 20px;
   box-shadow: -10px 0 40px #77502a13;
 }
 .ud-record-detail > header {
@@ -2209,12 +2209,12 @@ defineExpose({ refresh: loadDetail });
   border-bottom: 1px solid #efe1cc;
 }
 .ud-record-detail dt {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #baa07c;
   margin-bottom: 8px;
 }
 .ud-record-detail dd {
-  font-size: 12px;
+  font-size: 13.5px;
   color: #a08057;
   line-height: 1.8;
   margin: 0;
@@ -2225,7 +2225,7 @@ defineExpose({ refresh: loadDetail });
 }
 .ud-risk-proof,
 .ud-reward-proof {
-  border: 1px solid #ead8bb;
+  border: 0;
   background: #fffdf6;
   border-radius: 13px;
   padding: 19px;
@@ -2233,7 +2233,7 @@ defineExpose({ refresh: loadDetail });
 }
 .ud-risk-proof > h3,
 .ud-reward-proof > h3 {
-  font-size: 13px;
+  font-size: 14px;
   color: #9a754a;
   margin-bottom: 16px;
 }
@@ -2246,7 +2246,7 @@ defineExpose({ refresh: loadDetail });
 .ud-reward-proof dd > small {
   display: block;
   color: #baa17f;
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 2px;
 }
 .ud-reward-proof .ud-raw-record {
@@ -2262,7 +2262,7 @@ defineExpose({ refresh: loadDetail });
   border-bottom: 1px solid #efe1cb;
 }
 .ud-proof-summary > span {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b89b75;
 }
 .ud-proof-summary b {
@@ -2273,7 +2273,7 @@ defineExpose({ refresh: loadDetail });
   color: #b98a4e;
 }
 .ud-proof-summary > span:nth-child(2) > b {
-  font-size: 12px;
+  font-size: 13.5px;
   margin-top: 12px;
 }
 .ud-rule-hit {
@@ -2285,21 +2285,21 @@ defineExpose({ refresh: loadDetail });
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 11px;
+  font-size: 13px;
   color: #ae8757;
 }
 .ud-rule-hit b {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
 }
 .ud-rule-hit p {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.9;
   color: #bea481;
   margin-top: 7px;
 }
 .ud-proof-empty {
-  font-size: 11px;
+  font-size: 13px;
   color: #c0a582;
   padding: 20px 0;
 }
@@ -2312,34 +2312,34 @@ defineExpose({ refresh: loadDetail });
 }
 .ud-missing-fields > span {
   flex-basis: 100%;
-  font-size: 9px;
+  font-size: 12px;
   color: #b89c75;
   margin-bottom: 4px;
 }
 .ud-missing-fields b {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 400;
   background: #f8edda;
   color: #be9c6e;
-  border: 1px solid #eddbbb;
+  border: 0;
   border-radius: 5px;
   padding: 4px 6px;
 }
 .ud-risk-proof > div:last-child > label {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: #bba17b;
   font-weight: 400;
   margin: 16px 0 8px;
 }
 .ud-raw-record {
-  border: 1px solid #e9d8be;
+  border: 0;
   border-radius: 10px;
   background: #fffdf7;
   overflow: hidden;
 }
 .ud-raw-record summary {
-  font-size: 11px;
+  font-size: 13px;
   color: #b2936a;
   padding: 14px 16px;
   cursor: pointer;
@@ -2351,7 +2351,7 @@ defineExpose({ refresh: loadDetail });
   color: #a2835b;
   padding: 16px;
   overflow: auto;
-  font-size: 10px;
+  font-size: 12.5px;
   line-height: 1.9;
   max-height: 460px;
 }
@@ -2367,14 +2367,14 @@ defineExpose({ refresh: loadDetail });
   background: #735333ef;
   color: #fff0d9;
   border-radius: 100px;
-  font-size: 11px;
+  font-size: 13px;
   z-index: 80;
   box-shadow: 0 8px 25px #86613d1c;
 }
 @media (max-width: 1250px) {
   .ud-tabs button {
     padding: 9px;
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .ud-tabs button svg {
     display: none;
@@ -2404,7 +2404,7 @@ defineExpose({ refresh: loadDetail });
   }
   .ud-identity-meta {
     gap: 9px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-profile {
     padding: 21px;
@@ -2413,7 +2413,7 @@ defineExpose({ refresh: loadDetail });
     padding: 0 18px;
   }
   .ud-evidence-summary button {
-    font-size: 8px;
+    font-size: 11px;
   }
   .ud-evidence-summary > div {
     gap: 8px;
@@ -2486,7 +2486,7 @@ defineExpose({ refresh: loadDetail });
 }
 @media (max-width: 650px) {
   .ud-breadcrumb {
-    font-size: 10px;
+    font-size: 12.5px;
     margin-bottom: 17px;
   }
   .ud-profile {
@@ -2510,26 +2510,26 @@ defineExpose({ refresh: loadDetail });
     font-size: 18px;
   }
   .ud-status {
-    font-size: 8px;
+    font-size: 11px;
     padding: 3px 5px;
   }
   .ud-identity-meta {
-    font-size: 9px;
+    font-size: 12px;
     gap: 8px;
   }
   .ud-identity-meta button {
-    font-size: 11px;
+    font-size: 13px;
   }
   .ud-handle-button {
     align-self: flex-end;
-    font-size: 9px;
+    font-size: 12px;
     padding: 8px 11px;
   }
   .ud-stat {
     padding: 15px 13px;
   }
   .ud-stat > span {
-    font-size: 9px;
+    font-size: 12px;
     gap: 5px;
   }
   .ud-stat > span > svg {
@@ -2540,11 +2540,11 @@ defineExpose({ refresh: loadDetail });
     white-space: nowrap;
   }
   .ud-stat > b small {
-    font-size: 8px;
+    font-size: 11px;
     margin: 0 3px;
   }
   .ud-stat > p {
-    font-size: 8px;
+    font-size: 11px;
     line-height: 1.8;
   }
   .ud-stats {
@@ -2555,7 +2555,7 @@ defineExpose({ refresh: loadDetail });
     margin: 19px 0 16px;
   }
   .ud-tabs button {
-    font-size: 10px;
+    font-size: 12.5px;
     padding: 9px 10px;
   }
   .ud-tabs button svg {
@@ -2576,27 +2576,27 @@ defineExpose({ refresh: loadDetail });
   }
   .ud-filters input,
   .ud-filters select {
-    font-size: 10px;
+    font-size: 12.5px;
     padding: 9px 7px;
   }
   .ud-filters label {
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-card-title {
     padding: 18px 17px;
   }
   .ud-card-title h2 {
-    font-size: 13px;
+    font-size: 14px;
   }
   .ud-facts {
     padding: 2px 17px 10px;
     column-gap: 16px;
   }
   .ud-facts dd {
-    font-size: 11px;
+    font-size: 13px;
   }
   .ud-facts dt {
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-evidence-summary {
     padding: 0 16px;
@@ -2605,10 +2605,10 @@ defineExpose({ refresh: loadDetail });
     gap: 9px;
   }
   .ud-evidence-summary b {
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .ud-evidence-summary p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-collection-status {
     padding: 13px 16px;
@@ -2620,17 +2620,17 @@ defineExpose({ refresh: loadDetail });
     padding: 17px;
   }
   .ud-handling-record p {
-    font-size: 11px;
+    font-size: 13px;
   }
   .ud-handling-record > span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-availability-notes {
     padding: 12px;
     gap: 7px;
   }
   .ud-availability-notes p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-pagination {
     padding: 14px 16px;
@@ -2646,15 +2646,15 @@ defineExpose({ refresh: loadDetail });
     margin-right: auto;
   }
   .ud-pagination button {
-    font-size: 9px;
+    font-size: 12px;
     padding: 7px 9px;
   }
   .ud-pagination select {
-    font-size: 9px;
+    font-size: 12px;
     width: 59px;
   }
   .ud-record-note {
-    font-size: 9px;
+    font-size: 12px;
     padding: 11px 17px;
   }
   .ud-table-scroll th,
@@ -2672,14 +2672,14 @@ defineExpose({ refresh: loadDetail });
     gap: 7px;
   }
   .ud-timeline h3 {
-    font-size: 11px;
+    font-size: 13px;
   }
   .ud-timeline p {
-    font-size: 9px;
+    font-size: 12px;
     gap: 8px;
   }
   .ud-timeline time {
-    font-size: 9px;
+    font-size: 12px;
   }
   .ud-record-detail {
     padding: 23px 21px;
@@ -2698,10 +2698,10 @@ defineExpose({ refresh: loadDetail });
     min-width: 0;
   }
   .ud-handling .primary {
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .ud-record-detail dd {
-    font-size: 11px;
+    font-size: 13px;
   }
   .ud-risk-proof,
   .ud-reward-proof {
@@ -2714,7 +2714,7 @@ defineExpose({ refresh: loadDetail });
     font-size: 17px;
   }
   .ud-proof-summary > span {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 </style>

@@ -117,7 +117,7 @@ defineExpose({ refresh });
           <form @submit.prevent="saveRain">
             <header>
               <div>
-                <h2>红包雨设置</h2>
+                <h2>场次设置</h2>
               </div>
               <label class="rain-toggle"
                 ><input
@@ -316,9 +316,9 @@ defineExpose({ refresh });
   align-items: center;
   gap: 8px;
   background: #fff1d9;
-  border: 1px solid #ebd3ad;
+  border: 0;
   color: #bd8b4e;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.8;
   padding: 12px 16px;
   border-radius: 11px;
@@ -328,7 +328,7 @@ defineExpose({ refresh });
   padding: 70px 15px;
   text-align: center;
   color: #bb9d7c;
-  font-size: 12px;
+  font-size: 13.5px;
 }
 .rain-admin-status {
   display: flex;
@@ -340,7 +340,7 @@ defineExpose({ refresh });
   border-radius: 11px;
   background: #fff6e8;
   color: #b18b62;
-  font-size: 11px;
+  font-size: 13px;
 }
 .rain-admin-grid {
   display: grid;
@@ -351,7 +351,7 @@ defineExpose({ refresh });
 .rain-config-card,
 .rain-preview-card {
   background: #fffdfa;
-  border: 1px solid #ecddc9;
+  border: 0;
   border-radius: 17px;
   min-width: 0;
   overflow: hidden;
@@ -376,7 +376,7 @@ defineExpose({ refresh });
   gap: 7px;
   white-space: nowrap;
   margin: 0;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b8946c;
   font-weight: 400;
   cursor: pointer;
@@ -425,7 +425,7 @@ defineExpose({ refresh });
   border: 0;
 }
 .rain-form-group h3 {
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 500;
   color: #a27d54;
   margin-bottom: 19px;
@@ -436,7 +436,7 @@ defineExpose({ refresh });
   gap: 16px 20px;
 }
 .rain-form-fields > label {
-  font-size: 10px;
+  font-size: 12.5px;
   color: #b29572;
   margin: 0 0 14px;
   min-width: 0;
@@ -445,7 +445,7 @@ defineExpose({ refresh });
 .rain-form-fields input,
 .rain-form-fields select {
   width: 100%;
-  font-size: 12px;
+  font-size: 13.5px;
   border: 1px solid #e9d7bd;
   background: #fffaf3;
   color: #a17b4e;
@@ -464,7 +464,7 @@ defineExpose({ refresh });
   gap: 15px;
 }
 .rain-opacity-control b {
-  font-size: 11px;
+  font-size: 13px;
   color: #c2955a;
   font-weight: 500;
 }
@@ -487,7 +487,7 @@ defineExpose({ refresh });
 }
 .rain-config-card .primary,
 .rain-config-card .outline {
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 9px;
   padding: 12px 17px;
 }
@@ -508,7 +508,7 @@ defineExpose({ refresh });
   border-bottom: 1px solid #eee0cc;
 }
 .rain-preview-card h2 {
-  font-size: 13px;
+  font-size: 14px;
   color: #9d7951;
   font-weight: 500;
 }
@@ -516,7 +516,7 @@ defineExpose({ refresh });
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12.5px;
   color: #bb9a71;
 }
 .rain-admin-preview {
@@ -572,7 +572,7 @@ defineExpose({ refresh });
   display: flex;
   justify-content: center;
   gap: 18px;
-  font-size: 9px;
+  font-size: 12px;
   color: #ffe4b7;
 }
 .rain-preview-legend > span {
@@ -592,13 +592,13 @@ defineExpose({ refresh });
   gap: 10px;
   margin: 0 21px;
   padding: 5px 0 22px;
-  font-size: 9px;
+  font-size: 12px;
   color: #bca17e;
   border-bottom: 1px solid #eee0c9;
 }
 .rain-preview-summary b {
   color: #bd8f54;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 500;
   margin: 0 2px;
 }
@@ -610,11 +610,11 @@ defineExpose({ refresh });
   gap: 10px;
 }
 .rain-preview-next > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #bda480;
 }
 .rain-preview-next > b {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #b18856;
 }
@@ -652,7 +652,7 @@ defineExpose({ refresh });
   }
   .rain-config-card .primary,
   .rain-config-card .outline {
-    font-size: 10px;
+    font-size: 12.5px;
     padding: 11px 13px;
   }
   .rain-admin-preview {
@@ -661,12 +661,12 @@ defineExpose({ refresh });
   }
   .rain-preview-summary {
     margin: 0 17px;
-    font-size: 8px;
+    font-size: 11px;
     gap: 6px;
   }
   .rain-preview-next {
     padding: 17px;
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (max-width: 950px) {
@@ -708,16 +708,16 @@ defineExpose({ refresh });
     gap: 10px 13px;
   }
   .rain-form-fields > label {
-    font-size: 9px;
+    font-size: 12px;
   }
   .rain-form-fields input,
   .rain-form-fields select {
-    font-size: 11px;
+    font-size: 13px;
     padding: 10px;
     margin-top: 6px;
   }
   .rain-form-group h3 {
-    font-size: 11px;
+    font-size: 13px;
     margin-bottom: 16px;
   }
   .rain-config-card form > footer {
@@ -726,11 +726,11 @@ defineExpose({ refresh });
   }
   .rain-config-card .primary,
   .rain-config-card .outline {
-    font-size: 10px;
+    font-size: 12.5px;
     padding: 11px 12px;
   }
   .rain-toggle {
-    font-size: 9px;
+    font-size: 12px;
   }
   .rain-admin-preview {
     max-width: 290px;
@@ -738,17 +738,17 @@ defineExpose({ refresh });
     height: 425px;
   }
   .rain-preview-summary {
-    font-size: 8px;
+    font-size: 11px;
     padding: 0 18px 19px;
   }
   .rain-preview-summary b {
-    font-size: 11px;
+    font-size: 13px;
   }
   .rain-preview-next {
     padding: 17px 18px;
   }
   .rain-preview-next > b {
-    font-size: 10px;
+    font-size: 12.5px;
   }
   .rain-preview-field > img {
     width: 57px;
