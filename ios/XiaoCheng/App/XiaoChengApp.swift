@@ -9,6 +9,8 @@ struct XiaoChengApp: App {
             RootView()
                 .environmentObject(session)
                 .tint(Theme.orange)
+                .modifier(ToastOverlay())
+                .preferredColorScheme(.light)
         }
     }
 }

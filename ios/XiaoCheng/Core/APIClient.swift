@@ -32,6 +32,14 @@ final class APIClient {
         try await send("POST", path, body: body)
     }
 
+    /// 构造带鉴权头的请求（SSE 等需要自己读流的场景）
+    func request(_ path: String) -> URLRequest {
+        var req = URLRequest(url: AppConfig.apiBaseURL.appendingPathComponent("api" + path))
+        req.setValue("OrangeApp-iOS/\(AppConfig.version)", forHTTPHeaderField: "User-Agent")
+        if let token, !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        return req
+    }
+
     private func send<T: Decodable, B: Encodable>(_ method: String, _ path: String, body: B?) async throws -> T {
         var req = URLRequest(url: AppConfig.apiBaseURL.appendingPathComponent("api" + path))
         req.httpMethod = method

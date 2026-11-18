@@ -2,96 +2,42 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject private var session: Session
+    @State private var tab = 0
 
-    var body: some View {
-        tabs
-            .overlay(alignment: .bottom) {
-                if session.biometricOffer != nil {
-                    BiometricOfferBanner()
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 58)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.biometricOffer != nil)
-    }
-
-    private var tabs: some View {
-        TabView {
-            HallView().tabItem { Label("大厅", systemImage: "bubble.left.and.bubble.right") }
-            NavigationView {
-                WebActivityView(url: AppConfig.webBaseURL.appendingPathComponent("activity/"))
-                    .navigationTitle("活动").navigationBarTitleDisplayMode(.inline)
-            }
-            .tabItem { Label("活动", systemImage: "gift") }
-            ProfileView().tabItem { Label("我的", systemImage: "person") }
+    init() {
+        let a = UITabBarAppearance()
+        a.configureWithOpaqueBackground()
+        a.backgroundColor = .white
+        a.shadowColor = UIColor(Theme.divider)
+        for item in [a.stackedLayoutAppearance, a.inlineLayoutAppearance, a.compactInlineLayoutAppearance] {
+            item.normal.iconColor = UIColor(Theme.secondary)
+            item.normal.titleTextAttributes = [.foregroundColor: UIColor(Theme.secondary)]
+            item.selected.iconColor = UIColor(Theme.orange)
+            item.selected.titleTextAttributes = [.foregroundColor: UIColor(Theme.orange)]
         }
+        UITabBar.appearance().standardAppearance = a
+        UITabBar.appearance().scrollEdgeAppearance = a
     }
-}
 
-struct HallView: View {
     var body: some View {
-        NavigationView {
-            VStack(spacing: 12) {
-                Image(systemName: "hammer").font(.largeTitle).foregroundColor(Theme.orange)
-                Text("大厅开发中").foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("大厅")
+        TabView(selection: $tab) {
+            HallView().tag(0)
+                .tabItem { Label("大厅", systemImage: tab == 0 ? "bubble.left.fill" : "bubble.left") }
+            ShopView().tag(1)
+                .tabItem { Label("捡漏", systemImage: tab == 1 ? "bag.fill" : "bag") }
+            ProfileView().tag(2)
+                .tabItem { Label("我的", systemImage: tab == 2 ? "person.fill" : "person") }
         }
-    }
-}
-
-struct ProfileView: View {
-    @EnvironmentObject private var session: Session
-    @State private var askPassword = false
-
-    var body: some View {
-        NavigationView {
-            List {
-                if let u = session.user {
-                    Section {
-                        LabeledRow("昵称", u.nickname ?? "-")
-                        LabeledRow("手机号", u.phone)
-                        LabeledRow("金币", "\(u.coins)")
-                        LabeledRow("今日收益", "\(u.todayEarned ?? 0)")
-                        LabeledRow("邀请码", u.inviteCode ?? "-")
-                    }
-                } else {
-                    ProgressView()
-                }
-                if BiometricVault.kind != nil {
-                    Section(footer: Text("开启后，退出或登录过期时可用\(BiometricVault.name)直接登录。")) {
-                        if session.biometricEnabled {
-                            Toggle(isOn: Binding(get: { true }, set: { if !$0 { session.setBiometric(enabled: false) } })) {
-                                Label("\(BiometricVault.name)登录", systemImage: BiometricVault.symbol)
-                            }
-                        } else {
-                            Button { askPassword = true } label: {
-                                Label("开启\(BiometricVault.name)登录", systemImage: BiometricVault.symbol)
-                            }
-                        }
-                    }
-                }
-                Section {
-                    LabeledRow("版本", "\(AppConfig.version) (\(AppConfig.build))")
-                    Button("退出登录", role: .destructive) { Task { await session.logout() } }
-                }
+        .overlay(alignment: .bottom) {
+            if session.biometricOffer != nil {
+                BiometricOfferBanner()
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 58)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .navigationTitle("我的")
-            .refreshable { await session.refreshMe() }
-            .sheet(isPresented: $askPassword) { EnableBiometricSheet() }
         }
-    }
-}
-
-private struct LabeledRow: View {
-    let title: String
-    let value: String
-    init(_ title: String, _ value: String) { self.title = title; self.value = value }
-    var body: some View {
-        HStack { Text(title); Spacer(); Text(value).foregroundColor(.secondary) }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: session.biometricOffer != nil)
+        .task { await session.refreshMe() }
     }
 }
 

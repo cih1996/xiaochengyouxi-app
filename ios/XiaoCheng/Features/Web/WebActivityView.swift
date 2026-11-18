@@ -6,15 +6,15 @@ import WebKit
 /// 所以在 documentStart 注入一个同形状对象：version/token 为预置值，其余方法经 messageHandler 转发。
 struct WebActivityView: UIViewRepresentable {
     let url: URL
-    @EnvironmentObject private var session: Session
+    var onClose: () -> Void = {}
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(onClose: onClose) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let controller = WKUserContentController()
         controller.addUserScript(WKUserScript(
-            source: Self.bridgeScript(token: session.token ?? ""),
+            source: Self.bridgeScript(token: APIClient.shared.token ?? ""),
             injectionTime: .atDocumentStart, forMainFrameOnly: true))
         controller.add(context.coordinator, name: "orangeApp")
         config.userContentController = controller
@@ -61,6 +61,8 @@ struct WebActivityView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var web: WKWebView?
+        let onClose: () -> Void
+        init(onClose: @escaping () -> Void) { self.onClose = onClose }
 
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -83,8 +85,16 @@ struct WebActivityView: UIViewRepresentable {
                    WebActivityView.trusted(u.absoluteURL) {
                     web?.load(URLRequest(url: u.absoluteURL))
                 }
+            case "toast":
+                if let t = args.first { Toast.shared.show(t) }
+            case "close":
+                onClose()
+            case "sharePoster":
+                guard args.count >= 2, let data = Data(base64Encoded: args[1]), let img = UIImage(data: data) else { return }
+                var items: [Any] = [img]
+                if args.count > 2, !args[2].isEmpty { items.append(args[2]) }
+                present(UIActivityViewController(activityItems: items, applicationActivities: nil))
             default:
-                // toast / sharePoster / close 后续实现
                 break
             }
         }
