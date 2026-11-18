@@ -2598,7 +2598,6 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     mail_events::initialize(&db)?;
     product_admin::initialize(&db)?;
     app_config::initialize(&db).map_err(|e| e.1)?;
-    home_layout::initialize(&db).map_err(|e| e.1)?;
     withdraw_rules::initialize(&db).map_err(|e| e.1)?;
     risk::init(&db)?;
     rain::initialize(&db).map_err(|e| e.1)?;
@@ -2646,7 +2645,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(mail_events::admin_routes())
         .merge(product_admin::admin_routes())
         .merge(app_config::admin_routes())
-        .merge(home_layout::admin_routes())
         .merge(withdraw_rules::admin_routes())
         .merge(ad_mediation::admin_routes())
         .merge(sms_channel::admin_routes())
@@ -2654,7 +2652,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(cos_storage::admin_routes())
         .merge(reward_policy::admin_routes())
         .merge(business_guard::admin_routes())
-        .merge(campaign::admin_routes())
         .merge(newbie::admin_routes())
         .merge(wheel::admin_routes())
         .merge(payout::admin_routes())

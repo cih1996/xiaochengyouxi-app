@@ -1,16 +1,8 @@
 # 首页入口、网页活动与提现档位
 
-## 首页入口（后台“运营管理 → 首页入口”）
+## 首页入口（已移除）
 
-- 大厅欢迎卡下方显示图标入口宫格（最多 10 个，4 个以内排一行 4 列，否则 5 列），右下角显示一个悬浮入口。
-- 默认两者都不显示，只用于运营活动；签到、捡漏、提现、金币明细已有固定入口，不要重复添加。名称、角标、图标均按活动填写或在后台上传图片（复用商品图片存储，返回 `/media/products/...`），App 不内置任何活动文案；悬浮入口名称留空时只显示图片。
-- 每个入口：名称（1–6 字）、角标（≤4 字）、内置图标或图标图片、打开方式、开始/结束时间（RFC3339，留空不限）、显示开关。
-- 打开方式：
-  - `native`：App 内置页面，可选 `checkin`、`invite`、`newbie`（新人礼包，见 docs/NEWBIE-GIFT.md）、`activity`、`withdraw`、`shop`、`ledger`、`me`。
-  - `web`：网页活动。填站内路径（如 `/activity/demo.html`），或 `ORANGE_ACTIVITY_HOSTS` 允许域名下的 https 地址（默认 `orange.lingzidev.com,orange-api.lingzidev.com`）。
-- 悬浮入口动画：`float` 上下漂浮、`bounce` 弹跳、`shake` 摇摆、`none` 静止；用户可点 × 隐藏，后台再次保存（revision 变化）后重新出现。
-- 站内路径的活动页按 `WEB_BASE_URL`（正式包 `https://orange.lingzidev.com`）打开，页面内 `/api/` 由该站点代理到后端。
-- 接口：App 读取 `GET /api/app/home`（只返回当前生效的项）；后台 `GET/PUT /api/admin/home-layout`，修改写入管理审计。App 每 45 秒随运行时配置刷新，无需发版。
+后台“首页入口”（图标宫格 + 悬浮入口）和旧版转盘已移除。`GET /api/app/home` 仅为旧版 App 保留，固定返回空布局。活动入口改为大厅右上角的专属悬浮入口：新人礼包、幸运转盘（`docs/NEWBIE-GIFT.md`）。
 
 ## 网页活动容器（Android `WebActivity`）
 

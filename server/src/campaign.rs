@@ -51,23 +51,6 @@ impl Default for Config {
         }
     }
 }
-fn validate(c: &Config) -> Result<(), ApiError> {
-    if c.title.trim().is_empty()
-        || c.title.chars().count() > 80
-        || c.subtitle.chars().count() > 200
-        || !(0..=3600).contains(&c.settle_delay_seconds)
-        || !(0..=1_000_000).contains(&c.arrival_threshold_coins)
-        || !(0..=1).contains(&c.login_opportunities)
-        || !(0..=20).contains(&c.video_opportunities_per_day)
-        || !(0..=10).contains(&c.invite_opportunities_per_invitee)
-        || c.prizes.is_empty()
-        || c.prizes.len() > 20
-        || c.prizes.iter().any(|v| !(0..=100000).contains(v))
-    {
-        return Err(invalid("活动配置范围无效"));
-    }
-    Ok(())
-}
 pub(super) fn initialize(db: &Connection) -> Result<(), ApiError> {
     db.execute_batch("CREATE TABLE IF NOT EXISTS campaign_config(id INTEGER PRIMARY KEY CHECK(id=1),config_json TEXT NOT NULL,updated_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS campaign_opportunities(id TEXT PRIMARY KEY,user_id INTEGER NOT NULL,source TEXT NOT NULL,source_ref TEXT NOT NULL,day TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,used_at INTEGER);
@@ -274,94 +257,12 @@ async fn settle(
         json!({"id":id,"status":"settled","prize_coins":coins,"settled_at":iso(now()),"user":user(&db,uid)?}),
     ))
 }
-async fn admin_get(State(state): State<AppState>) -> ApiResult<Value> {
-    let c = config(&open(&state)?)?;
-    Ok(Json(
-        json!({"enabled":c.enabled,"title":c.title,"copy":c.subtitle,"subtitle":c.subtitle,"entry_label":c.entry_label,"hero_image":c.hero_image,"starts_at":c.starts_at,"expires_at":c.expires_at,"daily_limit":c.daily_spin_limit,"daily_spin_limit":c.daily_spin_limit,"arrival_threshold":c.arrival_threshold_coins,"arrival_threshold_coins":c.arrival_threshold_coins,"settle_delay_seconds":c.settle_delay_seconds,"login_opportunities":c.login_opportunities,"video_opportunities_per_day":c.video_opportunities_per_day,"invite_opportunities_per_invitee":c.invite_opportunities_per_invitee,"reward_tiers":c.prizes,"prizes":c.prizes,"revision":c.revision}),
-    ))
-}
-async fn admin_put(
-    State(state): State<AppState>,
-    Extension(context): Extension<RequestContext>,
-    Json(mut input): Json<Config>,
-) -> ApiResult<Config> {
-    validate(&input)?;
-    let mut db = open(&state)?;
-    let tx = db.transaction()?;
-    let old = config(&tx)?;
-    input.revision = old.revision + 1;
-    tx.execute(
-        "UPDATE campaign_config SET config_json=?1,updated_at=?2 WHERE id=1",
-        params![serde_json::to_string(&input)?, now()],
-    )?;
-    user_admin::action_audit(
-        &tx,
-        &context,
-        None,
-        "campaign_config_update",
-        "campaign",
-        "修改营销活动配置",
-        serde_json::to_value(old)?,
-        serde_json::to_value(&input)?,
-    )?;
-    tx.commit()?;
-    Ok(Json(input))
-}
-#[derive(Deserialize, Default)]
-struct AdminQuery {
-    page: Option<i64>,
-    page_size: Option<i64>,
-    q: Option<String>,
-}
-async fn admin_users(
-    State(state): State<AppState>,
-    Query(q): Query<AdminQuery>,
-) -> ApiResult<Value> {
-    let db = open(&state)?;
-    let page = q.page.unwrap_or(1).max(1);
-    let size = q.page_size.unwrap_or(20).clamp(1, 100);
-    let term = q.q.as_deref().unwrap_or("");
-    let total:i64=db.query_row("SELECT COUNT(*) FROM users WHERE (?1='' OR phone LIKE '%'||?1||'%' OR nickname LIKE '%'||?1||'%' OR CAST(id AS TEXT)=?1)",[term],|r|r.get(0))?;
-    let rows=db.prepare("SELECT u.id,u.phone,u.nickname,u.coins,COALESCE(o.opportunities,0),COALESCE(s.spins,0),COALESCE(s.pending,0),COALESCE(s.settled,0) FROM users u LEFT JOIN (SELECT user_id,COUNT(*) opportunities FROM campaign_opportunities GROUP BY user_id)o ON o.user_id=u.id LEFT JOIN (SELECT user_id,COUNT(*) spins,SUM(status='pending') pending,SUM(status='settled') settled FROM campaign_spins GROUP BY user_id)s ON s.user_id=u.id WHERE (?1='' OR u.phone LIKE '%'||?1||'%' OR u.nickname LIKE '%'||?1||'%' OR CAST(u.id AS TEXT)=?1) ORDER BY u.id DESC LIMIT ?2 OFFSET ?3")?.query_map(params![term,size,(page-1)*size],|r|Ok(json!({"user_id":r.get::<_,i64>(0)?,"phone":r.get::<_,String>(1)?,"nickname":r.get::<_,String>(2)?,"coins":r.get::<_,i64>(3)?,"opportunities":r.get::<_,i64>(4)?,"spins":r.get::<_,i64>(5)?,"pending":r.get::<_,i64>(6)?,"settled":r.get::<_,i64>(7)?})))?.collect::<Result<Vec<_>,_>>()?;
-    Ok(Json(
-        json!({"items":rows,"total":total,"page":page,"page_size":size}),
-    ))
-}
-async fn admin_user_detail(
-    State(state): State<AppState>,
-    Path(uid): Path<i64>,
-) -> ApiResult<Value> {
-    let db = open(&state)?;
-    let user_row:Value=db.query_row("SELECT id,phone,nickname,coins,created_at FROM users WHERE id=?1",[uid],|r|Ok(json!({"id":r.get::<_,i64>(0)?,"phone":r.get::<_,String>(1)?,"nickname":r.get::<_,String>(2)?,"coins":r.get::<_,i64>(3)?,"created_at":iso(r.get(4)?)}))).optional()?.ok_or_else(||ApiError(StatusCode::NOT_FOUND,"用户不存在".into(),None))?;
-    let current_coins = user_row["coins"].as_i64().unwrap_or(0);
-    let opportunities=db.prepare("SELECT id,source,source_ref,day,created_at,expires_at,used_at FROM campaign_opportunities WHERE user_id=?1 ORDER BY created_at DESC LIMIT 200")?.query_map([uid],|r|Ok(json!({"id":r.get::<_,String>(0)?,"source":r.get::<_,String>(1)?,"source_ref":r.get::<_,String>(2)?,"day":r.get::<_,String>(3)?,"created_at":iso(r.get(4)?),"expires_at":iso(r.get(5)?),"used":r.get::<_,Option<i64>>(6)?.is_some()})))?.collect::<Result<Vec<_>,_>>()?;
-    let spins=db.prepare("SELECT id,opportunity_id,prize_coins,created_at,status,settled_at FROM campaign_spins WHERE user_id=?1 ORDER BY created_at DESC LIMIT 200")?.query_map([uid],|r|Ok(json!({"id":r.get::<_,String>(0)?,"opportunity_id":r.get::<_,String>(1)?,"prize_coins":r.get::<_,i64>(2)?,"created_at":iso(r.get(3)?),"status":r.get::<_,String>(4)?,"settled_at":r.get::<_,Option<i64>>(5)?.map(iso)})))?.collect::<Result<Vec<_>,_>>()?;
-    let c = config(&db)?;
-    Ok(Json(
-        json!({"user":user_row,"opportunities":opportunities,"spins":spins,"settlement":{"arrival_threshold_coins":c.arrival_threshold_coins,"settle_delay_seconds":c.settle_delay_seconds,"current_coins":current_coins,"threshold_met":current_coins>=c.arrival_threshold_coins},"availability":{"history":"available","notes":[]}}),
-    ))
-}
-async fn admin_stats(State(state): State<AppState>) -> ApiResult<Value> {
-    let db = open(&state)?;
-    Ok(Json(
-        json!({"users":db.query_row("SELECT COUNT(DISTINCT user_id) FROM campaign_opportunities",[],|r|r.get::<_,i64>(0))?,"opportunities":db.query_row("SELECT COUNT(*) FROM campaign_opportunities",[],|r|r.get::<_,i64>(0))?,"spins":db.query_row("SELECT COUNT(*) FROM campaign_spins",[],|r|r.get::<_,i64>(0))?,"pending":db.query_row("SELECT COUNT(*) FROM campaign_spins WHERE status='pending'",[],|r|r.get::<_,i64>(0))?,"settled":db.query_row("SELECT COUNT(*) FROM campaign_spins WHERE status='settled'",[],|r|r.get::<_,i64>(0))?,"settled_coins":db.query_row("SELECT COALESCE(SUM(prize_coins),0) FROM campaign_spins WHERE status='settled'",[],|r|r.get::<_,i64>(0))?}),
-    ))
-}
 pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/campaign", get(runtime))
         .route("/campaign/spin", post(spin))
         .route("/campaign/rewards/{id}/settle", post(settle))
 }
-pub(super) fn admin_routes() -> Router<AppState> {
-    Router::new()
-        .route("/campaign", get(admin_get).put(admin_put))
-        .route("/campaign/stats", get(admin_stats))
-        .route("/campaign/users", get(admin_users))
-        .route("/campaign/users/{id}", get(admin_user_detail))
-        .route("/campaign/users/{id}/records", get(admin_user_detail))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

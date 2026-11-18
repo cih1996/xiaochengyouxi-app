@@ -527,7 +527,6 @@ public final class MainActivity extends Activity {
     if (current.equals("deletion")) current = deletionReturn.isEmpty() ? "hall" : deletionReturn;
     deletionPage = false;
     activities.load();
-    loadHome();
     loadNewbie();
     loadWheel();
     refreshCheckinStatus();
@@ -1601,7 +1600,6 @@ public final class MainActivity extends Activity {
 
   void render() {
     if (page == null || user == null) return;
-    stopFloating();
     api.behavior.sensitive(false);
     api.behavior.page(current.equals("hall") ? 1 : current.equals("shop") ? 2 : 3);
     rain.detach();
@@ -1756,7 +1754,6 @@ public final class MainActivity extends Activity {
     mp.rightMargin = dp(4);
     welcome.addView(mascot, mp);
     add(content, welcome, -1, 110);
-    addHomeEntries(content);
     gap(content, 8);
     TextView today = label("今天", 11, 0xffbda89b);
     today.setGravity(Gravity.CENTER);
@@ -1773,16 +1770,11 @@ public final class MainActivity extends Activity {
     ScrollView scroll = hallScroll;
     int savedScroll = hallScrollY;
     scroll.post(() -> scroll.scrollTo(0, savedScroll));
-    addFloatingEntry();
     addNewbieBadge();
     addWheelBadge();
     if (foreground) rain.attach(hallSurface, rainTime);
   }
 
-  // ---- Server-controlled home entries (icon grid + floating entry) ----
-  JSONObject homeLayout;
-  String floatingDismissed = "";
-  final ArrayList<Animator> floatingAnimators = new ArrayList<>();
 
   // ---- 新人礼包 (activity page web/public/activity/newbie.html; amounts decided by the server) ----
   static final String NEWBIE_PAGE = "/activity/newbie.html";
@@ -1950,184 +1942,6 @@ public final class MainActivity extends Activity {
           openNewbie();
         });
     badge.post(badge::start);
-  }
-
-  void loadHome() {
-    api.get(
-        "/app/home",
-        value -> {
-          JSONObject next = (JSONObject) value;
-          boolean changed = homeLayout == null || !homeLayout.toString().equals(next.toString());
-          homeLayout = next;
-          if (changed && current.equals("hall") && page != null && !rewardUiBusy) render();
-        },
-        message -> android.util.Log.w("HomeLayout", "GET /api/app/home: " + message));
-  }
-
-  void addHomeEntries(LinearLayout content) {
-    JSONArray entries = homeLayout == null ? null : homeLayout.optJSONArray("entries");
-    if (entries == null || entries.length() == 0) return;
-    gap(content, 10);
-    LinearLayout grid = col();
-    grid.setPadding(dp(6), dp(12), dp(6), dp(8));
-    grid.setBackground(bg(WHITE, 20));
-    int columns = entries.length() <= 4 ? 4 : 5;
-    LinearLayout row = null;
-    for (int i = 0; i < entries.length(); i++) {
-      if (i % columns == 0) {
-        row = row();
-        add(grid, row, -1, -2);
-      }
-      JSONObject entry = entries.optJSONObject(i);
-      if (entry != null) row.addView(homeEntry(entry), new LinearLayout.LayoutParams(0, -2, 1));
-    }
-    int rest = entries.length() % columns;
-    if (rest != 0) for (int i = rest; i < columns; i++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
-    add(content, grid, -1, -2);
-  }
-
-  View homeEntry(JSONObject entry) {
-    LinearLayout cell = col();
-    cell.setGravity(Gravity.CENTER_HORIZONTAL);
-    cell.setPadding(0, 0, 0, dp(6));
-    FrameLayout tile = new FrameLayout(this);
-    tile.setClipChildren(false);
-    FrameLayout face = new FrameLayout(this);
-    face.setBackground(grad(0xffffefe0, 0xffffdcc2, 16));
-    String image = entry.optString("image_url");
-    if (!image.isEmpty()) {
-      ProductImage photo = new ProductImage(this, image, entry.optString("title"), ImageView.ScaleType.CENTER_CROP);
-      photo.setBackgroundColor(0);
-      face.setClipToOutline(true);
-      face.addView(photo, new FrameLayout.LayoutParams(-1, -1));
-    } else {
-      LineIcon icon = new LineIcon(this, entry.optString("icon", "gift"), 0xffe0702c);
-      face.addView(icon, new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER));
-    }
-    tile.addView(face, new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER));
-    String badge = entry.optString("badge");
-    if (!badge.isEmpty()) {
-      TextView tag = text(badge, 9, WHITE, true);
-      tag.setPadding(dp(5), 0, dp(5), dp(1));
-      tag.setBackground(bg(RED, 8));
-      FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.RIGHT);
-      tile.addView(tag, tl);
-    }
-    add(cell, tile, 60, 50);
-    gap(cell, 5);
-    TextView name = label(entry.optString("title"), 12, INK);
-    name.setGravity(Gravity.CENTER);
-    name.setSingleLine(true);
-    add(cell, name, -1, -2);
-    cell.setContentDescription(entry.optString("title"));
-    cell.setOnClickListener(
-        v -> {
-          press(face);
-          api.behavior.click(0, "home:" + entry.optString("id"));
-          openEntry(entry.optString("action"), entry.optString("target"), entry.optString("title"));
-        });
-    return cell;
-  }
-
-  void stopFloating() {
-    for (Animator a : floatingAnimators) a.cancel();
-    floatingAnimators.clear();
-  }
-
-  void addFloatingEntry() {
-    JSONObject f = homeLayout == null ? null : homeLayout.optJSONObject("floating");
-    if (f == null || hallSurface == null) return;
-    String key = homeLayout.optLong("revision") + ":" + f.optString("target");
-    if (key.equals(floatingDismissed)) return;
-    FrameLayout box = new FrameLayout(this);
-    box.setClipChildren(false);
-    LinearLayout body = col();
-    body.setGravity(Gravity.CENTER_HORIZONTAL);
-    String image = f.optString("image_url");
-    View face;
-    if (!image.isEmpty()) {
-      ProductImage photo = new ProductImage(this, image, f.optString("title"), ImageView.ScaleType.FIT_CENTER);
-      photo.setBackgroundColor(0);
-      face = photo;
-    } else {
-      FrameLayout disc = new FrameLayout(this);
-      GradientDrawable g = grad(0xffffb25a, 0xfff2452b, 99);
-      g.setStroke(dp(3), 0xffffe9c4);
-      disc.setBackground(g);
-      disc.setElevation(dp(6));
-      disc.addView(new LineIcon(this, f.optString("icon", "gift"), WHITE), new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER));
-      face = disc;
-    }
-    body.addView(face, new LinearLayout.LayoutParams(dp(60), dp(60)));
-    String title = f.optString("title");
-    if (!title.isEmpty()) {
-      TextView pill = text(title, 10, WHITE, true);
-      pill.setPadding(dp(8), dp(2), dp(8), dp(3));
-      pill.setBackground(grad(0xffff8a3d, 0xfff2452b, 10));
-      pill.setElevation(dp(7));
-      LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, -2);
-      pl.topMargin = -dp(8);
-      body.addView(pill, pl);
-    }
-    box.addView(body, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
-    TextView close = text("×", 12, WHITE, true);
-    close.setGravity(Gravity.CENTER);
-    close.setBackground(bg(0x66392923, 99));
-    close.setContentDescription("关闭悬浮入口");
-    box.addView(close, new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.TOP | Gravity.RIGHT));
-    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(84), dp(88), Gravity.BOTTOM | Gravity.RIGHT);
-    lp.rightMargin = dp(8);
-    lp.bottomMargin = dp(18);
-    hallSurface.addView(box, lp);
-    close.setOnClickListener(
-        v -> {
-          floatingDismissed = key;
-          stopFloating();
-          hallSurface.removeView(box);
-        });
-    body.setOnClickListener(
-        v -> {
-          api.behavior.click(0, "home:floating");
-          openEntry(f.optString("action"), f.optString("target"), title);
-        });
-    String animation = f.optString("animation", "float");
-    if (ValueAnimator.areAnimatorsEnabled() && !animation.equals("none")) {
-      ObjectAnimator a;
-      if (animation.equals("bounce")) {
-        PropertyValuesHolder sx = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.14f, .96f, 1f);
-        PropertyValuesHolder sy = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.14f, .96f, 1f);
-        a = ObjectAnimator.ofPropertyValuesHolder(body, sx, sy);
-        a.setDuration(900);
-        a.setRepeatCount(ValueAnimator.INFINITE);
-        a.setRepeatMode(ValueAnimator.RESTART);
-        a.setStartDelay(400);
-      } else if (animation.equals("shake")) {
-        a = ObjectAnimator.ofFloat(body, View.ROTATION, 0, -12, 12, -8, 8, 0, 0, 0, 0, 0);
-        a.setDuration(1800);
-        a.setRepeatCount(ValueAnimator.INFINITE);
-      } else {
-        a = ObjectAnimator.ofFloat(body, View.TRANSLATION_Y, 0, -dp(8));
-        a.setDuration(1300);
-        a.setRepeatCount(ValueAnimator.INFINITE);
-        a.setRepeatMode(ValueAnimator.REVERSE);
-        a.setInterpolator(new AccelerateDecelerateInterpolator());
-      }
-      floatingAnimators.add(a);
-      a.start();
-    }
-  }
-
-  void openEntry(String action, String target, String title) {
-    if (action.equals("web")) {
-      String url = WebActivity.resolve(target);
-      if (url == null) {
-        tip("活动地址无效");
-        return;
-      }
-      startActivityForResult(
-          new Intent(this, WebActivity.class).putExtra(WebActivity.EXTRA_URL, url).putExtra(WebActivity.EXTRA_TITLE, title),
-          WebActivity.REQUEST);
-    } else openNative(target);
   }
 
   /** 新人礼包 video packet (amount already revealed on the page): standard rewarded-video flow
@@ -4770,7 +4584,6 @@ public final class MainActivity extends Activity {
     int epoch = runtimeEpoch;
     handler.removeCallbacks(runtimeTick);
     handler.postDelayed(runtimeTick, 45000);
-    loadHome();
     loadNewbie();
     loadWheel();
     api.get(

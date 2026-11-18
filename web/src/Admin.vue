@@ -10,8 +10,6 @@ import ProductAdmin from "./ProductAdmin.vue";
 import UserCenter from "./UserCenter.vue";
 import InvitationGraph from "./InvitationGraph.vue";
 import BehaviorAdmin from "./BehaviorAdmin.vue";
-import ActivityAdmin from "./ActivityAdmin.vue";
-import HomeLayoutAdmin from "./HomeLayoutAdmin.vue";
 import WithdrawRulesAdmin from "./WithdrawRulesAdmin.vue";
 import AdConfigAdmin from "./AdConfigAdmin.vue";
 import AdStats from "./AdStats.vue";
@@ -77,8 +75,6 @@ const rainAdmin = ref(null),
   userCenter = ref(null),
   graphPanel = ref(null),
   behaviorPanel = ref(null);
-const activityPanel = ref(null);
-const homePanel = ref(null);
 const withdrawRulesPanel = ref(null);
 const adConfigPanel = ref(null);
 const adStatsPanel = ref(null);
@@ -111,10 +107,8 @@ const items = [
   { id: "products", label: "商品库", icon: "bag" },
   { id: "strategy", label: "推送策略", icon: "bell" },
   { id: "rain", label: "红包雨", icon: "gift" },
-  { id: "activity-config", label: "旧版转盘", icon: "spark" },
   { id: "wheel", label: "幸运转盘", icon: "spark" },
   { id: "newbie", label: "新人礼包", icon: "gift" },
-  { id: "home-layout", label: "首页入口", icon: "grid" },
   { id: "withdraw-rules", label: "提现档位", icon: "wallet" },
   { id: "ad-config", label: "广告配置", icon: "play" },
   { id: "ad-stats", label: "广告统计", icon: "list" },
@@ -149,10 +143,8 @@ const groups = [
       "products",
       "strategy",
       "rain",
-      "activity-config",
       "newbie",
       "wheel",
-      "home-layout",
       "invitations",
     ],
   },
@@ -322,8 +314,6 @@ async function refreshCurrent() {
   else if (tab.value === "products") await productPanel.value.refresh();
   else if (tab.value === "relations") await graphPanel.value.refresh();
   else if (tab.value === "behavior") await behaviorPanel.value.refresh();
-  else if (tab.value === "activity-config") await activityPanel.value.refresh();
-  else if (tab.value === "home-layout") await homePanel.value?.refresh();
   else if (tab.value === "withdraw-rules") await withdrawRulesPanel.value?.refresh();
   else if (tab.value === "ad-config") await adConfigPanel.value?.refresh();
   else if (tab.value === "ad-stats") await adStatsPanel.value?.refresh();
@@ -713,18 +703,6 @@ onMounted(load);
           :user-id="behaviorUserId"
           @detail="openUser"
           @relations="openRelations"
-          @unauthorized="fail"
-        />
-        <ActivityAdmin
-          v-if="tab === 'activity-config'"
-          ref="activityPanel"
-          :api="api"
-          @unauthorized="fail"
-        />
-        <HomeLayoutAdmin
-          v-if="tab === 'home-layout'"
-          ref="homePanel"
-          :api="api"
           @unauthorized="fail"
         />
         <AdConfigAdmin
