@@ -32,6 +32,10 @@ final class APIClient {
         try await send("POST", path, body: body)
     }
 
+    func put<T: Decodable, B: Encodable>(_ path: String, _ body: B, as: T.Type = T.self) async throws -> T {
+        try await send("PUT", path, body: body)
+    }
+
     /// 构造带鉴权头的请求（SSE 等需要自己读流的场景）
     func request(_ path: String) -> URLRequest {
         var req = URLRequest(url: AppConfig.apiBaseURL.appendingPathComponent("api" + path))

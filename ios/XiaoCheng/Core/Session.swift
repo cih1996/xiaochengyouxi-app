@@ -31,6 +31,17 @@ final class Session: ObservableObject {
         explicitLogout = false
     }
 
+    func register(phone: String, code: String, password: String) async throws {
+        let r: AuthResponse = try await APIClient.shared.post(
+            "/auth/register", ["phone": phone, "code": code, "password": password])
+        save(token: r.token)
+        user = r.user
+        explicitLogout = false
+        if BiometricVault.kind != nil {
+            biometricOffer = BiometricVault.Credentials(phone: phone, password: password)
+        }
+    }
+
     func sendLoginCode(phone: String) async throws {
         struct R: Decodable { let code: String? }
         let _: R = try await APIClient.shared.post("/auth/sms", ["phone": phone, "purpose": "login"])

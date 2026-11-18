@@ -68,7 +68,7 @@ struct LedgerView: View {
                 CoinIcon(size: 34)
                 Text("\(u?.coins ?? 0)").font(.system(size: 40, weight: .bold)).foregroundColor(.white).monospacedDigit()
                 Spacer()
-                NavigationLink(destination: ComingSoon(title: "提现")) {
+                NavigationLink(destination: WithdrawView()) {
                     Text("去提现").font(.subheadline.bold()).foregroundColor(Theme.orange)
                         .padding(.horizontal, 20).frame(height: 42).background(Color.white, in: Capsule())
                 }

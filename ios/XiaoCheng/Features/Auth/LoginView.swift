@@ -16,6 +16,7 @@ struct LoginView: View {
     @State private var codeMode = false
     @State private var code = ""
     @State private var countdown = 0
+    @State private var flow: AuthFlowView.Mode?
     @FocusState private var focus: Field?
     enum Field { case account, password, code }
 
@@ -125,20 +126,23 @@ struct LoginView: View {
                     }
                         .font(.body.bold()).foregroundColor(Theme.orange)
                     Spacer()
-                    Button("忘记密码？") { Toast.shared.show("iOS 版正在赶来") }
+                    Button("忘记密码？") { flow = .reset }
                         .foregroundColor(Theme.secondary)
                 }
                 .padding(.top, 20)
 
                 HStack(spacing: 6) {
                     Text("还没有账号？").foregroundColor(Theme.secondary)
-                    Button("立即注册") { Toast.shared.show("iOS 版正在赶来") }.font(.body.bold()).foregroundColor(Theme.orange)
+                    Button("立即注册") { flow = .register }.font(.body.bold()).foregroundColor(Theme.orange)
                 }
                 .frame(maxWidth: .infinity).padding(.top, 36)
             }
             .padding(.horizontal, 24)
         }
         .scrollDismissesKeyboardCompat()
+        .sheet(isPresented: Binding(get: { flow != nil }, set: { if !$0 { flow = nil } })) {
+            if let flow { AuthFlowView(mode: flow, presetPhone: trimmed.count == 11 ? trimmed : nil) }
+        }
         .background(Theme.background.ignoresSafeArea())
         .task {
             #if DEBUG

@@ -1,3 +1,4 @@
+import SwiftUI
 import Foundation
 
 struct User: Decodable {
@@ -99,5 +100,58 @@ enum ISO {
     static func date(_ s: String?) -> Date? {
         guard let s else { return nil }
         return fractional.date(from: s) ?? plain.date(from: s)
+    }
+}
+
+struct WithdrawOptions: Decodable {
+    struct Tier: Decodable, Identifiable {
+        let id: String
+        let amountYuan: Double
+        let available: Bool
+        let label: String
+        let limit: String?
+        let reason: String?
+    }
+    let cashYuan: Double
+    let tiers: [Tier]
+}
+
+struct PayoutAccounts: Decodable {
+    struct Account: Decodable { let account: String?; let name: String? }
+    let alipay: Account?
+    let wechat: Account?
+}
+
+struct Withdrawal: Decodable, Identifiable {
+    let id: String
+    let amountYuan: Double?
+    let channelText: String?
+    let status: String?
+    let state: String?
+    let account: String?
+    let createdAt: String?
+    let note: String?
+    let coins: Int?
+}
+
+struct InviteSummary: Decodable {
+    let inviteCode: String
+    let inviteUrl: String
+    let invitedCount: Int?
+    let pendingCount: Int?
+    let registeredCount: Int?
+    let inviterCode: String?
+}
+
+/// 微信 / 支付宝的方块图标（Android 提现页同款）
+struct ChannelIcon: View {
+    let channel: String
+    var size: CGFloat = 42
+    var body: some View {
+        Text(channel == "wechat" ? "微" : "支")
+            .font(.system(size: size * 0.48, weight: .bold)).foregroundColor(.white)
+            .frame(width: size, height: size)
+            .background(channel == "wechat" ? Color(hex: 0x07C160) : Color(hex: 0x1677FF),
+                        in: RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
     }
 }

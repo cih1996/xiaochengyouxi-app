@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var askPassword = false
     @State private var confirmLogout = false
+    @State private var changing = false
+    @State private var deleting = false
 
     var body: some View {
         SubPage(title: "设置") {
@@ -24,9 +26,9 @@ struct SettingsView: View {
                             .padding(.horizontal, 22).frame(height: 62)
                             Divider().padding(.leading, 22)
                         }
-                        SettingRow(title: "修改密码") { Toast.shared.show("iOS 版正在赶来") }
+                        SettingRow(title: "修改密码") { changing = true }
                         Divider().padding(.leading, 22)
-                        SettingRow(title: "注销账号", detail: "需审核") { Toast.shared.show("iOS 版正在赶来") }
+                        SettingRow(title: "注销账号", detail: "需审核") { deleting = true }
                     }
                     .card(radius: 20)
                     SectionTitle("关于").padding(.top, 8)
@@ -52,6 +54,8 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $askPassword) { EnableBiometricSheet() }
+        .sheet(isPresented: $changing) { AuthFlowView(mode: .change, presetPhone: session.user?.phone) }
+        .background(NavigationLink(destination: AccountDeletionView(), isActive: $deleting) { EmptyView() })
         .confirmationDialog("确定退出登录？", isPresented: $confirmLogout, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) { Task { await session.logout() } }
         }

@@ -28,7 +28,7 @@ struct ProfileView: View {
                     VStack(spacing: 0) {
                         MenuRow(icon: "clock", title: "提现记录", destination: WithdrawRecordsView())
                         Divider().padding(.leading, 56)
-                        MenuRow(icon: "checkmark.shield", title: "收款账户", destination: ComingSoon(title: "收款账户"))
+                        MenuRow(icon: "checkmark.shield", title: "收款账户", destination: PayoutAccountView())
                         Divider().padding(.leading, 56)
                         MenuRow(icon: "yensign.circle", title: "金币明细", destination: LedgerView())
                     }
@@ -78,7 +78,7 @@ private struct CoinsCard: View {
                 Text("累计 \(user?.totalEarned ?? 0) 金币").frame(maxWidth: .infinity, alignment: .leading)
             }
             .font(.subheadline).foregroundColor(.white.opacity(0.85)).padding(.top, 6)
-            NavigationLink(destination: ComingSoon(title: "提现")) {
+            NavigationLink(destination: WithdrawView()) {
                 Text("去提现").font(.system(size: 18, weight: .bold)).foregroundColor(Theme.orange)
                     .frame(maxWidth: .infinity).frame(height: 54)
                     .background(Theme.cream, in: RoundedRectangle(cornerRadius: 27))
@@ -162,10 +162,3 @@ struct ComingSoon: View {
     }
 }
 
-struct InviteView: View {
-    var body: some View { ComingSoon(title: "邀请好友") }
-}
-
-struct WithdrawRecordsView: View {
-    var body: some View { ComingSoon(title: "提现记录") }
-}

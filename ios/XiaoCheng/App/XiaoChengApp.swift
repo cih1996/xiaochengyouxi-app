@@ -22,6 +22,8 @@ struct RootView: View {
         Group {
             if session.token == nil {
                 LoginView()
+            } else if session.user?.invitationRequired == true {
+                BindInvitationView()
             } else {
                 MainTabView()
             }
