@@ -10,14 +10,19 @@ final class HallModel: ObservableObject {
     @Published var rain: RainStatus?
     @Published var rainOffset: TimeInterval = 0   // 服务器时间 - 本机时间
     @Published var newbieBadge = 0
+    @Published var notice = ""
+    /// 新人礼包自动弹出（每个用户每一轮只弹一次，对照 Android maybePopupNewbie）
+    @Published var newbiePopup = false
     @Published var wheelBadge = 0
     private var streamTask: Task<Void, Never>?
+    var userId: Int?
 
     func start() {
         guard streamTask == nil else { return }
         streamTask = Task { [weak self] in await self?.runStream() }
         Task { await refreshCheckin() }
         Task { await refreshBadges() }
+        Task { await pollRuntime() }
         Task { await pollRain() }
     }
 
@@ -30,9 +35,34 @@ final class HallModel: ObservableObject {
         checkin = try? await APIClient.shared.get("/check-in/status")
     }
 
+    private func pollRuntime() async {
+        struct Runtime: Decodable { let hallNotice: String? }
+        while !Task.isCancelled {
+            if let r: Runtime = try? await APIClient.shared.get("/app/runtime") {
+                notice = (r.hallNotice ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            try? await Task.sleep(nanoseconds: 45 * 1_000_000_000)
+        }
+    }
+
     func refreshBadges() async {
+        struct Welcome: Decodable { let status: String? }
+        struct Newbie: Decodable {
+            let available: Int?; let enabled: Bool?; let autoPopup: Bool?; let round: Int?; let welcome: Welcome?
+        }
         struct Badge: Decodable { let available: Int?; let enabled: Bool? }
-        if let n: Badge = try? await APIClient.shared.get("/newbie") { newbieBadge = (n.enabled ?? true) ? (n.available ?? 0) : 0 }
+        if let n: Newbie = try? await APIClient.shared.get("/newbie") {
+            let on = n.enabled ?? true
+            newbieBadge = on ? (n.available ?? 0) : 0
+            if on, n.autoPopup == true, n.welcome?.status == "ready", let uid = userId {
+                let key = "newbie_popup_\(uid)_\(n.round ?? 0)"
+                if !UserDefaults.standard.bool(forKey: key) {
+                    UserDefaults.standard.set(true, forKey: key)
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    newbiePopup = true
+                }
+            }
+        }
         if let w: Badge = try? await APIClient.shared.get("/wheel/badge") { wheelBadge = (w.enabled ?? true) ? (w.available ?? 0) : 0 }
     }
 

@@ -30,6 +30,7 @@ struct CheckinStatus: Decodable {
     struct Day: Decodable { let day: Int; let reward: Int; let status: String }
     let currentDay: Int
     let streak: Int
+    let makeupAvailable: Int?
     let days: [Day]
     var today: Day? { days.first { $0.day == currentDay } }
     var checkedToday: Bool { today?.status == "checked" }

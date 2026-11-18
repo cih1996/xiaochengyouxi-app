@@ -23,9 +23,19 @@ final class Session: ObservableObject {
 
     /// 验证码登录：服务端 LoginInput 要求 password 字段存在，传空串。
     /// 这种登录没有密码可存，所以不提示开启面容 ID。
+    /// 多次失败后服务端要求图形验证（错误码 LOGIN_CAPTCHA_REQUIRED），通过后带上 captcha 重试
+    var captcha: (id: String, answer: String)?
+
+    private func loginBody(_ base: [String: String]) -> [String: String] {
+        var b = base
+        if let c = captcha { b["captcha_id"] = c.id; b["captcha_answer"] = c.answer }
+        return b
+    }
+
     func login(phone: String, code: String) async throws {
         let r: AuthResponse = try await APIClient.shared.post(
-            "/auth/login", ["phone": phone, "password": "", "code": code])
+            "/auth/login", loginBody(["phone": phone, "password": "", "code": code]))
+        captcha = nil
         save(token: r.token)
         user = r.user
         explicitLogout = false
@@ -49,7 +59,8 @@ final class Session: ObservableObject {
 
     func login(phone: String, password: String) async throws {
         let r: AuthResponse = try await APIClient.shared.post(
-            "/auth/login", ["phone": phone, "password": password])
+            "/auth/login", loginBody(["phone": phone, "password": password]))
+        captcha = nil
         save(token: r.token)
         user = r.user
         explicitLogout = false
@@ -99,6 +110,20 @@ final class Session: ObservableObject {
     func setBiometric(enabled: Bool) {
         if !enabled { BiometricVault.disable() }
         biometricEnabled = BiometricVault.isEnabled
+    }
+
+    /// 注销申请状态：pending 时进入注销页（可撤回），approved 时退出
+    @Published var deletionPending = false
+
+    func checkDeletion() async {
+        struct S: Decodable { let status: String? }
+        guard let s: S = try? await APIClient.shared.get("/account/deletion-status") else { return }
+        switch s.status {
+        case "pending": deletionPending = true
+        case "approved": save(token: nil); user = nil
+        case "rejected": deletionPending = false; Toast.shared.show("注销申请未通过")
+        default: deletionPending = false
+        }
     }
 
     func refreshMe() async {

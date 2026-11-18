@@ -5,6 +5,7 @@ struct HallView: View {
     @EnvironmentObject private var reminders: Reminders
     @StateObject private var model = HallModel()
     @State private var activity: ActivityLink?
+    @State private var showCheckin = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,6 +13,18 @@ struct HallView: View {
             VStack(spacing: 10) {
                 PageHeader(title: "小橙有喜") { CoinBadge(coins: session.user?.coins) }
                 RainBar(model: model).padding(.horizontal, 14)
+                if !model.notice.isEmpty {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "megaphone").font(.caption)
+                        Text(model.notice).font(.caption).lineLimit(2)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundColor(Color(hex: 0xA96A3E))
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Color(hex: 0xFFEAD5), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 14)
+                    .transition(.opacity)
+                }
             }
             .padding(.bottom, 10)
             .background(Theme.background)
@@ -20,7 +33,7 @@ struct HallView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
-                        CheckinCard(model: model)
+                        CheckinCard(model: model, open: { showCheckin = true })
                         Text("今天").font(.caption).foregroundColor(Theme.hint).padding(.top, 2)
                         if model.items.isEmpty {
                             ChatBubble(text: "小橙正在赶来，马上就有惊喜…")
@@ -45,7 +58,15 @@ struct HallView: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
-        .onAppear { model.start(); route(reminders.pendingTarget) }
+        .onAppear {
+            model.userId = session.user?.id
+            model.start()
+            route(reminders.pendingTarget)
+        }
+        .onChange(of: model.newbiePopup) { if $0 { model.newbiePopup = false; if activity == nil { activity = .newbie } } }
+        .onChange(of: model.checkin?.currentDay) { _ in maybePromptCheckin() }
+        .sheet(isPresented: $showCheckin) { CheckinSheet(model: model).compactSheet() }
+
         .onDisappear { model.stop() }
         .onChange(of: reminders.pendingTarget) { route($0) }
         .fullScreenCover(item: $activity, onDismiss: { Task { await model.refreshBadges() } }) { link in
@@ -60,6 +81,19 @@ extension HallView {
         guard let t else { return }
         reminders.pendingTarget = nil
         if t == .wheel { activity = .wheel }
+        if t == .checkin { showCheckin = true }
+    }
+
+    /// 当天未签到时，每天自动弹一次签到（对照 Android maybePromptCheckin）
+    func maybePromptCheckin() {
+        guard let c = model.checkin, !c.checkedToday, let uid = session.user?.id, activity == nil else { return }
+        let f = DateFormatter()
+        f.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        f.dateFormat = "yyyy-MM-dd"
+        let key = "checkin_prompt_\(uid)", today = f.string(from: Date())
+        guard UserDefaults.standard.string(forKey: key) != today else { return }
+        UserDefaults.standard.set(today, forKey: key)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { if activity == nil { showCheckin = true } }
     }
 }
 
@@ -92,8 +126,9 @@ private struct RainBar: View {
 
 private struct CheckinCard: View {
     @ObservedObject var model: HallModel
+    let open: () -> Void
     @EnvironmentObject private var session: Session
-    @State private var busy = false
+    @State private var jump = false
 
     var body: some View {
         let checked = model.checkin?.checkedToday ?? (session.user?.checkedInToday ?? false)
@@ -101,7 +136,7 @@ private struct CheckinCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("好福利，刚刚好").font(.system(size: 22, weight: .heavy)).foregroundColor(Theme.text)
                 Text("把今天的小惊喜装进口袋").font(.footnote).foregroundColor(Color(hex: 0xA0785F))
-                Button(action: checkIn) {
+                Button(action: open) {
                     HStack(spacing: 6) {
                         Image(systemName: checked ? "checkmark" : "yensign.circle")
                         Text(checked ? "今日已签到" : "签到领金币").bold()
@@ -111,28 +146,22 @@ private struct CheckinCard: View {
                     .padding(.horizontal, 16).frame(height: 40)
                     .background(checked ? AnyShapeStyle(Color.white.opacity(0.55)) : AnyShapeStyle(Theme.goldButton),
                                 in: Capsule())
+                    // 未签到：按钮轻跳提示（Android 同款），签到后停止
+                    .offset(y: !checked && jump ? -4 : 0)
                 }
-                .disabled(checked || busy)
                 .padding(.top, 4)
             }
             Spacer() // 右侧留给悬浮的新人礼包入口，和 Android 一致
         }
         .padding(.leading, 20).padding(.vertical, 18)
         .background(Theme.soft, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-    }
-
-    private func checkIn() {
-        busy = true
-        Task {
-            defer { busy = false }
-            do {
-                let _: OK = try await APIClient.shared.post("/check-in", [String: String]())
-                await model.refreshCheckin()
-                await session.refreshMe()
-                Reminders.shared.markCheckedIn()
-                Toast.shared.show("签到成功")
-            } catch {
-                Toast.shared.show(error.localizedDescription)
+        .task(id: checked) {
+            guard !checked else { jump = false; return }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_600_000_000)
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.45)) { jump = true }
+                try? await Task.sleep(nanoseconds: 220_000_000)
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { jump = false }
             }
         }
     }
@@ -322,7 +351,11 @@ private struct HallItemView: View {
             case "red_packet":
                 if let task = item.task { PacketCard(task: task).padding(.leading, 54) }
             case "product":
-                if let p = item.product { ProductCard(product: p).padding(.leading, 54) }
+                // 与 Android 0.3.25 一致：大厅商品卡固定 220 宽、正方形主图，左侧留头像位
+                if let p = item.product {
+                    ProductCard(product: p).frame(width: 220).padding(.leading, 54)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             default:
                 EmptyView()
             }

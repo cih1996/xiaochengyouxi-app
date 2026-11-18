@@ -29,11 +29,20 @@ struct XiaoChengApp: App {
 
 struct RootView: View {
     @EnvironmentObject private var session: Session
+    @AppStorage(PrivacyText.key) private var privacyAccepted = false
+    @AppStorage("welcome_seen") private var welcomeSeen = false
 
     var body: some View {
         Group {
-            if session.token == nil {
+            if !privacyAccepted || (!welcomeSeen && session.token == nil) {
+                WelcomeView { withAnimation { welcomeSeen = true } }
+                    .sheet(isPresented: .constant(!privacyAccepted)) {
+                        PrivacyConsentView { privacyAccepted = true }
+                    }
+            } else if session.token == nil {
                 LoginView()
+            } else if session.deletionPending {
+                NavigationView { AccountDeletionView(gate: true) }.navigationViewStyle(.stack)
             } else if session.user?.invitationRequired == true {
                 BindInvitationView()
             } else {
@@ -45,6 +54,9 @@ struct RootView: View {
             await DebugLaunch.run(session)
             #endif
             await session.bootstrap()
+            if session.token != nil { await session.checkDeletion() }
         }
+        .onChange(of: session.token) { t in if t != nil { Task { await session.checkDeletion() } } }
+        .modifier(CelebrationOverlay())
     }
 }

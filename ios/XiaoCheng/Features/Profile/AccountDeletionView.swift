@@ -3,6 +3,7 @@ import SwiftUI
 /// 注销账号：提交申请 → 人工审核；审核前可撤回。（Apple 审核要求 App 内可发起注销）
 struct AccountDeletionView: View {
     struct Status: Decodable { let status: String?; let createdAt: String?; let reviewNote: String? }
+    var gate = false   // 启动时发现注销审核中：作为拦截页展示，可撤回或退出登录
     @EnvironmentObject private var session: Session
     @State private var status: Status?
     @State private var reason = ""
@@ -35,6 +36,10 @@ struct AccountDeletionView: View {
                     }
                     .disabled(busy)
                     .padding(.top, 6)
+                    if gate {
+                        Button("退出登录") { Task { await session.logout() } }
+                            .foregroundColor(Theme.secondary).frame(maxWidth: .infinity).padding(.top, 4)
+                    }
                 }
                 .padding(14)
             }
@@ -55,6 +60,7 @@ struct AccountDeletionView: View {
                 let _: EmptyJSON = try await APIClient.shared.post("/account/delete", ["reason": reason])
                 Toast.shared.show("注销申请已提交")
                 await load()
+                await session.checkDeletion()
             } catch { Toast.shared.show(error.localizedDescription) }
         }
     }
@@ -67,6 +73,7 @@ struct AccountDeletionView: View {
                 let _: EmptyJSON = try await APIClient.shared.post("/account/deletion/cancel", [String: String]())
                 Toast.shared.show("已撤回注销申请")
                 await load()
+                await session.checkDeletion()
             } catch { Toast.shared.show(error.localizedDescription) }
         }
     }

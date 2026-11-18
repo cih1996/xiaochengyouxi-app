@@ -67,10 +67,10 @@ struct ShopView: View {
 
 struct ProductCard: View {
     let product: Product
-    @Environment(\.openURL) private var openURL
+    @State private var detail = false
 
     var body: some View {
-        Button(action: open) {
+        Button { detail = true } label: {
             VStack(alignment: .leading, spacing: 0) {
                 Color.clear.aspectRatio(1, contentMode: .fit)
                     .overlay {
@@ -96,16 +96,71 @@ struct ProductCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
+        .sheet(isPresented: $detail) { ProductDetailSheet(product: product) }
+    }
+}
+
+/// 好物详情（对照 Android productDetail）：大图 + 平台 + 标题 + 价格 + 预计返金币 + "去 X 看看"。
+/// 打开时记一次 detail 点击；跳转前重新读取有效详情，已下架则提示。
+struct ProductDetailSheet: View {
+    let product: Product
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @State private var busy = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("好物详情").font(.headline).foregroundColor(Theme.text)
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).foregroundColor(Theme.secondary)
+                        .frame(width: 30, height: 30).background(Color.black.opacity(0.05), in: Circle())
+                }
+                .accessibilityLabel("关闭商品详情")
+            }
+            .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    AsyncImage(url: product.imageURL) { img in img.resizable().scaledToFit() } placeholder: { Theme.peach.aspectRatio(1, contentMode: .fit) }
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    Text(product.platform ?? "").font(.caption).foregroundColor(Theme.orange)
+                    Text(product.title).font(.system(size: 19, weight: .bold)).foregroundColor(Theme.text)
+                    Text("¥" + (product.priceText ?? "")).font(.system(size: 29, weight: .bold)).foregroundColor(Theme.orange)
+                    if let c = product.rewardCoins, c > 0 {
+                        Text("预计返 \(c) 金币").font(.subheadline.bold()).foregroundColor(Color(hex: 0xB5753D))
+                    }
+                    Text("预计返还以平台实际结算为准。").font(.caption).foregroundColor(Theme.hint)
+                }
+                .padding(.horizontal, 20)
+            }
+            Button(action: go) {
+                ZStack {
+                    if busy { ProgressView().tint(.white) }
+                    else { Text("去\(product.platform ?? "购买平台")看看").font(.system(size: 17, weight: .bold)) }
+                }
+                .foregroundColor(.white).frame(maxWidth: .infinity).frame(height: 54)
+                .background(Theme.button, in: RoundedRectangle(cornerRadius: 27))
+            }
+            .disabled(busy)
+            .padding(20)
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .task { let _: EmptyJSON? = try? await APIClient.shared.post("/products/\(product.id)/click", ["kind": "detail"]) }
     }
 
-    private func open() {
-        // 与 Android 一致：跳转前重新读取有效详情，记录点击
+    private func go() {
+        busy = true
         Task {
+            defer { busy = false }
             let fresh: Product? = try? await APIClient.shared.get("/products/\(product.id)")
-            guard let link = (fresh ?? product).url, let url = URL(string: link) else {
-                Toast.shared.show("商品已下架"); return
+            guard let latest = fresh, let link = latest.url, let url = URL(string: link),
+                  ["https", "http"].contains(url.scheme ?? "") else {
+                Toast.shared.show(fresh == nil ? "商品已下架" : "商品购买地址无效"); return
             }
-            let _: OK? = try? await APIClient.shared.post("/products/\(product.id)/click", ["kind": "open"])
+            let _: EmptyJSON? = try? await APIClient.shared.post("/products/\(product.id)/click", ["kind": "outbound"])
             openURL(url)
         }
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var session: Session
+    @State private var showHelp = false
 
     var body: some View {
         NavigationView {
@@ -33,9 +34,16 @@ struct ProfileView: View {
                         MenuRow(icon: "yensign.circle", title: "金币明细", destination: LedgerView())
                     }
                     .card(radius: 20).padding(.horizontal, 14)
-                    VStack(spacing: 0) {
-                        MenuRow(icon: "shield", title: "帮助与反馈", destination: ComingSoon(title: "帮助与反馈"))
+                    Button { showHelp = true } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "shield").font(.system(size: 18)).foregroundColor(Color(hex: 0xB86B3C)).frame(width: 26)
+                            Text("帮助与反馈").font(.body).foregroundColor(Theme.text)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.footnote).foregroundColor(Theme.hint)
+                        }
+                        .padding(.horizontal, 18).frame(height: 62).contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .card(radius: 20).padding(.horizontal, 14)
                     Text("小小的收获，大大的开心").font(.caption).foregroundColor(Theme.hint).padding(.vertical, 8)
                 }
@@ -44,6 +52,11 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .refreshable { await session.refreshMe() }
             .background(debugLinks)
+            .alert("很高兴遇见你", isPresented: $showHelp) {
+                Button("知道了", role: .cancel) {}
+            } message: {
+                Text("查看收益与提现记录，可以了解每一份奖励的去向。\n\n提现资格、审核与处理状态以页面实际显示为准。")
+            }
         }
         .navigationViewStyle(.stack)
     }

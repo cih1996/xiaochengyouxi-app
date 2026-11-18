@@ -17,6 +17,8 @@ struct LoginView: View {
     @State private var code = ""
     @State private var countdown = 0
     @State private var flow: AuthFlowView.Mode?
+    @State private var captchaQuestion: (id: String, question: String)?
+    @State private var captchaAnswer = ""
     @FocusState private var focus: Field?
     enum Field { case account, password, code }
 
@@ -140,6 +142,13 @@ struct LoginView: View {
             .padding(.horizontal, 24)
         }
         .scrollDismissesKeyboardCompat()
+        .alert("安全验证", isPresented: Binding(get: { captchaQuestion != nil }, set: { if !$0 { captchaQuestion = nil } })) {
+            TextField("请输入答案", text: $captchaAnswer).keyboardType(.numberPad)
+            Button("取消", role: .cancel) {}
+            Button("继续") { submitCaptcha() }
+        } message: {
+            Text(captchaQuestion?.question ?? "")
+        }
         .sheet(isPresented: Binding(get: { flow != nil }, set: { if !$0 { flow = nil } })) {
             if let flow { AuthFlowView(mode: flow, presetPhone: trimmed.count == 11 ? trimmed : nil) }
         }
@@ -196,8 +205,31 @@ struct LoginView: View {
             do {
                 if codeMode { try await session.login(phone: trimmed, code: code) }
                 else { try await session.login(phone: trimmed, password: password) }
+            } catch let e as APIError where e.code == "LOGIN_CAPTCHA_REQUIRED" {
+                await requestCaptcha()
             } catch { self.error = error.localizedDescription }
         }
+    }
+
+    private func requestCaptcha() async {
+        struct C: Decodable { let captchaId: String; let question: String }
+        struct R: Decodable { let required: Bool?; let captcha: C? }
+        do {
+            let r: R = try await APIClient.shared.post("/auth/login/captcha", ["phone": trimmed])
+            guard r.required == true else { error = codeMode ? "请重新获取验证码后登录" : "请重试"; return }
+            guard let c = r.captcha else { error = "安全验证暂不可用"; return }
+            captchaAnswer = ""
+            captchaQuestion = (c.captchaId, c.question)
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func submitCaptcha() {
+        guard let q = captchaQuestion else { return }
+        let a = captchaAnswer.trimmingCharacters(in: .whitespaces)
+        guard !a.isEmpty else { Toast.shared.show("请输入验证答案"); return }
+        session.captcha = (q.id, a)
+        captchaQuestion = nil
+        submit()
     }
 
     private func sendCode() {

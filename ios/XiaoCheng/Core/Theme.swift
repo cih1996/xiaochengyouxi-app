@@ -119,3 +119,10 @@ struct BackHeader: View {
         .padding(.horizontal, 10)
     }
 }
+
+extension View {
+    /// 半高弹窗（iOS 16+ 用 detents，iOS 15 全屏 sheet）
+    @ViewBuilder func compactSheet() -> some View {
+        if #available(iOS 16.0, *) { presentationDetents([.medium, .large]).presentationDragIndicator(.hidden) } else { self }
+    }
+}
