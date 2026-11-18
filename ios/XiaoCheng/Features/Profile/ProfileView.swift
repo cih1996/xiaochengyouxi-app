@@ -55,6 +55,11 @@ extension ProfileView {
         #if DEBUG
         NavigationLink(destination: SettingsView(), isActive: .constant(DebugLaunch.screen == "settings")) { EmptyView() }
         NavigationLink(destination: LedgerView(), isActive: .constant(DebugLaunch.screen == "ledger")) { EmptyView() }
+        NavigationLink(destination: WithdrawView(), isActive: .constant(DebugLaunch.screen == "withdraw")) { EmptyView() }
+        NavigationLink(destination: PayoutAccountView(), isActive: .constant(DebugLaunch.screen == "payout")) { EmptyView() }
+        NavigationLink(destination: InviteView(), isActive: .constant(DebugLaunch.screen == "invite")) { EmptyView() }
+        NavigationLink(destination: WithdrawRecordsView(), isActive: .constant(DebugLaunch.screen == "records")) { EmptyView() }
+        NavigationLink(destination: AccountDeletionView(), isActive: .constant(DebugLaunch.screen == "deletion")) { EmptyView() }
         #endif
     }
 }

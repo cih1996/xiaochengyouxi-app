@@ -41,7 +41,7 @@ struct MainTabView: View {
             #if DEBUG
             switch DebugLaunch.screen {
             case "shop": tab = 1
-            case "me", "settings", "ledger": tab = 2
+            case "me", "settings", "ledger", "withdraw", "payout", "invite", "records", "deletion": tab = 2
             default: break
             }
             #endif

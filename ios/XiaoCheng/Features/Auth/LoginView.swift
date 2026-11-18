@@ -147,6 +147,7 @@ struct LoginView: View {
         .task {
             #if DEBUG
             if DebugLaunch.screen == "login-code" { codeMode = true }
+            if DebugLaunch.screen == "register" { flow = .register }
             #endif
             // 冷启动或 token 过期时自动弹面容识别；主动退出后只显示按钮
             if session.biometricEnabled && !session.explicitLogout && !triedAuto {
