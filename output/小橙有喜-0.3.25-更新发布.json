@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 28,
+  "latest_version_name": "0.3.25",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "新增活动提醒：红包雨开场、签到、幸运转盘不再错过；商品图片完整显示；大厅活动入口更精致；账户安全核验优化",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.25-28.apk",
+  "apk_sha256": "ae289a9d4a22c344bb1034a3156ab8c9a202075a604ed47e16b9514f60805d0b",
+  "apk_size_bytes": 27460807
+}
