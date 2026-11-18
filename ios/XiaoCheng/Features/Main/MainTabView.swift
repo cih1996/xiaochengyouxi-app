@@ -48,7 +48,7 @@ struct MainTabView: View {
             switch DebugLaunch.screen {
             case "shop": tab = 1
             case "me", "settings", "ledger", "withdraw", "payout", "invite", "records", "deletion": tab = 2
-            case "rain": rain.startPreview()
+            case "rain": rain.startPreview(seconds: Double(DebugLaunch.value("XCRainSeconds") ?? "") ?? 45)
             default: break
             }
             #endif
