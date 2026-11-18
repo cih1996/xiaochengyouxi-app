@@ -1919,7 +1919,7 @@ async fn withdraw(
     tx.commit()?;
     business_guard::dispatch(state.clone(), id.clone());
     Ok(Json(
-        json!({"id":id,"operation_id":id,"amount_yuan":input.amount_yuan,"channel":input.channel,"account":input.account,"status":"模拟申请","created_at":iso(now()),"mode":"mock","user":user(&db,uid)?}),
+        json!({"id":id,"operation_id":id,"amount_yuan":input.amount_yuan,"channel":input.channel,"account":input.account,"status":"审核中","created_at":iso(now()),"mode":"mock","user":user(&db,uid)?}),
     ))
 }
 fn withdraw_retry(
@@ -1950,9 +1950,66 @@ fn withdrawal_rows(db: &Connection, uid: Option<i64>) -> Result<Vec<Value>, ApiE
     let mut stmt=db.prepare("SELECT w.id,w.user_id,u.phone,w.amount_yuan,w.channel,w.account,w.status,w.created_at FROM withdrawals w JOIN users u ON u.id=w.user_id WHERE (?1 IS NULL OR w.user_id=?1) ORDER BY w.created_at DESC LIMIT 200")?;
     Ok(stmt.query_map([uid],|r|Ok(json!({"id":r.get::<_,String>(0)?,"user_id":r.get::<_,i64>(1)?,"phone":r.get::<_,String>(2)?,"amount_yuan":r.get::<_,f64>(3)?,"channel":r.get::<_,String>(4)?,"account":r.get::<_,String>(5)?,"status":r.get::<_,String>(6)?,"created_at":iso(r.get(7)?)})))?.collect::<Result<Vec<_>,_>>()?)
 }
+/// The stored statuses carry the payment mode ("模拟…" while payouts are manual); users only
+/// see what the request means for them. `status` is replaced so older apps show it too.
+fn user_withdrawal_view(mut row: Value, coins: i64) -> Value {
+    let raw = row["status"].as_str().unwrap_or("").to_string();
+    let (state, text) = if raw.ends_with("已完成") || raw == "approved" {
+        ("done", "已到账")
+    } else if raw.ends_with("已退回") || raw == "rejected" {
+        ("returned", "已退回")
+    } else {
+        ("pending", "审核中")
+    };
+    let account = row["account"].as_str().unwrap_or("").to_string();
+    let chars: Vec<char> = account.chars().collect();
+    let masked = if chars.len() <= 4 {
+        account.clone()
+    } else if account.contains('@') {
+        let (name, domain) = account.split_once('@').unwrap();
+        let head: String = name.chars().take(2).collect();
+        format!("{head}***@{domain}")
+    } else {
+        let head: String = chars[..3.min(chars.len())].iter().collect();
+        let tail: String = chars[chars.len() - 4..].iter().collect();
+        format!("{head}****{tail}")
+    };
+    row["status"] = json!(text);
+    row["state"] = json!(state);
+    row["coins"] = json!(coins);
+    row["account"] = json!(masked);
+    row["channel_text"] = json!(match row["channel"].as_str().unwrap_or("") {
+        "alipay" => "支付宝",
+        "wechat" => "微信",
+        other => other,
+    });
+    row["note"] = json!(match state {
+        "done" => "已打款到你的收款账户",
+        "returned" => "未通过审核，金币已退回账户",
+        _ => "预计 1–3 个工作日内处理",
+    });
+    if let Some(obj) = row.as_object_mut() {
+        obj.remove("phone");
+        obj.remove("user_id");
+    }
+    row
+}
+
 async fn withdrawals(State(state): State<AppState>, headers: HeaderMap) -> ApiResult<Vec<Value>> {
     let db = open(&state)?;
-    Ok(Json(withdrawal_rows(&db, Some(auth(&db, &headers)?))?))
+    let uid = auth(&db, &headers)?;
+    let mut out = Vec::new();
+    for row in withdrawal_rows(&db, Some(uid))? {
+        let coins: i64 = db
+            .query_row(
+                "SELECT coins FROM withdrawals WHERE id=?1",
+                [row["id"].as_str().unwrap_or("")],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        out.push(user_withdrawal_view(row, coins));
+    }
+    Ok(Json(out))
 }
 #[derive(Clone, Deserialize, Serialize)]
 struct HallStrategy {

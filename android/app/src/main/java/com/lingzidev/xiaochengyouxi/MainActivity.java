@@ -3645,23 +3645,185 @@ public final class MainActivity extends Activity {
         this::error);
   }
 
+  String withdrawalsReturn = "me";
+
+  /** Full-page withdrawal history: summary card plus one card per request. */
   void withdrawals() {
+    authBack = null;
+    api.behavior.page(7);
+    if (!current.equals("withdrawals")) withdrawalsReturn = current;
+    current = "withdrawals";
+    ScrollView scroll = new ScrollView(this);
+    scroll.setFillViewport(true);
+    scroll.setVerticalScrollBarEnabled(false);
+    LinearLayout body = col();
+    body.setPadding(dp(18), dp(4), dp(18), dp(28));
+    scroll.addView(body);
+    stage.removeAllViews();
+    stage.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+
+    LinearLayout top = row();
+    LineIcon back = new LineIcon(this, "back", INK);
+    back.setContentDescription("返回");
+    back.setPadding(dp(10), dp(10), dp(10), dp(10));
+    back.setOnClickListener(v -> closeWithdrawals());
+    LinearLayout.LayoutParams bp = lp(44, 44);
+    bp.leftMargin = -dp(10);
+    top.addView(back, bp);
+    flex(top, text("提现记录", 20, INK, true));
+    add(body, top, -1, 56);
+    gap(body, 6);
+
+    LinearLayout list = col();
+    TextView loadingText = label("正在加载…", 14, MUTED);
+    loadingText.setGravity(Gravity.CENTER);
+    loadingText.setPadding(0, dp(40), 0, dp(40));
+    add(list, loadingText, -1, -2);
+    LinearLayout summary = col();
+    add(body, summary, -1, -2);
+    add(body, list, -1, -2);
+
     api.get(
         "/withdrawals",
         d -> {
+          if (!current.equals("withdrawals")) return;
           JSONArray items = (JSONArray) d;
-          showList(
-              "提现记录",
-              items,
-              (j) ->
-                  "¥"
-                      + money(j.optDouble("amount_yuan"))
-                      + " · "
-                      + status(j.optString("status"))
-                      + "\n"
-                      + date(j.optString("created_at")));
+          double done = 0, pending = 0;
+          for (int i = 0; i < items.length(); i++) {
+            JSONObject j = items.optJSONObject(i);
+            String state = withdrawalState(j);
+            if (state.equals("done")) done += j.optDouble("amount_yuan");
+            else if (state.equals("pending")) pending += j.optDouble("amount_yuan");
+          }
+          summary.removeAllViews();
+          withdrawalSummary(summary, done, pending, items.length());
+          list.removeAllViews();
+          if (items.length() == 0) {
+            LinearLayout empty = col();
+            empty.setGravity(Gravity.CENTER_HORIZONTAL);
+            empty.setPadding(dp(20), dp(36), dp(20), dp(36));
+            empty.setBackground(bg(WHITE, 18));
+            LineIcon icon = new LineIcon(this, "clock", 0xffd9c2b2);
+            add(empty, icon, 44, 44);
+            gap(empty, 14);
+            add(empty, text("还没有提现记录", 16, INK, true), -2, -2);
+            gap(empty, 6);
+            add(empty, label("攒够金币就能提现到支付宝", 13, MUTED), -2, -2);
+            add(list, empty, -1, -2);
+            return;
+          }
+          add(list, text("全部记录", 14, MUTED, false), -2, -2);
+          gap(list, 10);
+          for (int i = 0; i < items.length(); i++) {
+            add(list, withdrawalCard(items.optJSONObject(i)), -1, -2);
+            gap(list, 10);
+          }
+          TextView foot = label("仅展示最近 200 条记录", 12, 0xffc4b2a6);
+          foot.setGravity(Gravity.CENTER);
+          foot.setPadding(0, dp(6), 0, 0);
+          add(list, foot, -1, -2);
         },
-        this::error);
+        m -> {
+          if (!current.equals("withdrawals")) return;
+          list.removeAllViews();
+          TextView failed = label("加载失败，点此重试", 14, RED);
+          failed.setGravity(Gravity.CENTER);
+          failed.setPadding(0, dp(40), 0, dp(40));
+          failed.setOnClickListener(v -> withdrawals());
+          add(list, failed, -1, -2);
+        });
+  }
+
+  void closeWithdrawals() {
+    current = withdrawalsReturn.isEmpty() || withdrawalsReturn.equals("withdrawals") ? "me" : withdrawalsReturn;
+    home();
+  }
+
+  /** Server sends state (pending/done/returned); older servers only send status text. */
+  String withdrawalState(JSONObject j) {
+    String state = j.optString("state");
+    if (!state.isEmpty()) return state;
+    String raw = j.optString("status");
+    if (raw.endsWith("已完成") || raw.equals("approved") || raw.equals("已到账")) return "done";
+    if (raw.endsWith("已退回") || raw.equals("rejected")) return "returned";
+    return "pending";
+  }
+
+  void withdrawalSummary(LinearLayout parent, double done, double pending, int count) {
+    LinearLayout card = col();
+    card.setBackground(grad(0xffff8a4c, RED, 22));
+    card.setPadding(dp(20), dp(18), dp(20), dp(18));
+    add(card, label("累计到账（元）", 13, 0xccffffff), -2, -2);
+    gap(card, 8);
+    add(card, text(money(done), 32, WHITE, true), -2, -2);
+    gap(card, 14);
+    LinearLayout stats = row();
+    flex(stats, label("审核中 ¥" + money(pending) + "   ·   共 " + count + " 笔", 13, 0xe6ffffff));
+    TextView go = text("去提现", 13, RED, true);
+    go.setGravity(Gravity.CENTER);
+    go.setPadding(dp(14), dp(7), dp(14), dp(7));
+    go.setBackground(bg(WHITE, 16));
+    go.setOnClickListener(
+        v -> {
+          press(v);
+          withdraw();
+        });
+    stats.addView(go);
+    add(card, stats, -1, -2);
+    add(parent, card, -1, -2);
+    gap(parent, 18);
+  }
+
+  View withdrawalCard(JSONObject j) {
+    String state = withdrawalState(j);
+    int tint = state.equals("done") ? 0xff2f8a4c : state.equals("returned") ? 0xff9a8a80 : 0xffe8742f;
+    int chip = state.equals("done") ? 0xffeaf7ee : state.equals("returned") ? 0xfff2eeeb : 0xfffff1e6;
+    String statusText =
+        j.has("state") ? j.optString("status") : state.equals("done") ? "已到账" : state.equals("returned") ? "已退回" : "审核中";
+
+    LinearLayout card = col();
+    card.setBackground(bg(WHITE, 18));
+    card.setPadding(dp(16), dp(14), dp(16), dp(14));
+
+    LinearLayout head = row();
+    TextView badge = text("支", 15, WHITE, true);
+    badge.setGravity(Gravity.CENTER);
+    badge.setBackground(bg(0xff1677ff, 12));
+    head.addView(badge, lp(38, 38));
+    LinearLayout mid = col();
+    mid.setPadding(dp(12), 0, dp(8), 0);
+    String channel = j.optString("channel_text", "支付宝");
+    add(mid, text("提现到" + (channel.isEmpty() ? "支付宝" : channel), 15, INK, true), -2, -2);
+    gap(mid, 5);
+    String account = j.optString("account");
+    add(mid, label((account.isEmpty() ? "" : account + "  ·  ") + date(j.optString("created_at")), 12, MUTED), -2, -2);
+    flex(head, mid);
+    LinearLayout right = col();
+    right.setGravity(Gravity.END);
+    add(right, text("¥" + money(j.optDouble("amount_yuan")), 18, INK, true), -2, -2);
+    gap(right, 6);
+    TextView status = text(statusText, 12, tint, true);
+    status.setPadding(dp(9), dp(3), dp(9), dp(3));
+    status.setBackground(bg(chip, 10));
+    add(right, status, -2, -2);
+    head.addView(right);
+    add(card, head, -1, -2);
+
+    String note = j.optString("note");
+    int coins = j.optInt("coins");
+    String id = j.optString("id");
+    if (!note.isEmpty() || coins > 0 || !id.isEmpty()) {
+      gap(card, 12);
+      View divider = new View(this);
+      divider.setBackgroundColor(0xfff5ece4);
+      add(card, divider, -1, 1);
+      gap(card, 10);
+      LinearLayout foot = row();
+      flex(foot, label(note.isEmpty() ? (coins > 0 ? "消耗 " + coins + " 金币" : "") : note, 12, state.equals("returned") ? 0xff9a8a80 : MUTED));
+      if (!id.isEmpty()) foot.addView(label("单号 " + id.substring(0, Math.min(8, id.length())), 11, 0xffc4b2a6));
+      add(card, foot, -1, -2);
+    }
+    return card;
   }
 
   interface RowText {
@@ -3878,6 +4040,8 @@ public final class MainActivity extends Activity {
       enterAccountHome();
     } else if (current.equals("settings")) {
       closeSettings();
+    } else if (current.equals("withdrawals")) {
+      closeWithdrawals();
     } else if (welcomeShowing) {
       finish();
     } else if (user != null && user.optBoolean("invitation_required")) {
