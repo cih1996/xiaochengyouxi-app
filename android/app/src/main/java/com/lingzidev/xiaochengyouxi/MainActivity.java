@@ -62,6 +62,8 @@ public final class MainActivity extends Activity {
   FrameLayout hallSurface;
   TextView rainTime;
   AlertDialog rewardStatusDialog;
+  Dialog busyDialog;
+  final Runnable busyTimeout = this::hideBusy;
   PendingReward pendingReward;
   AppUpdates updates;
   boolean servicesReady, rewardUiBusy;
@@ -453,6 +455,43 @@ public final class MainActivity extends Activity {
     gap(c, 20);
     add(c, label("正在打开你的小确幸", 15, MUTED), -2, -2);
     stage.addView(c, new FrameLayout.LayoutParams(-1, -1));
+  }
+
+  /** Small spinner over the page while a red packet or an ad video is being prepared. */
+  void showBusy(String text) {
+    hideBusy();
+    LinearLayout box = col();
+    box.setGravity(Gravity.CENTER);
+    box.setPadding(dp(26), dp(22), dp(26), dp(20));
+    box.setBackground(bg(0xFFFFFFFF, 18));
+    ProgressBar spinner = new ProgressBar(this);
+    add(box, spinner, 40, 40);
+    gap(box, 12);
+    add(box, label(text, 14, INK), -2, -2);
+    Dialog d = new Dialog(this);
+    d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+    d.setContentView(box);
+    d.setCancelable(false);
+    if (d.getWindow() != null) {
+      d.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+      d.getWindow().setDimAmount(0.25f);
+    }
+    busyDialog = d;
+    d.show();
+    // Never leave the spinner up if something upstream forgets to call back.
+    handler.removeCallbacks(busyTimeout);
+    handler.postDelayed(busyTimeout, 30000);
+  }
+
+  void hideBusy() {
+    handler.removeCallbacks(busyTimeout);
+    if (busyDialog != null) {
+      try {
+        busyDialog.dismiss();
+      } catch (RuntimeException ignored) {
+      }
+      busyDialog = null;
+    }
   }
 
   void loadAccount() {
@@ -2207,9 +2246,11 @@ public final class MainActivity extends Activity {
     }
     rewardUiBusy = true;
     String token = api.token;
+    showBusy("正在打开红包…");
     api.quoteReward(
         task.optString("id"),
         data -> {
+          hideBusy();
           if (isDestroyed() || !token.equals(api.token)) return;
           try {
             JSONObject quote = (JSONObject) data;
@@ -2231,6 +2272,7 @@ public final class MainActivity extends Activity {
           }
         },
         message -> {
+          hideBusy();
           if (!isDestroyed() && token.equals(api.token)) rewardError(message);
         });
   }
@@ -2295,6 +2337,7 @@ public final class MainActivity extends Activity {
         v -> {
           api.behavior.click(11, task.optString("id"));
           watch.setEnabled(false);
+          showBusy("视频加载中…");
           api.post(
               "/rewards/start",
               Api.object("task_id", task.optString("id"), "quote_id", quoteId),
@@ -2315,6 +2358,7 @@ public final class MainActivity extends Activity {
                     .start();
               },
               m -> {
+                hideBusy();
                 watch.setEnabled(true);
                 error(m);
               });
@@ -2330,10 +2374,16 @@ public final class MainActivity extends Activity {
     String token = api.token, id = session.optString("id");
     api.behavior.external(5);
     api.behavior.business(10, id);
+    if (BuildConfig.ADS_ENABLED) {
+      if (busyDialog == null) showBusy("视频加载中…");
+      // The spinner stays until a network actually has a video ready to play.
+      ads.onAdVisible = this::hideBusy;
+    } else hideBusy();
     rewarded.show(
         this,
         session,
         notice -> {
+          hideBusy();
           if (isDestroyed() || !token.equals(api.token)) return;
           api.behavior.business(11, id);
           api.behavior.external(0);
@@ -2356,6 +2406,7 @@ public final class MainActivity extends Activity {
               });
         },
         message -> {
+          hideBusy();
           if (!isDestroyed() && token.equals(api.token)) {
             api.behavior.external(0);
             if (AdMediator.NO_AD.equals(message)) {
@@ -3875,6 +3926,7 @@ public final class MainActivity extends Activity {
     api.behavior.destroy();
     updates.destroy();
     endHallSession();
+    hideBusy();
     ads.flush();
     coinSounds.release();
     super.onDestroy();

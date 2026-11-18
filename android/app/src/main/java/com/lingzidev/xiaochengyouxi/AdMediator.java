@@ -26,6 +26,8 @@ final class AdMediator implements RewardedAdProvider {
   private final Handler main = new Handler(Looper.getMainLooper());
   private final AdEvents events;
   private Context app;
+  /** Called on the UI thread when a rewarded video is about to appear (hides the spinner). */
+  Runnable onAdVisible;
 
   AdMediator(Api api) {
     events = new AdEvents(api);
@@ -174,6 +176,10 @@ final class AdMediator implements RewardedAdProvider {
                     flags[0] = true;
                     main.removeCallbacks(timeout);
                     events.log(id, "rewarded", code, "fill", sid, null, null, started);
+                    if (onAdVisible != null) {
+                      onAdVisible.run();
+                      onAdVisible = null;
+                    }
                     try {
                       show.run();
                     } catch (RuntimeException error) {
