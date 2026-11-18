@@ -7,6 +7,7 @@ struct HallView: View {
     @State private var activity: ActivityLink?
     @State private var showCheckin = false
     @State private var debugProduct = false
+    @State private var newbieAfterSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,7 +69,12 @@ struct HallView: View {
             if DebugLaunch.screen == "product" { debugProduct = true }
             #endif
         }
-        .onChange(of: model.newbiePopup) { if $0 { model.newbiePopup = false; if activity == nil { activity = .newbie } } }
+        .onChange(of: model.newbiePopup) { pop in
+            guard pop else { return }
+            model.newbiePopup = false
+            // 签到弹窗开着时不能叠全屏页：等它关闭后再弹
+            if showCheckin { newbieAfterSheet = true } else if activity == nil { activity = .newbie }
+        }
         .onChange(of: model.checkin?.currentDay) { _ in maybePromptCheckin() }
         .onChange(of: session.user?.id) { uid in
             // 用户信息晚于大厅加载：拿到 id 后再判断新人礼包自动弹出与每日签到提示
@@ -77,7 +83,9 @@ struct HallView: View {
             Task { await model.refreshBadges() }
             maybePromptCheckin()
         }
-        .sheet(isPresented: $showCheckin) { CheckinSheet(model: model).compactSheet() }
+        .sheet(isPresented: $showCheckin, onDismiss: {
+            if newbieAfterSheet { newbieAfterSheet = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activity = .newbie } }
+        }) { CheckinSheet(model: model).compactSheet() }
         #if DEBUG
         .background(EmptyView().sheet(isPresented: $debugProduct) {
             if let p = model.items.compactMap(\.product).first { ProductDetailSheet(product: p) }
