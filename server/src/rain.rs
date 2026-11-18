@@ -455,6 +455,9 @@ pub(super) fn grand_task(
     uid: i64,
     task: &str,
 ) -> Result<Option<GrandTask>, ApiError> {
+    if let Some(pid) = task.strip_prefix("newbie:") {
+        return newbie::video_task(state, db, uid, pid).map(Some);
+    }
     let Some(pid) = task.strip_prefix("rain:") else {
         return Ok(None);
     };
@@ -483,6 +486,9 @@ pub(super) fn attach_session(
     packet: &str,
     sid: &str,
 ) -> Result<(), ApiError> {
+    if newbie::attach_session(db, uid, packet, sid)? {
+        return Ok(());
+    }
     let changed=db.execute("UPDATE rain_packets SET status='ad_started',session_id=?1 WHERE id=?2 AND user_id=?3 AND kind='large' AND status='opened' AND session_id IS NULL",params![sid,packet,uid])?;
     if changed != 1 {
         return Err(conflict("该红包已处理，请刷新后重试"));
@@ -495,6 +501,9 @@ pub(super) fn completion_packet(
     task: &str,
     sid: &str,
 ) -> Result<Option<String>, ApiError> {
+    if let Some(pid) = task.strip_prefix("newbie:") {
+        return newbie::completion_packet(db, uid, pid, sid).map(Some);
+    }
     let Some(pid) = task.strip_prefix("rain:") else {
         return Ok(None);
     };

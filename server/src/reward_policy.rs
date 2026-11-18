@@ -355,7 +355,9 @@ async fn quote(
     risk::check_account(&tx, uid)?;
     let p = policy(&tx)?;
     let grand = rain::grand_task(&state, &tx, uid, &input.task_id)?;
-    let title = if grand.is_some() {
+    let title = if input.task_id.starts_with("newbie:") {
+        "新人礼包红包"
+    } else if grand.is_some() {
         "红包雨大奖"
     } else {
         task_info(&input.task_id)?.1
@@ -365,7 +367,7 @@ async fn quote(
             "fixed".into(),
             grand.coins,
             grand.coins,
-            json!({"scope":"rain_large","device_identity":identity,"allocation_count_before":0,"policy_version":p.policy_version}),
+            json!({"scope":if input.task_id.starts_with("newbie:") {"newbie_video"} else {"rain_large"},"device_identity":identity,"allocation_count_before":0,"policy_version":p.policy_version}),
         )
     } else {
         selection(&tx, &p, &identity, &key)?
@@ -437,6 +439,11 @@ pub(super) fn quote_intent(db: &Connection, uid: i64, body: &Value) -> Result<Va
         json!({"task_id":task,"quote_id":id,"reward_coins":q.coins,"currency":"COIN","policy_version":q.version}),
     )
 }
+/// Quotes with a fixed, server-decided amount (rain grand prize, 新人礼包 video packet): the
+/// device tier policy does not re-price them.
+fn fixed_task(task: &str) -> bool {
+    task.starts_with("rain:") || task.starts_with("newbie:")
+}
 pub(super) fn attach(
     db: &Connection,
     uid: i64,
@@ -446,7 +453,7 @@ pub(super) fn attach(
 ) -> Result<Value, ApiError> {
     if q.session_id.is_some()
         || q.expires <= now()
-        || (!q.task_id.starts_with("rain:") && q.version != policy(db)?.policy_version)
+        || (!fixed_task(&q.task_id) && q.version != policy(db)?.policy_version)
     {
         return Err(expired_quote());
     }
@@ -455,7 +462,7 @@ pub(super) fn attach(
     if q.device != "unknown" && quote_device != current_device {
         return Err(expired_quote());
     }
-    if !q.task_id.starts_with("rain:") && q.device != "unknown" {
+    if !fixed_task(&q.task_id) && q.device != "unknown" {
         let (tier, _, _, basis) = selection(
             db,
             &policy(db)?,
@@ -466,7 +473,7 @@ pub(super) fn attach(
             return Err(expired_quote());
         }
     }
-    if !q.task_id.starts_with("rain:") && q.device == "unknown" && current_device != "unknown" {
+    if !fixed_task(&q.task_id) && q.device == "unknown" && current_device != "unknown" {
         let (completed, reserved) = counts(db, &current_device)?;
         let first: i64 = db.query_row(
             "SELECT first_seen FROM reward_device_profiles WHERE identity=?1",

@@ -607,6 +607,8 @@ fn reconcile(
             }
             if let Some(packet) = task.strip_prefix("rain:") {
                 format!("rain:{packet}")
+            } else if let Some(packet) = task.strip_prefix("newbie:") {
+                format!("newbie:{packet}")
             } else {
                 format!("reward:{}", event.reference)
             }

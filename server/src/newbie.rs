@@ -41,8 +41,20 @@ pub(super) struct Config {
     /// Invite packets per inviter per round (0 = unlimited).
     pub max_invite_packets: i64,
     pub share_text: String,
+    /// After the welcome packet: this many more packets, each claimed by watching a rewarded
+    /// video (amount by the user's own score, credited only on the verified ad callback).
+    #[serde(default = "default_video_packets")]
+    pub video_packets: i64,
+    #[serde(default = "default_video_tiers")]
+    pub video_tiers: Vec<Tier>,
     #[serde(default)]
     pub revision: i64,
+}
+fn default_video_packets() -> i64 {
+    3
+}
+fn default_video_tiers() -> Vec<Tier> {
+    vec![tier(10, 1000, 3000), tier(30, 500, 1000), tier(60, 100, 300), tier(100, 10, 10)]
 }
 
 fn tier(max_score: i64, min_coins: i64, max_coins: i64) -> Tier {
@@ -84,6 +96,8 @@ impl Default for Config {
             unscored_score: 60,
             max_invite_packets: 100,
             share_text: "我在小橙有喜领到了新人大红包，扫码下载，你也能拆一个！".into(),
+            video_packets: default_video_packets(),
+            video_tiers: default_video_tiers(),
             revision: 0,
         }
     }
@@ -126,6 +140,10 @@ fn validate(c: &Config) -> Result<(), ApiError> {
     validate_tiers("新人红包档位", &c.welcome_tiers)?;
     validate_tiers("邀请新用户档位", &c.inviter_new_tiers)?;
     validate_tiers("邀请老用户档位", &c.inviter_old_tiers)?;
+    validate_tiers("看视频红包档位", &c.video_tiers)?;
+    if !(0..=10).contains(&c.video_packets) {
+        return Err(invalid("看视频红包个数需在 0–10 之间"));
+    }
     if !(0..=300).contains(&c.invited_bonus_percent) {
         return Err(invalid("受邀新用户加成需在 0–300% 之间"));
     }
@@ -146,6 +164,12 @@ pub(super) fn initialize(db: &Connection) -> Result<(), ApiError> {
          CREATE TABLE IF NOT EXISTS newbie_packets(id TEXT PRIMARY KEY,round INTEGER NOT NULL,user_id INTEGER NOT NULL,kind TEXT NOT NULL,invitee_id INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'ready',coins INTEGER,score INTEGER,created_at INTEGER NOT NULL,opened_at INTEGER,UNIQUE(round,user_id,kind,invitee_id));
          CREATE INDEX IF NOT EXISTS idx_newbie_packets_user ON newbie_packets(user_id,round);",
     )?;
+    let has_session: bool = db
+        .query_row("SELECT COUNT(*) FROM pragma_table_info('newbie_packets') WHERE name='session_id'", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)?;
+    if !has_session {
+        db.execute_batch("ALTER TABLE newbie_packets ADD COLUMN session_id TEXT")?;
+    }
     db.execute(
         "INSERT OR IGNORE INTO newbie_config VALUES(1,?1,?2)",
         params![serde_json::to_string(&Config::default())?, now()],
@@ -218,6 +242,20 @@ fn sync(tx: &Connection, uid: i64, c: &Config) -> Result<(), ApiError> {
         "INSERT OR IGNORE INTO newbie_packets(id,round,user_id,kind,invitee_id,created_at) VALUES(?1,?2,?3,'welcome',0,?4)",
         params![Uuid::new_v4().to_string(), round, uid, now()],
     )?;
+    // Video packets appear once the welcome packet has been opened.
+    let welcome_opened: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM newbie_packets WHERE round=?1 AND user_id=?2 AND kind='welcome' AND status='opened')",
+        params![round, uid],
+        |r| r.get(0),
+    )?;
+    if welcome_opened {
+        for i in 1..=c.video_packets {
+            tx.execute(
+                "INSERT OR IGNORE INTO newbie_packets(id,round,user_id,kind,invitee_id,created_at) VALUES(?1,?2,?3,'video',?4,?5)",
+                params![Uuid::new_v4().to_string(), round, uid, i, now()],
+            )?;
+        }
+    }
     // Invitees qualify after a real action (first check-in or completed packet video) + a score.
     let pending: Vec<(i64, i64)> = tx
         .prepare("SELECT user_id,joined_at FROM newbie_members WHERE round=?1 AND inviter_id=?2 AND qualified_at IS NULL")?
@@ -326,6 +364,27 @@ fn state_json(state: &AppState, db: &Connection, uid: i64, c: &Config) -> Result
         .collect::<Result<_, _>>()?;
     let code: String = db.query_row("SELECT invite_code FROM users WHERE id=?1", [uid], |r| r.get(0))?;
     let bonus = if invited_new { c.invited_bonus_percent } else { 0 };
+    // Packets the user can open now, in the order the page offers them: welcome, a revealed video
+    // packet still waiting for its video, unopened video packets, then invite packets.
+    let queue: Vec<Value> = db
+        .prepare(
+            "SELECT id,kind,status,coins FROM newbie_packets WHERE round=?1 AND user_id=?2 AND status IN ('ready','revealed','ad_started')
+             ORDER BY CASE kind WHEN 'welcome' THEN 0 WHEN 'video' THEN 1 ELSE 2 END, CASE status WHEN 'ready' THEN 1 ELSE 0 END, invitee_id, created_at",
+        )?
+        .query_map(params![round, uid], |r| {
+            Ok(json!({"id":r.get::<_,String>(0)?,"kind":r.get::<_,String>(1)?,"status":r.get::<_,String>(2)?,"coins":r.get::<_,Option<i64>>(3)?}))
+        })?
+        .collect::<Result<_, _>>()?;
+    let (video_total, video_done, video_coins): (i64, i64, i64) = db.query_row(
+        "SELECT COUNT(*),COALESCE(SUM(status='opened'),0),COALESCE(SUM(CASE WHEN status='opened' THEN coins END),0) FROM newbie_packets WHERE round=?1 AND user_id=?2 AND kind='video'",
+        params![round, uid],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )?;
+    let welcome_coins: i64 = db.query_row(
+        "SELECT COALESCE(SUM(coins),0) FROM newbie_packets WHERE round=?1 AND user_id=?2 AND kind='welcome' AND status='opened'",
+        params![round, uid],
+        |r| r.get(0),
+    )?;
     Ok(json!({
         "enabled": c.enabled,
         "round": round,
@@ -340,6 +399,12 @@ fn state_json(state: &AppState, db: &Connection, uid: i64, c: &Config) -> Result
         "invited_max": top(&c.welcome_tiers) * (100 + c.invited_bonus_percent) / 100,
         "invite_max": top(&c.inviter_new_tiers),
         "ready_invites": ready,
+        "queue": queue,
+        "available": queue.len(),
+        "video_total": video_total,
+        "video_left": video_total - video_done,
+        "video_max": top(&c.video_tiers),
+        "total_coins": welcome_coins + video_coins + invite_coins,
         "opened_invites": opened_count,
         "invite_coins": invite_coins,
         "friends": friends,
@@ -397,6 +462,36 @@ async fn open_packet(
         let result = json!({"coins":coins.unwrap_or(0),"kind":kind,"already":true,"user":user(&tx,uid)?});
         return Ok(Json(result));
     }
+    if kind == "video" {
+        // Reveal only: the amount is fixed now and paid through the rewarded-video pipeline
+        // (task newbie:{id}), i.e. only after the ad network's verified callback.
+        let coins = match coins {
+            Some(c) => c,
+            None => {
+                let (score, scored) = score_of(&tx, uid, &c)?;
+                let amount = amount(&c.video_tiers, score);
+                tx.execute(
+                    "UPDATE newbie_packets SET status='revealed',coins=?1,score=?2 WHERE id=?3 AND status='ready'",
+                    params![amount, score, input.packet_id],
+                )?;
+                user_admin::behavior(
+                    &tx,
+                    &context,
+                    Some(uid),
+                    None,
+                    "newbie_reveal",
+                    "success",
+                    &input.packet_id,
+                    Some(amount as f64 / COINS_PER_YUAN as f64),
+                    json!({"round":c.round,"score":score,"scored":scored}),
+                )?;
+                amount
+            }
+        };
+        let result = json!({"coins":coins,"kind":kind,"already":false,"needs_video":true,"task_id":format!("newbie:{}",input.packet_id),"state":state_json(&state,&tx,uid,&c)?});
+        tx.commit()?;
+        return Ok(Json(result));
+    }
     let (coins, score, scored) = if kind == "welcome" {
         let (score, scored) = score_of(&tx, uid, &c)?;
         let base = amount(&c.welcome_tiers, score);
@@ -431,6 +526,7 @@ async fn open_packet(
         Some(coins as f64 / COINS_PER_YUAN as f64),
         json!({"kind":kind,"round":c.round,"invitee_id":invitee,"score":score,"scored":scored}),
     )?;
+    sync(&tx, uid, &c)?; // opening the welcome packet unlocks the video packets
     let result = json!({"coins":coins,"kind":kind,"already":false,"user":user(&tx,uid)?,"state":state_json(&state,&tx,uid,&c)?});
     tx.commit()?;
     Ok(Json(result))
@@ -581,6 +677,114 @@ async fn admin_put(
     admin_get(State(state)).await
 }
 
+// ---------- rewarded-video pipeline hooks (task id "newbie:{packet_id}") ----------
+
+/// Quote/start: a revealed video packet with its fixed amount.
+pub(super) fn video_task(state: &AppState, db: &Connection, uid: i64, pid: &str) -> Result<rain::GrandTask, ApiError> {
+    if state.config.ad_mode != "csj" {
+        return Err(conflict("请在已接入广告的 APP 中领取"));
+    }
+    let row: Option<(i64, String, Option<i64>, Option<String>)> = db
+        .query_row(
+            "SELECT round,status,coins,session_id FROM newbie_packets WHERE id=?1 AND user_id=?2 AND kind='video'",
+            params![pid, uid],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .optional()?;
+    let Some((round, status, coins, session)) = row else {
+        return Err(ApiError(StatusCode::NOT_FOUND, "红包不存在".into(), None));
+    };
+    let c = config(db)?;
+    if session.is_none() && (!c.enabled || round != c.round) {
+        return Err(conflict("本期活动已结束"));
+    }
+    if !["revealed", "ad_started"].contains(&status.as_str()) {
+        return Err(conflict("请先拆开这个红包"));
+    }
+    Ok(rain::GrandTask {
+        packet_id: pid.into(),
+        coins: coins.unwrap_or(0),
+        session_id: session,
+    })
+}
+
+/// Start: ties the reward session to the packet. Returns false when `pid` is not ours.
+pub(super) fn attach_session(db: &Connection, uid: i64, pid: &str, sid: &str) -> Result<bool, ApiError> {
+    let exists: bool = db.query_row(
+        "SELECT EXISTS(SELECT 1 FROM newbie_packets WHERE id=?1 AND user_id=?2 AND kind='video')",
+        params![pid, uid],
+        |r| r.get(0),
+    )?;
+    if !exists {
+        return Ok(false);
+    }
+    let changed = db.execute(
+        "UPDATE newbie_packets SET status='ad_started',session_id=?1 WHERE id=?2 AND user_id=?3 AND kind='video' AND status='revealed' AND session_id IS NULL",
+        params![sid, pid, uid],
+    )?;
+    if changed != 1 {
+        return Err(conflict("该红包已处理，请刷新后重试"));
+    }
+    Ok(true)
+}
+
+pub(super) fn completion_packet(db: &Connection, uid: i64, pid: &str, sid: &str) -> Result<String, ApiError> {
+    let valid: bool = db.query_row(
+        "SELECT EXISTS(SELECT 1 FROM newbie_packets WHERE id=?1 AND user_id=?2 AND kind='video' AND status='ad_started' AND session_id=?3)",
+        params![pid, uid, sid],
+        |r| r.get(0),
+    )?;
+    if !valid {
+        return Err(conflict("红包奖励状态不匹配"));
+    }
+    Ok(pid.into())
+}
+
+pub(super) fn finish_video(db: &Connection, uid: i64, pid: &str, sid: &str, coins: i64) -> Result<(), ApiError> {
+    let changed = db.execute(
+        "UPDATE newbie_packets SET status='opened',opened_at=?1 WHERE id=?2 AND user_id=?3 AND session_id=?4 AND coins=?5 AND status='ad_started'",
+        params![now(), pid, uid, sid, coins],
+    )?;
+    if changed != 1 {
+        return Err(conflict("红包奖励状态不匹配"));
+    }
+    Ok(())
+}
+
+// ---------- winners board (cached: one query per 5 minutes per round) ----------
+static BOARD: std::sync::Mutex<Option<(i64, i64, Value)>> = std::sync::Mutex::new(None);
+
+fn mask_phone(phone: &str) -> String {
+    if phone.len() >= 11 {
+        format!("{}****{}", &phone[..3], &phone[phone.len() - 2..])
+    } else {
+        "小橙用户".into()
+    }
+}
+
+async fn board(State(state): State<AppState>) -> ApiResult<Value> {
+    let db = open(&state)?;
+    let c = config(&db)?;
+    if !c.enabled {
+        return Ok(Json(json!({"items":[]})));
+    }
+    if let Some((round, at, value)) = BOARD.lock().unwrap().as_ref() {
+        if *round == c.round && now() - at < 300 {
+            return Ok(Json(value.clone()));
+        }
+    }
+    let items: Vec<Value> = db
+        .prepare(
+            "SELECT u.phone,SUM(p.coins) total FROM newbie_packets p JOIN users u ON u.id=p.user_id
+             WHERE p.round=?1 AND p.status='opened' GROUP BY p.user_id ORDER BY total DESC LIMIT 20",
+        )?
+        .query_map([c.round], |r| Ok(json!({"name":mask_phone(&r.get::<_,String>(0)?),"coins":r.get::<_,i64>(1)?})))?
+        .collect::<Result<_, _>>()?;
+    let value = json!({"items":items,"cached_at":iso(now())});
+    *BOARD.lock().unwrap() = Some((c.round, now(), value.clone()));
+    Ok(Json(value))
+}
+
 /// For the invite landing page (no login): whether the activity runs and the headline amount an
 /// invited new user can get.
 async fn public_info(State(state): State<AppState>) -> ApiResult<Value> {
@@ -605,6 +809,7 @@ async fn public_info(State(state): State<AppState>) -> ApiResult<Value> {
 pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/newbie/public", get(public_info))
+        .route("/newbie/board", get(board))
         .route("/newbie", get(runtime))
         .route("/newbie/open", post(open_packet))
         .route("/newbie/accept", post(accept))
@@ -617,6 +822,74 @@ pub(super) fn admin_routes() -> Router<AppState> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::HeaderValue;
+    use std::collections::HashMap;
+
+    /// Welcome packet pays directly; a video packet only reveals its amount, and the coins arrive
+    /// only through the rewarded-video pipeline after a correctly signed ad callback — once.
+    #[tokio::test]
+    async fn video_packet_pays_only_after_verified_callback() {
+        let (state, context, mut headers, _) = rain::tests::fixture(true, true);
+        let db = open(&state).unwrap();
+        let mut c = config(&db).unwrap();
+        c.enabled = true;
+        db.execute("UPDATE newbie_config SET config_json=?1", [serde_json::to_string(&c).unwrap()]).unwrap();
+        let st = runtime(State(state.clone()), headers.clone()).await.unwrap().0;
+        assert_eq!(st["available"], 1);
+        let welcome = st["welcome"]["id"].as_str().unwrap().to_string();
+        let opened = open_packet(State(state.clone()), Extension(context.clone()), headers.clone(), Json(OpenInput { packet_id: welcome })).await.unwrap().0;
+        let after_welcome = opened["user"]["coins"].as_i64().unwrap();
+        let st = opened["state"].clone();
+        assert_eq!(st["video_total"], 3);
+        assert_eq!(st["available"], 3);
+        let pid = st["queue"][0]["id"].as_str().unwrap().to_string();
+        assert_eq!(st["queue"][0]["kind"], "video");
+        let revealed = open_packet(State(state.clone()), Extension(context.clone()), headers.clone(), Json(OpenInput { packet_id: pid.clone() })).await.unwrap().0;
+        assert_eq!(revealed["needs_video"], true);
+        let coins = revealed["coins"].as_i64().unwrap();
+        assert!(coins >= 10);
+        // Revealing pays nothing.
+        assert_eq!(user(&db, 2).unwrap().coins, after_welcome);
+        let task = format!("newbie:{pid}");
+        let quote = reward_policy::test_quote(&state, &headers, &task, None).await;
+        assert_eq!(quote["reward"], coins);
+        let qid = quote["quote_id"].as_str().unwrap().to_owned();
+        business_guard::test_event(&state, "newbie-proof", 2, "reward", json!({"task_id":task,"quote_id":qid}));
+        headers.insert("x-risk-event", HeaderValue::from_static("newbie-proof"));
+        let session = super::super::reward_start(
+            State(state.clone()),
+            Extension(context.clone()),
+            headers.clone(),
+            Json(super::super::RewardInput { task_id: task.clone(), quote_id: qid }),
+        )
+        .await
+        .unwrap()
+        .0;
+        let sid = session["id"].as_str().unwrap().to_string();
+        // No callback yet: nothing to complete.
+        assert!(super::super::reward_complete(State(state.clone()), Extension(context.clone()), headers.clone(), Path(sid.clone())).await.is_err());
+        let trans = "newbie-callback-transaction";
+        let mut query = HashMap::from([
+            ("user_id".to_string(), "2".to_string()),
+            ("trans_id".to_string(), trans.to_string()),
+            ("reward_name".to_string(), "金币".to_string()),
+            ("reward_amount".to_string(), "99999".to_string()),
+            ("extra".to_string(), session["media_extra"].as_str().unwrap().to_string()),
+            ("sign".to_string(), "forged".to_string()),
+        ]);
+        assert!(!super::super::verify_csj_callback(&state, &query).unwrap().valid);
+        query.insert("sign".into(), format!("{:x}", Sha256::digest(format!("rain-test-secret:{trans}").as_bytes())));
+        assert!(super::super::verify_csj_callback(&state, &query).unwrap().valid);
+        let paid = super::super::reward_complete(State(state.clone()), Extension(context.clone()), headers.clone(), Path(sid.clone())).await.unwrap().0;
+        assert_eq!(paid["reward"], coins);
+        assert_eq!(paid["user"]["coins"].as_i64().unwrap(), after_welcome + coins);
+        let repeat = super::super::reward_complete(State(state.clone()), Extension(context), headers.clone(), Path(sid)).await.unwrap().0;
+        assert_eq!(repeat["already_completed"], true);
+        assert_eq!(db.query_row("SELECT COUNT(*) FROM ledger WHERE source=?1", [format!("newbie:{pid}")], |r| r.get::<_, i64>(0)).unwrap(), 1);
+        let st = runtime(State(state), headers).await.unwrap().0;
+        assert_eq!(st["video_left"], 2);
+        assert_eq!(st["available"], 2);
+    }
 
     #[test]
     fn tiers_pick_by_score_and_stay_in_range() {

@@ -11,7 +11,8 @@ const data = ref(null),
 const controller = new AbortController();
 onUnmounted(() => controller.abort());
 const GROUPS = [
-  { key: "welcome_tiers", title: "新人红包", hint: "新注册或本期受邀用户拆自己的新人红包，按本人设备风险分。" },
+  { key: "welcome_tiers", title: "新人红包", hint: "所有用户每期 1 个（含老用户），按本人设备风险分。" },
+  { key: "video_tiers", title: "看视频红包", hint: "拆完新人红包后可再拆的几个红包：拆开即显示金额，看完激励视频且广告平台回调验证通过后才到账（不占大厅每日红包次数）。按本人风险分。" },
   { key: "inviter_new_tiers", title: "邀请新用户红包", hint: "邀请人每邀请 1 位新用户（完成首签或首个红包）得 1 次，按被邀请人的风险分。" },
   { key: "inviter_old_tiers", title: "邀请老用户红包", hint: "已注册用户扫码参与本期活动时，邀请人得 1 次，金额应明显低于新用户。" },
 ];
@@ -63,7 +64,7 @@ function lower(list, i) {
 const fmt = (n) => Number(n || 0).toLocaleString("zh-CN");
 const yuan = (n) => (Number(n || 0) / 1000).toFixed(2);
 const s = computed(() => data.value?.stats || {});
-const KIND = { welcome: "新人红包", invite: "邀请红包" };
+const KIND = { welcome: "新人红包", video: "视频红包", invite: "邀请红包" };
 function time(v) {
   return v ? new Date(v).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
 }
@@ -103,6 +104,7 @@ refresh();
           <label class="wide">分享文案（随海报一起发送，≤120 字）<input v-model="cfg.share_text" maxlength="120" /></label>
           <label>受邀新用户加成 %<input v-model.number="cfg.invited_bonus_percent" type="number" min="0" max="300" required /></label>
           <label>无评分时按分数<input v-model.number="cfg.unscored_score" type="number" min="0" max="100" required /></label>
+          <label>看视频红包个数（0–10）<input v-model.number="cfg.video_packets" type="number" min="0" max="10" required /></label>
           <label>每人邀请红包上限（0 不限）<input v-model.number="cfg.max_invite_packets" type="number" min="0" max="10000" required /></label>
         </div>
 
@@ -202,6 +204,7 @@ refresh();
 .kind { font-size: 12px; padding: 2px 8px; border-radius: 8px; }
 .kind.welcome { background: #fff0ec; color: #e2321f; }
 .kind.invite { background: #fff6e0; color: #c47a00; }
+.kind.video { background: #eef4ff; color: #3a66c4; }
 .linkish { border: 0; background: none; color: #f65331; cursor: pointer; padding: 4px; font: inherit; font-size: 13px; }
 @media (max-width: 1000px) { .nb-stats { grid-template-columns: 1fr 1fr; } .nb-fields { grid-template-columns: 1fr; } .nb-fields label.wide { grid-column: auto; } .nb-toggles { grid-template-columns: 1fr; } }
 </style>

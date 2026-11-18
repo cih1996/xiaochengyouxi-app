@@ -1298,6 +1298,8 @@ async fn reward_start(
 ) -> ApiResult<Value> {
     let title = if input.task_id.starts_with("rain:") {
         "红包雨大奖"
+    } else if input.task_id.starts_with("newbie:") {
+        "新人礼包红包"
     } else {
         task_info(&input.task_id)?.1
     };
@@ -1349,12 +1351,13 @@ async fn reward_start(
         )?));
     }
     let event = business_guard::validate_local(&state, &tx, &headers, uid, "reward", actual)?;
+    // 新人礼包 video packets are separate from the hall's daily packet limit.
     let claimed: i64 = tx.query_row(
-        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2",
+        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2 AND task_id NOT LIKE 'newbie:%'",
         params![uid, today_start()],
         |r| r.get(0),
     )?;
-    if claimed >= setting(&tx, "daily_reward_limit")? as i64 {
+    if !input.task_id.starts_with("newbie:") && claimed >= setting(&tx, "daily_reward_limit")? as i64 {
         return Err(invalid("今日红包已领完，明天再来吧"));
     }
     let sid = business_guard::operation(&tx, &event)?.unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -1547,12 +1550,13 @@ async fn reward_complete(
     } else if now() - started_at < 5 {
         return Err(invalid("请完成体验后领取奖励"));
     }
+    // 新人礼包 video packets are separate from the hall's daily packet limit.
     let claimed: i64 = tx.query_row(
-        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2",
+        "SELECT COUNT(*) FROM reward_sessions WHERE user_id=?1 AND completed_at>=?2 AND task_id NOT LIKE 'newbie:%'",
         params![uid, today_start()],
         |r| r.get(0),
     )?;
-    if claimed >= setting(&tx, "daily_reward_limit")? as i64 {
+    if !task_id.starts_with("newbie:") && claimed >= setting(&tx, "daily_reward_limit")? as i64 {
         return Err(invalid("今日红包已领完，明天再来吧"));
     }
     tx.execute(
@@ -1560,19 +1564,26 @@ async fn reward_complete(
         params![now(), id],
     )?;
     let packet = rain::completion_packet(&tx, uid, &task_id, &id)?;
-    let title = if packet.is_some() {
+    let newbie_task = task_id.starts_with("newbie:");
+    let title = if newbie_task {
+        "新人礼包红包"
+    } else if packet.is_some() {
         "红包雨大奖"
     } else {
         task_info(&task_id)?.1
     };
-    let source = if let Some(pid) = &packet {
-        format!("rain:{pid}")
-    } else {
-        format!("reward:{id}")
+    let source = match &packet {
+        Some(pid) if newbie_task => format!("newbie:{pid}"),
+        Some(pid) => format!("rain:{pid}"),
+        None => format!("reward:{id}"),
     };
     credit(&tx, uid, reward, title, &source)?;
     if let Some(pid) = &packet {
-        rain::finish_grand(&tx, uid, pid, &id, reward)?;
+        if newbie_task {
+            newbie::finish_video(&tx, uid, pid, &id, reward)?;
+        } else {
+            rain::finish_grand(&tx, uid, pid, &id, reward)?;
+        }
     }
     user_admin::behavior(
         &tx,

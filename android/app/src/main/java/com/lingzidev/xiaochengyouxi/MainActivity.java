@@ -1838,7 +1838,12 @@ public final class MainActivity extends Activity {
   }
 
   void openNewbie() {
-    String url = WebActivity.resolve(NEWBIE_PAGE);
+    openNewbie("");
+  }
+
+  /** query: "" or e.g. "claimed=1234" (back from a 新人礼包 video, to celebrate on the page). */
+  void openNewbie(String query) {
+    String url = WebActivity.resolve(NEWBIE_PAGE + (query.isEmpty() ? "" : "?" + query));
     if (url == null) return;
     api.behavior.click(0, "home:newbie");
     startActivityForResult(
@@ -2066,8 +2071,45 @@ public final class MainActivity extends Activity {
     } else openNative(target);
   }
 
+  /** 新人礼包 video packet (amount already revealed on the page): standard rewarded-video flow
+   * for task newbie:{id}; paid only after the ad network's verified callback. */
+  String newbieVideoPacket = "";
+
+  void watchNewbieVideo(String packetId) {
+    if (!packetId.matches("[0-9a-f-]{36}")) return;
+    newbieVideoPacket = packetId;
+    rewardUiBusy = true;
+    String token = api.token, task = "newbie:" + packetId;
+    showBusy("视频加载中…");
+    Api.Failure failed =
+        m -> {
+          hideBusy();
+          rewardUiBusy = false;
+          newbieVideoPacket = "";
+          if (isDestroyed() || !token.equals(api.token)) return;
+          tip(m);
+          openNewbie();
+        };
+    api.quoteReward(
+        task,
+        quote ->
+            api.post(
+                "/rewards/start",
+                Api.object("task_id", task, "quote_id", ((JSONObject) quote).optString("quote_id")),
+                session -> {
+                  if (isDestroyed() || !token.equals(api.token)) return;
+                  showRewardAd((JSONObject) session, "");
+                },
+                failed),
+        failed);
+  }
+
   void openNative(String target) {
     if (user == null || page == null) return;
+    if (target.startsWith("newbie-video:")) {
+      watchNewbieVideo(target.substring("newbie-video:".length()));
+      return;
+    }
     switch (target) {
       case "checkin":
         openCheckin();
@@ -2367,6 +2409,7 @@ public final class MainActivity extends Activity {
   }
 
   void openPacketNow(JSONObject task) {
+    newbieVideoPacket = "";
     rewardUiBusy = true;
     String token = api.token;
     showBusy("正在打开红包…");
@@ -2664,6 +2707,16 @@ public final class MainActivity extends Activity {
           if (!rainPacket.isEmpty()) rain.markClaimed(rainPacket);
           user = result.optJSONObject("user");
           render();
+          if (!newbieVideoPacket.isEmpty()) {
+            // Back to the activity page, which plays the arrival celebration.
+            newbieVideoPacket = "";
+            rewardUiBusy = false;
+            if (foreground) {
+              playCoinArrival();
+              openNewbie("claimed=" + result.optInt("reward"));
+            }
+            return;
+          }
           if (foreground) {
             if (!result.optBoolean("already_completed")) celebrate(result.optInt("reward"));
             else {
