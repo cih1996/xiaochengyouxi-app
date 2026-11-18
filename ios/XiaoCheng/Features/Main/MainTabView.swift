@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject private var session: Session
+    @EnvironmentObject private var reminders: Reminders
     @State private var tab = 0
 
     init() {
@@ -46,7 +47,10 @@ struct MainTabView: View {
             }
             #endif
             await session.refreshMe()
+            // 登录后静默申请临时通知授权（不弹框），供本地提醒使用
+            await reminders.requestProvisionalIfNeeded()
         }
+        .onChange(of: reminders.pendingTarget) { t in if t != nil { tab = 0 } }
     }
 }
 

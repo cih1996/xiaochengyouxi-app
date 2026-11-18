@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var session: Session
+    @EnvironmentObject private var reminders: Reminders
     @Environment(\.openURL) private var openURL
     @State private var askPassword = false
     @State private var confirmLogout = false
@@ -29,6 +30,25 @@ struct SettingsView: View {
                         SettingRow(title: "修改密码") { changing = true }
                         Divider().padding(.leading, 22)
                         SettingRow(title: "注销账号", detail: "需审核") { deleting = true }
+                    }
+                    .card(radius: 20)
+                    SectionTitle("通知").padding(.top, 8)
+                    VStack(spacing: 0) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("通知提醒").foregroundColor(Theme.text)
+                                Text(reminders.authorization == .denied ? "已在系统设置中关闭，点此前往开启" : "红包雨开场、签到、转盘次数提醒")
+                                    .font(.caption).foregroundColor(Theme.secondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { reminders.userEnabled && reminders.authorization != .denied },
+                                set: { on in toggleReminders(on) }))
+                                .labelsHidden().tint(Theme.orange)
+                        }
+                        .padding(.horizontal, 22).frame(height: 70)
+                        .contentShape(Rectangle())
+                        .onTapGesture { if reminders.authorization == .denied { openSystemSettings() } }
                     }
                     .card(radius: 20)
                     SectionTitle("关于").padding(.top, 8)
@@ -59,6 +79,18 @@ struct SettingsView: View {
         .confirmationDialog("确定退出登录？", isPresented: $confirmLogout, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) { Task { await session.logout() } }
         }
+    }
+
+    private func toggleReminders(_ on: Bool) {
+        guard on else { reminders.userEnabled = false; return }
+        Task {
+            if await reminders.requestFull() { reminders.userEnabled = true }
+            else { openSystemSettings() }
+        }
+    }
+
+    private func openSystemSettings() {
+        if let u = URL(string: UIApplication.openSettingsURLString) { openURL(u) }
     }
 
     private func open(_ path: String) {

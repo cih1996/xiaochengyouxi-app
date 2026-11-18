@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HallView: View {
     @EnvironmentObject private var session: Session
+    @EnvironmentObject private var reminders: Reminders
     @StateObject private var model = HallModel()
     @State private var activity: ActivityLink?
 
@@ -44,11 +45,21 @@ struct HallView: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
-        .onAppear { model.start() }
+        .onAppear { model.start(); route(reminders.pendingTarget) }
         .onDisappear { model.stop() }
+        .onChange(of: reminders.pendingTarget) { route($0) }
         .fullScreenCover(item: $activity, onDismiss: { Task { await model.refreshBadges() } }) { link in
             ActivityScreen(link: link)
         }
+    }
+}
+
+extension HallView {
+    /// 点通知进入：转盘直接打开活动页；签到/红包雨停在大厅（签到卡在顶部）
+    func route(_ t: Reminders.Target?) {
+        guard let t else { return }
+        reminders.pendingTarget = nil
+        if t == .wheel { activity = .wheel }
     }
 }
 
@@ -118,6 +129,7 @@ private struct CheckinCard: View {
                 let _: OK = try await APIClient.shared.post("/check-in", [String: String]())
                 await model.refreshCheckin()
                 await session.refreshMe()
+                Reminders.shared.markCheckedIn()
                 Toast.shared.show("签到成功")
             } catch {
                 Toast.shared.show(error.localizedDescription)
