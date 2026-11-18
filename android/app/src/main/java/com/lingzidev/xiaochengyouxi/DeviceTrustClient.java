@@ -1,6 +1,10 @@
 package com.lingzidev.xiaochengyouxi;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import com.device.trust.EnvironmentCollector;
 import com.device.trust.DeviceTrust;
 import com.device.trust.secure.ResourceCollector;
 import com.device.trust.secure.SecureReporter;
@@ -25,6 +29,81 @@ final class DeviceTrustClient {
 
   interface Ready {
     void done(String eventId);
+  }
+
+  /** Re-register when the app returns to the foreground and the last report is this old. */
+  private static final long REFRESH_AFTER_MS = 30 * 60 * 1000L;
+  private volatile long lastReportAt;
+  private volatile boolean refreshing;
+
+  /**
+   * Cell towers and location (DeviceTrust environment module). Android only exposes the cell list
+   * with location permission; without it nothing is read and the platform leaves those rules out
+   * of scoring.
+   */
+  static boolean locationGranted(Context context) {
+    return context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED
+        || context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED;
+  }
+
+  private void collectEnvironment(Context context, JSONObject report, boolean consent) {
+    if (!consent || !locationGranted(context)) return;
+    try {
+      EnvironmentCollector.collect(
+          context,
+          report,
+          true,
+          EnvironmentCollector.Collection.CELL,
+          EnvironmentCollector.Collection.LOCATION);
+    } catch (Exception | LinkageError error) {
+      // Collection failure is not a risk signal; the report goes out without it.
+      android.util.Log.w("DeviceTrust", "environment collection failed", error);
+    }
+  }
+
+  private com.device.trust.secure.DeviceTrustClient.ExtraCollector extra() {
+    boolean consent = api.preferences.getBoolean(CONSENT, false);
+    return (context, report) -> collectEnvironment(context, report, consent);
+  }
+
+  /**
+   * Called from onResume. The platform judges the device environment by its latest report, so
+   * a fresh one after 30 minutes lets the score recover (e.g. USB debugging switched off).
+   */
+  /** Location was just granted: send a report that includes cell/location right away. */
+  void refreshNow() {
+    lastReportAt = 0;
+    refreshIfStale();
+  }
+
+  void refreshIfStale() {
+    if (refreshing
+        || sdkPins == null
+        || sdkBase.isEmpty()
+        || !api.preferences.getBoolean(CONSENT, false)
+        || System.currentTimeMillis() - lastReportAt < REFRESH_AFTER_MS) return;
+    refreshing = true;
+    new Thread(
+            () -> {
+              try {
+                com.device.trust.secure.DeviceTrustClient.initialize(
+                    activity.getApplicationContext(),
+                    new com.device.trust.secure.DeviceTrustClient.Config(
+                        BuildConfig.DEVICE_TRUST_APP_ID, sdkBase, sdkPins),
+                    true,
+                    extra());
+                lastReportAt = System.currentTimeMillis();
+              } catch (Exception | LinkageError error) {
+                if (keyInvalidated(error)) resetKey();
+                android.util.Log.w("DeviceTrust", "foreground refresh failed", error);
+              } finally {
+                refreshing = false;
+              }
+            },
+            "device-trust-refresh")
+        .start();
   }
 
   DeviceTrustClient(Activity activity, Api api) {
@@ -58,7 +137,8 @@ final class DeviceTrustClient {
                             activity.getApplicationContext(),
                             new com.device.trust.secure.DeviceTrustClient.Config(appId, base, pins),
                             api.preferences.getBoolean(CONSENT, false),
-                            null);
+                            extra());
+                        lastReportAt = System.currentTimeMillis();
                       } catch (Exception | LinkageError error) {
                         startupCode = code(error);
                         startupError = detail(error, api.token);
@@ -135,7 +215,8 @@ final class DeviceTrustClient {
           new com.device.trust.secure.DeviceTrustClient.Config(
               BuildConfig.DEVICE_TRUST_APP_ID, sdkBase, sdkPins),
           api.preferences.getBoolean(CONSENT, false),
-          null);
+          extra());
+      lastReportAt = System.currentTimeMillis();
       return true;
     } catch (Exception | LinkageError error) {
       android.util.Log.e("DeviceTrust", "key reset failed", error);
@@ -315,11 +396,16 @@ final class DeviceTrustClient {
                       activity.getApplicationContext(),
                       report,
                       api.preferences.getBoolean(CONSENT, false));
+                  collectEnvironment(
+                      activity.getApplicationContext(),
+                      report,
+                      api.preferences.getBoolean(CONSENT, false));
                   stage = "upload";
                   JSONObject uploaded =
                       SecureReporter.upload(
                           activity.getApplicationContext(), base, pins, challenge, report);
                   String reportId = uploaded.getString("reportId");
+                  lastReportAt = System.currentTimeMillis();
                   activity.runOnUiThread(
                       () -> {
                         if (active()) complete(reportId);

@@ -2244,6 +2244,10 @@ public final class MainActivity extends Activity {
       updates.maybePresent();
       return;
     }
+    withLocation(() -> openPacketNow(task));
+  }
+
+  void openPacketNow(JSONObject task) {
     rewardUiBusy = true;
     String token = api.token;
     showBusy("正在打开红包…");
@@ -2672,7 +2676,57 @@ public final class MainActivity extends Activity {
     }
   }
 
+  // ---- location (cell tower) permission: asked once, before the first check-in / packet /
+  // withdrawal, with our own explanation first. Declining never blocks anything.
+  static final String LOCATION_ASKED = "location_permission_asked_v1";
+  static final int LOCATION_REQUEST = 4107;
+  Runnable afterLocation;
+
+  void withLocation(Runnable then) {
+    if (DeviceTrustClient.locationGranted(this)
+        || api.preferences.getBoolean(LOCATION_ASKED, false)
+        || !api.preferences.getBoolean(DeviceTrustClient.CONSENT, false)) {
+      then.run();
+      return;
+    }
+    api.preferences.edit().putBoolean(LOCATION_ASKED, true).apply();
+    AlertDialog ask =
+        new AlertDialog.Builder(this)
+            .setTitle("温馨提示")
+            .setMessage(
+                "为保障账户与提现安全，小橙有喜需要获取你的位置信息（含附近基站信息），仅用于识别异常设备与作弊环境，不会用于广告推送。\n\n拒绝授权不影响签到、领红包和提现。")
+            .setNegativeButton("暂不授权", (d, w) -> then.run())
+            .setPositiveButton(
+                "去授权",
+                (d, w) -> {
+                  afterLocation = then;
+                  requestPermissions(
+                      new String[] {
+                        android.Manifest.permission.ACCESS_FINE_LOCATION,
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION
+                      },
+                      LOCATION_REQUEST);
+                })
+            .setCancelable(false)
+            .create();
+    ask.show();
+  }
+
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+    super.onRequestPermissionsResult(requestCode, permissions, results);
+    if (requestCode != LOCATION_REQUEST) return;
+    Runnable then = afterLocation;
+    afterLocation = null;
+    if (DeviceTrustClient.locationGranted(this)) api.deviceTrust.refreshNow();
+    if (then != null) then.run();
+  }
+
   void openCheckin() {
+    withLocation(this::openCheckinNow);
+  }
+
+  void openCheckinNow() {
     api.get("/check-in/status", value -> showCheckinDialog((JSONObject) value), this::error);
   }
 
@@ -3893,7 +3947,8 @@ public final class MainActivity extends Activity {
       updates.maybePresent();
       return;
     }
-    api.get("/withdraw/options", value -> showWithdraw((JSONObject) value), this::error);
+    withLocation(
+        () -> api.get("/withdraw/options", value -> showWithdraw((JSONObject) value), this::error));
   }
 
   void showWithdraw(JSONObject options) {
@@ -4069,6 +4124,7 @@ public final class MainActivity extends Activity {
     }
     refreshRuntime();
     updates.resume();
+    if (servicesReady) api.deviceTrust.refreshIfStale();
   }
 
   @Override

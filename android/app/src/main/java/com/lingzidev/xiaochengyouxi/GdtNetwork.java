@@ -41,6 +41,13 @@ final class GdtNetwork implements AdNetwork {
       GlobalSetting.setPersonalizedState(1); // 1 = no personalised ads
       GlobalSetting.setAgreeReadDeviceId(false);
       GlobalSetting.setEnableCollectAppInstallStatus(false);
+      // The app now holds location permission (for DeviceTrust only); keep 优量汇 off it.
+      java.util.Map<String, Boolean> privacy = new java.util.HashMap<>();
+      privacy.put("cell_id", false);
+      privacy.put("mac_address", false);
+      privacy.put("android_id", false);
+      privacy.put("device_id", false);
+      GlobalSetting.setAgreeReadPrivacyInfo(privacy);
       GDTAdSdk.initWithoutStart(app, appId);
       GDTAdSdk.start(
           new GDTAdSdk.OnStartListener() {

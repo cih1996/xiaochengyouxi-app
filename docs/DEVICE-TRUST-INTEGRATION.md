@@ -1,6 +1,6 @@
 # DeviceTrust 接入与后续约定
 
-本文件记录用户明确要求和当前接入边界。Android 0.3.17 使用 DeviceTrust 0.7.6 基础与安全上报 AAR，使用独立业务应用；发布 APK 的包名与签名保持固定。
+本文件记录用户明确要求和当前接入边界。Android 0.3.24 起使用 DeviceTrust 0.7.8 基础、安全上报与环境（基站/定位）AAR（0.3.17–0.3.23 为 0.7.6），使用独立业务应用；发布 APK 的包名与签名保持固定。
 
 ## 当前实现
 
@@ -86,3 +86,10 @@ DeviceTrust enforce 模式需要执行授权时，Rust 服务端先按协议取�
 - 同步 SDK 清单、隐私说明与权限声明，再完成真机、误判与真实业务联调验收。
 
 该 SDK 当前交付中的硬件证明尚待真机验收、规则仍待校准；接入完成与处置准确率分别验证。
+
+## 0.3.24：基站/定位与定期重新登记
+
+- 引入 `device-trust-environment-0.7.8.aar`，在启动登记、密钥重置后登记及每次业务报告中调用 `EnvironmentCollector.collect(..., CELL, LOCATION)`；仅在隐私同意且已授予定位权限时采集，失败只记日志、不视为风险。
+- 定位权限：首次签到、打开红包或提现前，先弹出用途说明，再请求系统权限；每次安装只询问一次（`location_permission_asked_v1`），拒绝不影响任何功能，平台对应规则不参与评分。授权后立即补报一次。
+- 登记时机：每次冷启动登记一次（已有登记时 SDK 自动按 device_refresh 上报）；`onResume` 时若距上次成功上报超过 30 分钟，后台线程再登记一次。业务核验照常携带最新报告。
+- 四家广告 SDK 均保持关闭定位读取（穿山甲 isCanUseLocation、快手 canReadLocation、百度 setPermissionLocation、优量汇 setAgreeReadPrivacyInfo）。隐私政策 1.7 已写明位置与基站信息。
