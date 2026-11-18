@@ -1921,7 +1921,7 @@ public final class MainActivity extends Activity {
     NewbieBadge badge = new NewbieBadge(this, wheelInfo.optString("entry_label", "幸运转盘"), true);
     badge.setCount(wheelInfo.optInt("available"));
     FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(64), dp(78), Gravity.TOP | Gravity.RIGHT);
-    lp.topMargin = newbieOn() ? dp(10 + 78 + 4) : dp(10);
+    lp.topMargin = newbieOn() ? dp(10 + 78 + 10) : dp(10);
     lp.rightMargin = dp(14);
     hallSurface.addView(badge, lp);
     badge.setOnClickListener(
