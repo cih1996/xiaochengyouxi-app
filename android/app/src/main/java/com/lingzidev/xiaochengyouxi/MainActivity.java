@@ -270,6 +270,8 @@ public final class MainActivity extends Activity {
 
   void afterPrivacy() {
     loading();
+    // In parallel with /config, not after device registration: one round trip less at startup.
+    updates.prefetch();
     api.get(
         "/config",
         result -> {

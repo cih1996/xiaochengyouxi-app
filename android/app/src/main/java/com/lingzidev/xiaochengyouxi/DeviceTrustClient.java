@@ -131,14 +131,14 @@ final class DeviceTrustClient {
             sdkBase = base;
             sdkPins = pins;
             // Startup never waits on the network for long: a slow DNS/registration must not keep
-            // the user on the splash screen. After 5s the App continues and registration finishes
+            // the user on the splash screen. After 2s the App continues and registration finishes
             // in the background (business checks still attach their own fresh report).
             final java.util.concurrent.atomic.AtomicBoolean proceeded = new java.util.concurrent.atomic.AtomicBoolean();
             Runnable proceed =
                 () -> {
                   if (proceeded.compareAndSet(false, true) && !activity.isDestroyed()) done.run();
                 };
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(proceed, 5000);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(proceed, 2000);
             new Thread(
                     () -> {
                       try {

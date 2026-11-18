@@ -42,7 +42,9 @@ final class AppUpdates {
       ready,
       awaitingSettings,
       installing,
-      destroyed;
+      destroyed,
+      // a startup check already finished (prefetched while the rest of startup was loading)
+      completed;
   private boolean manualOffer;
   private boolean forceGate;
   private String manualError;
@@ -75,8 +77,18 @@ final class AppUpdates {
     api.updateRequired = forceGate;
   }
 
+  /** Starts the update check early, in parallel with the rest of startup. */
+  void prefetch() {
+    if (!checking && !completed) check(false);
+  }
+
   void start(Runnable continuation) {
     startup = continuation;
+    if (checking) return; // the prefetched check continues startup when it answers
+    if (completed) {
+      maybePresent();
+      return;
+    }
     check(false);
   }
 
@@ -102,6 +114,7 @@ final class AppUpdates {
         result -> {
           if (destroyed) return;
           checking = false;
+          completed = true;
           boolean requested = manualCheck;
           manualCheck = false;
           try {
@@ -148,6 +161,7 @@ final class AppUpdates {
         message -> {
           if (destroyed) return;
           checking = false;
+          completed = true;
           boolean requested = manualCheck;
           manualCheck = false;
           checkFailed(message, requested);
