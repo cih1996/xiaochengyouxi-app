@@ -32,6 +32,9 @@ import java.util.Set;
  */
 public final class WebActivity extends Activity {
   static final String EXTRA_URL = "url", EXTRA_TITLE = "title", RESULT_OPEN = "open";
+  /** Full-screen page without the title bar (the page draws its own close button). */
+  static final String EXTRA_IMMERSIVE = "immersive";
+  private static final int RED_DARK = 0xff4a0609;
   static final int REQUEST = 4107;
   private static final int CREAM = 0xfffff8f2, INK = 0xff392923;
 
@@ -85,12 +88,23 @@ public final class WebActivity extends Activity {
       finish();
       return;
     }
-    getWindow().setStatusBarColor(CREAM);
-    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+    boolean immersive = getIntent().getBooleanExtra(EXTRA_IMMERSIVE, false);
+    if (immersive) {
+      // Draw under the status bar; the page reads env(safe-area-inset-top).
+      getWindow().setStatusBarColor(0);
+      getWindow().setNavigationBarColor(RED_DARK);
+      getWindow()
+          .getDecorView()
+          .setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    } else {
+      getWindow().setStatusBarColor(CREAM);
+      getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+    }
 
     LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
-    root.setBackgroundColor(CREAM);
+    root.setBackgroundColor(immersive ? RED_DARK : CREAM);
+    if (!immersive)
     root.setOnApplyWindowInsetsListener(
         (v, insets) -> {
           v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
@@ -119,12 +133,13 @@ public final class WebActivity extends Activity {
     close.setContentDescription("关闭");
     close.setOnClickListener(v -> finish());
     bar.addView(close, new LinearLayout.LayoutParams(dp(46), dp(46)));
-    root.addView(bar, new LinearLayout.LayoutParams(-1, dp(50)));
+    if (!immersive) root.addView(bar, new LinearLayout.LayoutParams(-1, dp(50)));
 
     FrameLayout body = new FrameLayout(this);
     web = new WebView(this);
     progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
     progress.setMax(100);
+    if (immersive) web.setBackgroundColor(RED_DARK);
     body.addView(web, new FrameLayout.LayoutParams(-1, -1));
     body.addView(progress, new FrameLayout.LayoutParams(-1, dp(3), Gravity.TOP));
     root.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -252,6 +267,19 @@ public final class WebActivity extends Activity {
                   Intent.createChooser(
                       new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shown),
                       "分享给好友")));
+    }
+
+    /** Activity poster: target wechat (friend) / moments (save + open WeChat) / save. */
+    @JavascriptInterface
+    public void sharePoster(String target, String pngBase64, String text) {
+      if (!trusted() || target == null || pngBase64 == null) return;
+      String shown = text == null ? "" : text.length() > 300 ? text.substring(0, 300) : text;
+      runOnUiThread(() -> PosterShare.share(WebActivity.this, target, pngBase64, shown));
+    }
+
+    @JavascriptInterface
+    public boolean hasWeChat() {
+      return trusted() && PosterShare.installed(WebActivity.this);
     }
 
     @JavascriptInterface

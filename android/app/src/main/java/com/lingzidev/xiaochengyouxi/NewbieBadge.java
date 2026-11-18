@@ -1,0 +1,293 @@
+package com.lingzidev.xiaochengyouxi;
+
+import android.animation.Animator;
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.View;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.OvershootInterpolator;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import java.util.ArrayList;
+
+/**
+ * Hall floating badge for 新人礼包: rotating golden rays, a red envelope that shakes every couple
+ * of seconds, a gold 開 coin, twinkling sparkles, a pulsing label and a count of packets to open.
+ * Everything is drawn in code so it stays sharp at any density.
+ */
+final class NewbieBadge extends FrameLayout {
+  private final ArrayList<Animator> animators = new ArrayList<>();
+  private final TextView label, count;
+  private final View rays, envelope;
+
+  NewbieBadge(Context context, String text) {
+    super(context);
+    setClipChildren(false);
+    setClipToPadding(false);
+    setContentDescription(text);
+
+    rays = new Rays(context);
+    addView(rays, new LayoutParams(dp(96), dp(96), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+    LayoutParams rp = (LayoutParams) rays.getLayoutParams();
+    rp.topMargin = -dp(14);
+
+    envelope = new Envelope(context);
+    LayoutParams ep = new LayoutParams(dp(50), dp(62), Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+    ep.topMargin = dp(4);
+    addView(envelope, ep);
+
+    label = new TextView(context);
+    label.setText(text);
+    label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+    label.setTypeface(Typeface.DEFAULT_BOLD);
+    label.setTextColor(0xff8a1a00);
+    label.setGravity(Gravity.CENTER);
+    label.setSingleLine(true);
+    label.setIncludeFontPadding(false);
+    label.setPadding(dp(8), dp(4), dp(8), dp(4));
+    GradientDrawable pill =
+        new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xfffff3b0, 0xffffcf3a, 0xfff5a300});
+    pill.setCornerRadius(dp(12));
+    pill.setStroke(dp(2), Color.WHITE);
+    label.setBackground(pill);
+    label.setElevation(dp(6));
+    LayoutParams lp = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+    addView(label, lp);
+
+    count = new TextView(context);
+    count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+    count.setTypeface(Typeface.DEFAULT_BOLD);
+    count.setTextColor(Color.WHITE);
+    count.setGravity(Gravity.CENTER);
+    count.setIncludeFontPadding(false);
+    GradientDrawable dot = new GradientDrawable();
+    dot.setCornerRadius(dp(10));
+    dot.setColor(0xffe8141d);
+    dot.setStroke(dp(2), Color.WHITE);
+    count.setBackground(dot);
+    count.setElevation(dp(8));
+    count.setMinWidth(dp(20));
+    count.setPadding(dp(4), 0, dp(4), 0);
+    LayoutParams cp = new LayoutParams(-2, dp(20), Gravity.TOP | Gravity.RIGHT);
+    cp.rightMargin = dp(6);
+    addView(count, cp);
+    count.setVisibility(GONE);
+  }
+
+  void setCount(int n) {
+    count.setText(n > 99 ? "99+" : String.valueOf(n));
+    count.setVisibility(n > 0 ? VISIBLE : GONE);
+  }
+
+  /** Entrance pop, then the idle loops. */
+  void start() {
+    stop();
+    if (!ValueAnimator.areAnimatorsEnabled()) return;
+    setScaleX(0f);
+    setScaleY(0f);
+    ObjectAnimator in =
+        ObjectAnimator.ofPropertyValuesHolder(
+            this,
+            PropertyValuesHolder.ofFloat(SCALE_X, 0f, 1f),
+            PropertyValuesHolder.ofFloat(SCALE_Y, 0f, 1f));
+    in.setInterpolator(new OvershootInterpolator(2.4f));
+    in.setDuration(520);
+    play(in);
+
+    ObjectAnimator spin = ObjectAnimator.ofFloat(rays, ROTATION, 0f, 360f);
+    spin.setDuration(9000);
+    spin.setInterpolator(new LinearInterpolator());
+    spin.setRepeatCount(ValueAnimator.INFINITE);
+    play(spin);
+
+    ObjectAnimator glow = ObjectAnimator.ofFloat(rays, ALPHA, .55f, 1f);
+    glow.setDuration(900);
+    glow.setRepeatMode(ValueAnimator.REVERSE);
+    glow.setRepeatCount(ValueAnimator.INFINITE);
+    play(glow);
+
+    // Shake + hop every ~2.2s: still most of the time, then a burst of motion.
+    ObjectAnimator shake =
+        ObjectAnimator.ofPropertyValuesHolder(
+            envelope,
+            PropertyValuesHolder.ofFloat(ROTATION, 0, 0, 0, 0, -14, 14, -10, 10, -5, 0),
+            PropertyValuesHolder.ofFloat(TRANSLATION_Y, 0, 0, 0, 0, -dp(6), -dp(8), -dp(6), -dp(3), 0, 0),
+            PropertyValuesHolder.ofFloat(SCALE_X, 1, 1, 1, 1, 1.12f, 1.12f, 1.08f, 1.04f, 1, 1),
+            PropertyValuesHolder.ofFloat(SCALE_Y, 1, 1, 1, 1, 1.12f, 1.12f, 1.08f, 1.04f, 1, 1));
+    shake.setDuration(2200);
+    shake.setRepeatCount(ValueAnimator.INFINITE);
+    play(shake);
+
+    ObjectAnimator pulse =
+        ObjectAnimator.ofPropertyValuesHolder(
+            label,
+            PropertyValuesHolder.ofFloat(SCALE_X, 1f, 1.1f),
+            PropertyValuesHolder.ofFloat(SCALE_Y, 1f, 1.1f));
+    pulse.setDuration(650);
+    pulse.setRepeatMode(ValueAnimator.REVERSE);
+    pulse.setRepeatCount(ValueAnimator.INFINITE);
+    play(pulse);
+
+    ObjectAnimator beat =
+        ObjectAnimator.ofPropertyValuesHolder(
+            count,
+            PropertyValuesHolder.ofFloat(SCALE_X, 1f, 1.25f, 1f),
+            PropertyValuesHolder.ofFloat(SCALE_Y, 1f, 1.25f, 1f));
+    beat.setDuration(800);
+    beat.setRepeatCount(ValueAnimator.INFINITE);
+    play(beat);
+  }
+
+  void stop() {
+    for (Animator a : animators) a.cancel();
+    animators.clear();
+    setScaleX(1f);
+    setScaleY(1f);
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    stop();
+    super.onDetachedFromWindow();
+  }
+
+  private void play(Animator a) {
+    animators.add(a);
+    a.start();
+  }
+
+  private int dp(float v) {
+    return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics()));
+  }
+
+  /** Golden sunburst with twinkling sparkles. */
+  private static final class Rays extends View {
+    private final Paint ray = new Paint(Paint.ANTI_ALIAS_FLAG), star = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path path = new Path();
+    private float twinkle;
+
+    Rays(Context c) {
+      super(c);
+      star.setColor(0xffffffff);
+      ValueAnimator t = ValueAnimator.ofFloat(0f, 1f);
+      t.setDuration(1400);
+      t.setRepeatCount(ValueAnimator.INFINITE);
+      t.addUpdateListener(
+          a -> {
+            twinkle = (float) a.getAnimatedValue();
+            invalidate();
+          });
+      addOnAttachStateChangeListener(
+          new OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(View v) {
+              if (ValueAnimator.areAnimatorsEnabled()) t.start();
+            }
+
+            @Override
+            public void onViewDetachedFromWindow(View v) {
+              t.cancel();
+            }
+          });
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+      float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy);
+      ray.setShader(
+          new RadialGradient(cx, cy, r, new int[] {0xccffd75a, 0x55ffb020, 0x00ffb020}, new float[] {0f, .55f, 1f}, Shader.TileMode.CLAMP));
+      canvas.drawCircle(cx, cy, r * .62f, ray);
+      for (int i = 0; i < 12; i++) {
+        double a = Math.PI * 2 * i / 12, w = Math.PI / 30;
+        path.reset();
+        path.moveTo(cx, cy);
+        path.lineTo(cx + (float) Math.cos(a - w) * r, cy + (float) Math.sin(a - w) * r);
+        path.lineTo(cx + (float) Math.cos(a + w) * r, cy + (float) Math.sin(a + w) * r);
+        path.close();
+        canvas.drawPath(path, ray);
+      }
+      // Three sparkles, each fading in and out on its own phase (counter-rotated so they stay put
+      // is unnecessary — rotating sparkles read as glitter).
+      float[][] spots = {{.18f, .26f}, {.84f, .34f}, {.26f, .82f}};
+      for (int i = 0; i < spots.length; i++) {
+        float phase = (twinkle + i / 3f) % 1f, alpha = (float) Math.sin(phase * Math.PI);
+        star.setAlpha((int) (255 * alpha));
+        drawStar(canvas, getWidth() * spots[i][0], getHeight() * spots[i][1], r * .1f * (.6f + alpha * .6f));
+      }
+    }
+
+    private void drawStar(Canvas c, float x, float y, float s) {
+      path.reset();
+      path.moveTo(x, y - s);
+      path.quadTo(x, y, x + s, y);
+      path.quadTo(x, y, x, y + s);
+      path.quadTo(x, y, x - s, y);
+      path.quadTo(x, y, x, y - s);
+      c.drawPath(path, star);
+    }
+  }
+
+  /** Red envelope with a gold 開 coin. */
+  private static final class Envelope extends View {
+    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG), text = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF rect = new RectF();
+    private final Path flap = new Path();
+
+    Envelope(Context c) {
+      super(c);
+      setElevation(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6, c.getResources().getDisplayMetrics()));
+      setOutlineProvider(
+          new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, android.graphics.Outline o) {
+              o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), v.getWidth() * .2f);
+            }
+          });
+      text.setTypeface(Typeface.DEFAULT_BOLD);
+      text.setTextAlign(Paint.Align.CENTER);
+      text.setColor(0xff8a2a00);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+      float w = getWidth(), h = getHeight(), r = w * .2f;
+      rect.set(0, 0, w, h);
+      p.setShader(new LinearGradient(0, 0, w, h, 0xffff5a45, 0xffc4141c, Shader.TileMode.CLAMP));
+      canvas.drawRoundRect(rect, r, r, p);
+      flap.reset();
+      flap.moveTo(0, r);
+      flap.quadTo(0, 0, r, 0);
+      flap.lineTo(w - r, 0);
+      flap.quadTo(w, 0, w, r);
+      flap.lineTo(w, h * .36f);
+      flap.quadTo(w / 2, h * .62f, 0, h * .36f);
+      flap.close();
+      p.setShader(new LinearGradient(0, 0, 0, h * .5f, 0xffff7a5c, 0xffe8362c, Shader.TileMode.CLAMP));
+      canvas.drawPath(flap, p);
+      float cx = w / 2, cy = h * .46f, cr = w * .25f;
+      p.setShader(
+          new RadialGradient(cx - cr * .35f, cy - cr * .35f, cr * 1.3f, new int[] {0xfffff6c8, 0xffffc531, 0xffc27300}, new float[] {0f, .45f, 1f}, Shader.TileMode.CLAMP));
+      canvas.drawCircle(cx, cy, cr, p);
+      text.setTextSize(cr * 1.15f);
+      Paint.FontMetrics m = text.getFontMetrics();
+      canvas.drawText("開", cx, cy - (m.ascent + m.descent) / 2, text);
+      p.setShader(null);
+      p.setColor(0x33ffffff);
+      canvas.drawRoundRect(new RectF(w * .12f, h * .7f, w * .88f, h * .74f), 4, 4, p);
+    }
+  }
+}

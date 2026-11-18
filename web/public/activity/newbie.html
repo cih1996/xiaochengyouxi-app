@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#7a0d12">
+<title>新人礼包</title>
+<style>
+:root{
+  --red-0:#3d0508; --red-1:#7a0d12; --red-2:#b3121b; --red-3:#e3262b; --red-4:#ff4b3e;
+  --gold-0:#8a4b00; --gold-1:#d98a00; --gold-2:#ffc531; --gold-3:#ffe48a; --gold-4:#fff6d1;
+  --ink:#3a1406; --cream:#fff7ea; --muted:#b9806a; --green:#1aad19;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html{height:100%}
+body{min-height:100%;background:var(--red-0);color:var(--cream);font-family:-apple-system,"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Microsoft YaHei",sans-serif;overflow-x:hidden}
+body{overscroll-behavior:none}
+button{font:inherit;border:0;background:none;color:inherit;cursor:pointer}
+.hidden{display:none!important}
+
+/* ============ shared backdrop ============ */
+.backdrop{position:fixed;inset:0;z-index:0;overflow:hidden;background:radial-gradient(120% 80% at 50% 30%,#c4161f 0%,#8c0e15 45%,#4a0609 100%)}
+.rays{position:absolute;left:50%;top:38%;width:240vmax;height:240vmax;margin:-120vmax 0 0 -120vmax;
+  background:repeating-conic-gradient(from 0deg,rgba(255,214,120,.16) 0deg 7deg,rgba(255,214,120,0) 7deg 18deg);
+  -webkit-mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.55) 22%,transparent 50%);mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.55) 22%,transparent 50%);
+  animation:spin 26s linear infinite}
+.glow{position:absolute;left:50%;top:38%;width:110vmin;height:110vmin;margin:-55vmin 0 0 -55vmin;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,220,130,.55) 0%,rgba(255,170,60,.18) 35%,transparent 65%);animation:breathe 3.2s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes breathe{50%{transform:scale(1.12);opacity:.75}}
+.backdrop.hot .rays{animation-duration:5s}
+.backdrop.hot .glow{animation:hotGlow .9s ease-out forwards}
+@keyframes hotGlow{0%{transform:scale(.8);opacity:1}40%{transform:scale(1.6);opacity:1}100%{transform:scale(1.25);opacity:.9}}
+#fx{position:fixed;inset:0;z-index:40;pointer-events:none}
+#flash{position:fixed;inset:0;z-index:39;background:radial-gradient(circle at 50% 45%,#fff 0%,#fff4c2 30%,rgba(255,220,120,0) 70%);opacity:0;pointer-events:none}
+#flash.on{animation:flash .7s ease-out}
+@keyframes flash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+.shake{animation:shake .55s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translate3d(-2px,1px,0)}20%,80%{transform:translate3d(4px,-2px,0)}30%,50%,70%{transform:translate3d(-7px,3px,0)}40%,60%{transform:translate3d(7px,-3px,0)}}
+
+.topbar{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;justify-content:space-between;align-items:center;padding:calc(var(--safe-top) + 10px) 14px 0}
+.round-btn{width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.22);display:grid;place-items:center;backdrop-filter:blur(6px)}
+.round-btn svg{width:20px;height:20px}
+.rule-btn{height:30px;padding:0 12px;border-radius:15px 0 0 15px;margin-right:-14px;background:rgba(0,0,0,.25);font-size:13px;color:var(--gold-3)}
+
+/* ============ packet stage ============ */
+#stage{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(var(--safe-top) + 40px) 20px calc(var(--safe-bottom) + 30px)}
+.headline{text-align:center;margin-bottom:22px;opacity:0;transform:translateY(-20px) scale(.9)}
+.headline.in{animation:headIn .7s .35s cubic-bezier(.2,1.6,.4,1) forwards}
+.headline.out{animation:headOut .35s ease-in forwards}
+@keyframes headOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-30px) scale(.9)}}
+@keyframes headIn{to{opacity:1;transform:none}}
+.headline .kicker{display:inline-block;font-size:14px;letter-spacing:4px;color:var(--gold-3);padding:4px 14px;border:1px solid rgba(255,228,138,.5);border-radius:14px;background:rgba(0,0,0,.18)}
+.headline h1{margin-top:12px;font-size:clamp(28px,8.4vw,40px);white-space:nowrap;line-height:1.1;font-weight:900;letter-spacing:2px;
+  background:linear-gradient(180deg,#fffbe6 0%,#ffe27a 45%,#ffb31a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 0 #8a2a00) drop-shadow(0 8px 18px rgba(0,0,0,.35))}
+.headline .sub{margin-top:10px;font-size:15px;color:#ffd9c4}
+.headline .sub b{color:var(--gold-2);font-size:20px;font-weight:900;margin:0 2px}
+
+.envelope-wrap{position:relative;width:min(78vw,320px);aspect-ratio:320/420;perspective:1200px}
+.envelope{position:absolute;inset:0;transform-style:preserve-3d;transform:translateY(-110vh) rotate(-12deg) scale(.6)}
+.envelope.drop{animation:drop 1s cubic-bezier(.22,1.25,.36,1) forwards}
+.envelope.idle{animation:idle 2.6s ease-in-out infinite}
+@keyframes drop{0%{transform:translateY(-110vh) rotate(-12deg) scale(.6)}70%{transform:translateY(12px) rotate(2deg) scale(1.04)}85%{transform:translateY(-6px) rotate(-1deg) scale(.99)}100%{transform:none}}
+@keyframes idle{0%,72%,100%{transform:none}76%{transform:rotate(-3deg) scale(1.02)}80%{transform:rotate(3deg) scale(1.03)}84%{transform:rotate(-2deg)}88%{transform:rotate(1deg)}}
+.env-body{position:absolute;inset:0;border-radius:26px;overflow:hidden;
+  background:linear-gradient(170deg,#ff5a45 0%,#e82a2b 38%,#c4141c 100%);
+  box-shadow:0 30px 60px rgba(40,0,0,.55),inset 0 2px 0 rgba(255,255,255,.35),inset 0 -10px 30px rgba(90,0,0,.45)}
+.env-body::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(circle at 15% 85%,rgba(255,210,120,.18) 0 18%,transparent 19%),
+  radial-gradient(circle at 88% 70%,rgba(255,210,120,.12) 0 12%,transparent 13%),
+  repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 10px,transparent 10px 20px)}
+.env-pattern{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);width:62%;text-align:center;color:rgba(255,226,140,.95)}
+.env-pattern .big{font-size:22px;font-weight:900;letter-spacing:6px;text-shadow:0 2px 0 rgba(120,0,0,.6)}
+.env-pattern .small{margin-top:6px;font-size:12px;letter-spacing:3px;color:rgba(255,226,180,.75)}
+.env-flap{position:absolute;left:0;right:0;top:0;height:44%;transform-origin:50% 0;transform-style:preserve-3d;z-index:3;transition:transform .55s cubic-bezier(.5,0,.3,1.4)}
+.env-flap .face{position:absolute;inset:0;border-radius:26px 26px 50% 50%/26px 26px 34% 34%;
+  background:linear-gradient(180deg,#ff6a50 0%,#ef3a30 70%,#d8262a 100%);box-shadow:0 10px 18px rgba(80,0,0,.4),inset 0 2px 0 rgba(255,255,255,.35);backface-visibility:hidden}
+.env-flap .back{position:absolute;inset:0;border-radius:26px 26px 50% 50%/26px 26px 34% 34%;background:linear-gradient(0deg,#7d0a10 0%,#b3121b 70%,#d8262a 100%);box-shadow:inset 0 0 0 3px rgba(255,205,90,.55),inset 0 -14px 24px rgba(255,190,80,.25);transform:rotateX(180deg);backface-visibility:hidden}
+.env-flap.open{transform:rotateX(-170deg)}
+.coin-btn{position:absolute;left:50%;top:44%;width:30%;aspect-ratio:1;margin-left:-15%;margin-top:-15%;z-index:5;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff6c8 0%,#ffd34d 30%,#f2a100 70%,#b86a00 100%);
+  box-shadow:0 6px 0 #8a4b00,0 12px 24px rgba(60,0,0,.5),inset 0 -4px 8px rgba(140,70,0,.5),inset 0 3px 4px rgba(255,255,255,.7);
+  display:grid;place-items:center;transform-style:preserve-3d}
+.coin-btn span{font-size:clamp(34px,11vw,48px);font-weight:900;color:#8a2a00;text-shadow:0 2px 0 rgba(255,240,180,.8)}
+.coin-btn::before,.coin-btn::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:3px solid rgba(255,228,138,.8);animation:ripple 1.6s ease-out infinite}
+.coin-btn::after{animation-delay:.8s}
+@keyframes ripple{0%{transform:scale(.9);opacity:1}100%{transform:scale(1.7);opacity:0}}
+.coin-btn.pulse{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.09)}}
+.coin-btn.flip{animation:flip .9s cubic-bezier(.4,0,.2,1) forwards}
+.coin-btn.flip::before,.coin-btn.flip::after{display:none}
+@keyframes flip{0%{transform:rotateY(0) scale(1)}60%{transform:rotateY(900deg) scale(1.25)}100%{transform:rotateY(1080deg) scale(0);opacity:0}}
+.tap-hint{position:absolute;left:50%;top:64%;transform:translateX(-50%);z-index:6;font-size:13px;color:var(--gold-4);white-space:nowrap;
+  background:rgba(0,0,0,.25);padding:5px 12px;border-radius:12px;animation:hint 1.4s ease-in-out infinite}
+@keyframes hint{50%{transform:translate(-50%,-5px)}}
+.finger{position:absolute;left:58%;top:47%;z-index:7;width:44px;height:44px;pointer-events:none;animation:finger 1.4s ease-in-out infinite}
+@keyframes finger{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-8px,-8px) scale(.9)}}
+
+/* result card */
+.result{position:absolute;left:6%;right:6%;top:6%;bottom:30%;z-index:2;border-radius:18px;transform:translateY(40%);opacity:0;
+  background:linear-gradient(180deg,#fffdf4 0%,#fff1cf 100%);box-shadow:0 10px 30px rgba(80,0,0,.35);color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px}
+.result.up{animation:cardUp .8s .15s cubic-bezier(.2,1.5,.4,1) forwards;z-index:8}
+@keyframes cardUp{to{transform:translateY(-28%);opacity:1}}
+.result .label{font-size:14px;color:#a5532a;letter-spacing:2px}
+.result .amount{margin-top:6px;font-size:clamp(54px,18vw,74px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,#ff7a1a,#e01d1d);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 rgba(255,190,90,.6))}
+.result .unit{font-size:16px;font-weight:800;color:#e0301e;margin-top:2px}
+.result .yuan{margin-top:8px;font-size:12px;color:#b07a5a;background:#ffe9c2;padding:3px 10px;border-radius:10px}
+.result .bonus{margin-top:8px;font-size:12px;color:#fff;background:linear-gradient(90deg,#ff7a1a,#e8262b);padding:3px 10px;border-radius:10px}
+.result.pop .amount{animation:amountPop .5s cubic-bezier(.2,2,.4,1)}
+@keyframes amountPop{0%{transform:scale(.6)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+.cta{margin-top:26px;width:min(78vw,320px);height:56px;border-radius:28px;font-size:19px;font-weight:900;letter-spacing:2px;color:#8a2a00;
+  background:linear-gradient(180deg,#fff2a8 0%,#ffd23f 45%,#f7a600 100%);box-shadow:0 6px 0 #a35a00,0 14px 26px rgba(40,0,0,.45),inset 0 2px 0 rgba(255,255,255,.8);
+  position:relative;overflow:hidden;opacity:0;transform:translateY(20px)}
+.cta.in{animation:ctaIn .5s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes ctaIn{to{opacity:1;transform:none}}
+.cta::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:shine 2.2s ease-in-out infinite}
+@keyframes shine{0%,55%{left:-60%}100%{left:130%}}
+.cta:active{transform:translateY(4px);box-shadow:0 2px 0 #a35a00,0 8px 16px rgba(40,0,0,.45)}
+
+/* ============ hub ============ */
+#hub{position:relative;z-index:10;min-height:100%;padding:calc(var(--safe-top) + 58px) 14px calc(var(--safe-bottom) + 28px)}
+.hero{text-align:center;padding:4px 0 14px}
+.hero h2{font-size:34px;font-weight:900;letter-spacing:3px;background:linear-gradient(180deg,#fffbe6,#ffd75e 55%,#ffad14);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 #7d2400)}
+.hero p{margin-top:6px;font-size:14px;color:#ffd9c4}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 14px}
+.stat{background:rgba(0,0,0,.2);border:1px solid rgba(255,214,120,.25);border-radius:14px;padding:12px 4px;text-align:center}
+.stat b{display:block;font-size:22px;font-weight:900;color:var(--gold-2);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:#ffcfb8}
+
+.panel{background:linear-gradient(180deg,#fffaf0,#fff0d6);color:var(--ink);border-radius:22px;padding:18px 16px;margin-bottom:14px;box-shadow:0 10px 30px rgba(40,0,0,.35);position:relative}
+.panel-title{display:flex;align-items:center;justify-content:center;gap:8px;font-size:18px;font-weight:900;color:#c4161f;margin-bottom:12px}
+.panel-title::before,.panel-title::after{content:"";width:28px;height:2px;background:linear-gradient(90deg,transparent,#e8a23a)}
+.panel-title::after{transform:scaleX(-1)}
+
+.ready-wrap{margin-bottom:14px;position:relative}
+.ready{position:relative;display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:linear-gradient(120deg,#ff5040,#d8141d);color:#fff;box-shadow:0 8px 20px rgba(200,20,20,.35);animation:readyPulse 1.6s ease-in-out infinite;width:100%;text-align:left}
+@keyframes readyPulse{50%{box-shadow:0 8px 30px rgba(255,180,60,.75)}}
+.mini-env{width:52px;height:64px;flex:none;border-radius:10px;background:linear-gradient(170deg,#ff6a50,#c4141c);position:relative;box-shadow:inset 0 -6px 10px rgba(90,0,0,.4);animation:idle 1.8s ease-in-out infinite}
+.mini-env::before{content:"";position:absolute;left:0;right:0;top:0;height:42%;border-radius:10px 10px 50% 50%/10px 10px 40% 40%;background:#ff7a5c}
+.mini-env::after{content:"開";position:absolute;left:50%;top:42%;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c8,#ffc531 50%,#d98a00);color:#8a2a00;font-size:13px;font-weight:900;display:grid;place-items:center}
+.ready .t1{font-size:18px;font-weight:900}
+.ready .t2{font-size:13px;opacity:.9;margin-top:4px}
+.ready .go{margin-left:auto;flex:none;background:#fff3c4;color:#c4161f;font-weight:900;font-size:15px;padding:9px 14px;border-radius:18px}
+.badge-count{position:absolute;right:-6px;top:-6px;min-width:22px;height:22px;border-radius:11px;background:#ffd23f;color:#a3120f;font-size:13px;font-weight:900;display:grid;place-items:center;padding:0 5px;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+
+.invite-head{text-align:center}
+.invite-head .big{font-size:15px;color:#7a3a1a}
+.invite-head .big{font-weight:700}
+.invite-head .max{margin-top:2px;font-size:15px;color:#7a3a1a}
+.invite-head .max b{font-size:34px;color:#e3262b;font-weight:900;margin:0 3px;vertical-align:-4px}
+.invite-head .small{font-size:12px;color:var(--muted);margin-top:4px}
+.share-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.share{height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:900;color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.18);position:relative;overflow:hidden}
+.share:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+.share svg{width:26px;height:26px}
+.share.wx{background:linear-gradient(180deg,#2fd05a,#14a83c)}
+.share.pyq{background:linear-gradient(180deg,#ff8a3d,#f0551f)}
+.share::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-20deg);animation:shine 2.8s ease-in-out infinite}
+.save-link{display:block;margin:12px auto 0;font-size:13px;color:#b9663a;text-decoration:underline;text-underline-offset:3px}
+.code-line{margin-top:10px;text-align:center;font-size:12px;color:var(--muted)}
+.code-line b{color:#7a3a1a;letter-spacing:2px}
+
+.steps{display:flex;align-items:flex-start;justify-content:space-between;gap:4px}
+.step{flex:1;text-align:center;font-size:12px;color:#7a3a1a;line-height:1.45}
+.step i{display:grid;place-items:center;width:44px;height:44px;margin:0 auto 6px;border-radius:50%;background:linear-gradient(180deg,#ffe7a8,#ffc54a);color:#a3120f;font-style:normal;font-weight:900;font-size:18px;box-shadow:inset 0 -3px 0 rgba(170,90,0,.35)}
+.step-arrow{color:#e8a23a;font-size:18px;margin-top:12px}
+
+.friends .row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px dashed #f0d7b4}
+.friends .row:last-child{border-bottom:0}
+.avatar{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:900;color:#fff;font-size:15px}
+.friends .name{font-size:15px;font-weight:700}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;margin-left:6px;vertical-align:1px}
+.tag.new{background:#ffe2dc;color:#d8261d}.tag.old{background:#eee6dd;color:#8f7a68}
+.friends .when{font-size:12px;color:var(--muted);margin-top:3px}
+.state{margin-left:auto;font-size:13px;font-weight:800;white-space:nowrap}
+.st-pending{color:#b9a08c}.st-ready{color:#fff;background:linear-gradient(90deg,#ff6a3d,#e3262b);padding:5px 10px;border-radius:12px;cursor:pointer}.st-opened{color:#e88a00}.st-limit{color:#b9a08c}
+.empty{text-align:center;padding:18px 0 8px;color:var(--muted);font-size:14px}
+.empty .e-icon{font-size:36px;margin-bottom:6px}
+
+.rules{font-size:12.5px;line-height:1.75;color:#7a5440}
+.rules li{margin-left:18px}
+
+/* toast + sheet */
+#toast{position:fixed;left:50%;bottom:calc(var(--safe-bottom) + 90px);transform:translate(-50%,20px);opacity:0;z-index:60;background:rgba(20,4,4,.86);color:#fff;font-size:14px;padding:10px 18px;border-radius:20px;transition:all .25s;pointer-events:none;max-width:84vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.sheet-mask{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:520px;background:var(--cream);color:var(--ink);border-radius:22px 22px 0 0;padding:20px 18px calc(var(--safe-bottom) + 20px);animation:sheetUp .3s cubic-bezier(.2,1.2,.4,1)}
+@keyframes sheetUp{from{transform:translateY(100%)}}
+.sheet h3{font-size:18px;text-align:center;margin-bottom:12px}
+.sheet .close{display:block;margin:16px auto 0;width:100%;height:46px;border-radius:23px;background:#f3e3cf;font-weight:800;color:#7a3a1a}
+.poster-preview{display:block;margin:0 auto;max-height:46vh;max-width:70%;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+
+.loading{position:fixed;inset:0;z-index:5;display:grid;place-items:center}
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,214,120,.25);border-top-color:var(--gold-2);animation:spin .8s linear infinite}
+
+@media (prefers-reduced-motion:reduce){
+  .rays,.glow,.envelope.idle,.coin-btn.pulse,.cta::after,.share::after,.ready,.mini-env{animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="backdrop"><div class="rays"></div><div class="glow"></div></div>
+<canvas id="fx"></canvas>
+<div id="flash"></div>
+
+<div class="topbar">
+  <button class="round-btn" id="closeBtn" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="#ffe7c2" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <button class="rule-btn hidden" id="ruleBtn">活动规则</button>
+</div>
+
+<div class="loading" id="loading"><div class="spinner"></div></div>
+
+<!-- packet stage -->
+<section id="stage" class="hidden" aria-live="polite">
+  <div class="headline" id="headline">
+    <span class="kicker" id="kicker">新人专享</span>
+    <h1 id="stageTitle">送你一个大红包</h1>
+    <div class="sub" id="stageSub">最高可得 <b id="stageMax">5000</b> 金币</div>
+  </div>
+  <div class="envelope-wrap" id="envWrap">
+    <div class="envelope" id="envelope">
+      <div class="env-body">
+        <div class="env-pattern"><div class="big">小橙有喜</div><div class="small">大吉大利 · 今日暴富</div></div>
+      </div>
+      <div class="result" id="result">
+        <div class="label" id="resultLabel">恭喜获得</div>
+        <div class="amount" id="amount">0</div>
+        <div class="unit">金币</div>
+        <div class="yuan" id="yuan">已存入你的账户</div>
+        <div class="bonus hidden" id="bonusTag"></div>
+      </div>
+      <div class="env-flap" id="flap"><div class="face"></div><div class="back"></div></div>
+      <button class="coin-btn pulse" id="coin" aria-label="拆红包"><span>開</span></button>
+      <div class="tap-hint" id="tapHint">点击「開」拆红包</div>
+      <svg class="finger" id="finger" viewBox="0 0 48 48"><path d="M20 6a4 4 0 0 1 8 0v16l8.5 1.7a5 5 0 0 1 4 5.6L39 40a6 6 0 0 1-6 5H22a6 6 0 0 1-4.6-2.2L9 33a3.5 3.5 0 0 1 5-4.9L20 32z" fill="#fff" stroke="#8a2a00" stroke-width="2"/></svg>
+    </div>
+  </div>
+  <button class="cta" id="cta">开心收下</button>
+</section>
+
+<!-- hub -->
+<main id="hub" class="hidden">
+  <div class="hero">
+    <h2 id="hubTitle">新人礼包</h2>
+    <p id="hubSub">拆开大红包，邀请好友再领更多</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="sWelcome">--</b><span>新人红包</span></div>
+    <div class="stat"><b id="sReady">0</b><span>待拆红包</span></div>
+    <div class="stat"><b id="sTotal">0</b><span>邀请累计金币</span></div>
+  </div>
+
+  <div class="ready-wrap" id="readyPanel"></div>
+
+  <div class="panel">
+    <div class="panel-title">邀请好友 拆大红包</div>
+    <div class="invite-head">
+      <div class="big">每邀请 1 位好友 = 1 次拆红包机会</div>
+      <div class="max">单个最高 <b id="inviteMax">5000</b> 金币</div>
+      <div class="small">好友下载注册并完成首次签到或领取红包后，机会自动到账</div>
+    </div>
+    <div class="share-row">
+      <button class="share wx" id="shareWx"><svg viewBox="0 0 32 32" fill="#fff"><path d="M12.2 5C6.6 5 2 8.8 2 13.5c0 2.7 1.5 5.1 3.9 6.6L5 23l3.4-1.7c1.2.3 2.4.5 3.8.5h.6a7.7 7.7 0 0 1-.3-2.1c0-4.6 4.4-8.3 9.8-8.3h.6C22 7.8 17.6 5 12.2 5zm-3.4 4.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zm6.9 0a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6z"/><path d="M30 19.7c0-3.9-3.9-7-8.6-7s-8.6 3.1-8.6 7 3.9 7 8.6 7c1 0 2-.1 2.9-.4L27.2 28l-.8-2.6c2.2-1.3 3.6-3.4 3.6-5.7zm-11.4-1.2a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm5.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>微信好友</button>
+      <button class="share pyq" id="sharePyq"><svg viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2.4"><circle cx="16" cy="16" r="12"/><path d="M16 4v10M28 16H18M16 28V18M4 16h10M7.5 7.5l7 7M24.5 7.5l-7 7M24.5 24.5l-7-7M7.5 24.5l7-7" stroke-width="1.8"/></svg>朋友圈</button>
+    </div>
+    <button class="save-link" id="savePoster">保存海报到相册</button>
+    <div class="code-line">我的邀请码 <b id="myCode">------</b></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">三步拿大红包</div>
+    <div class="steps">
+      <div class="step"><i>1</i>分享海报<br>给微信好友</div><div class="step-arrow">›</div>
+      <div class="step"><i>2</i>好友扫码下载<br>注册并签到</div><div class="step-arrow">›</div>
+      <div class="step"><i>3</i>你拆大红包<br>好友也有红包</div>
+    </div>
+  </div>
+
+  <div class="panel friends">
+    <div class="panel-title">我邀请的好友</div>
+    <div id="friendList"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">活动规则</div>
+    <ol class="rules" id="rules">
+      <li>新注册用户及本期接受好友邀请的用户，可领取 1 个新人大红包；通过好友邀请注册的新用户红包额外加成。</li>
+      <li>每成功邀请 1 位好友（好友完成首次签到或领取首个红包），获得 1 次拆红包机会。邀请已注册的老朋友参与本期活动也可获得机会，金额相对较少。</li>
+      <li>红包金额根据账号与设备安全状况综合确定，以实际到账为准；金币可在“我的”中查看并提现。</li>
+      <li>严禁使用模拟器、改机工具、批量注册等方式参与，发现异常将取消活动资格并追回奖励。</li>
+    </ol>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const app = window.OrangeApp;
+const params = new URLSearchParams(location.search);
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let state = null;
+let current = null; // packet being opened {id, kind}
+let busy = false;
+
+/* ---------------- utilities ---------------- */
+function toast(text) {
+  const t = $("toast"); t.textContent = text; t.classList.add("on");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("on"), 2200);
+}
+function token() { try { return app ? app.token() : ""; } catch (e) { return ""; } }
+async function api(path, body) {
+  const res = await fetch("/api" + path, {
+    method: body ? "POST" : "GET",
+    headers: Object.assign({ "Authorization": "Bearer " + token() }, body ? { "Content-Type": "application/json" } : {}),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = null; try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error((data && (data.error || data.message)) || "网络开小差了，请稍后再试");
+  return data;
+}
+function close() { if (app && app.close) app.close(); else history.back(); }
+function fmt(n) { return Number(n || 0).toLocaleString("zh-CN"); }
+function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+
+/* ---------------- sound (synthesised, no assets) ---------------- */
+let audio = null;
+function ac() { if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return audio; }
+function tone(freq, start, dur, type, vol) {
+  const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type || "sine"; o.frequency.setValueAtTime(freq, a.currentTime + start);
+  g.gain.setValueAtTime(0.0001, a.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(vol || 0.12, a.currentTime + start + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + start + dur);
+  o.connect(g).connect(a.destination); o.start(a.currentTime + start); o.stop(a.currentTime + start + dur + 0.02);
+}
+function sfxTap() { tone(660, 0, 0.12, "triangle", 0.1); tone(990, 0.05, 0.12, "triangle", 0.08); }
+function sfxBurst() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i * 0.06, 0.35, "triangle", 0.09)); tone(110, 0, 0.35, "sawtooth", 0.05); }
+function sfxCoin(i) { tone(1568 + (i % 4) * 120, 0, 0.09, "square", 0.025); }
+
+/* ---------------- particle FX: coins + confetti ---------------- */
+const fx = $("fx"), ctx = fx.getContext("2d");
+let parts = [], raf = 0, dpr = Math.min(2, devicePixelRatio || 1);
+function resize() { fx.width = innerWidth * dpr; fx.height = innerHeight * dpr; }
+addEventListener("resize", resize); resize();
+function burst(x, y, coins, confetti) {
+  for (let i = 0; i < coins; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.4, sp = 7 + Math.random() * 13;
+    parts.push({ k: "coin", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4, r: 11 + Math.random() * 9, rot: Math.random() * 6, vr: 0.15 + Math.random() * 0.25, life: 1, g: 0.42 });
+  }
+  const colors = ["#ffd23f", "#ff4b3e", "#fff2a8", "#ff9f1a", "#ffffff", "#ff6fae"];
+  for (let i = 0; i < confetti; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 11;
+    parts.push({ k: "conf", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 6, w: 6 + Math.random() * 6, h: 10 + Math.random() * 8, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: colors[i % colors.length], life: 1, g: 0.22 });
+  }
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+function rain(n) { // coins falling from the top for a while after opening
+  for (let i = 0; i < n; i++) setTimeout(() => parts.push({ k: "coin", x: Math.random() * innerWidth, y: -30, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 4, r: 9 + Math.random() * 8, rot: Math.random() * 6, vr: 0.1 + Math.random() * 0.2, life: 1, g: 0.18 }), i * 45);
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+function drawCoin(p) {
+  const sx = Math.abs(Math.cos(p.rot)) * 0.85 + 0.15;
+  ctx.save(); ctx.translate(p.x, p.y); ctx.scale(sx, 1);
+  const g = ctx.createRadialGradient(-p.r * 0.35, -p.r * 0.35, p.r * 0.1, 0, 0, p.r);
+  g.addColorStop(0, "#fff6c8"); g.addColorStop(0.45, "#ffc531"); g.addColorStop(1, "#c27300");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(140,70,0,.65)"; ctx.lineWidth = p.r * 0.14; ctx.beginPath(); ctx.arc(0, 0, p.r * 0.68, 0, Math.PI * 2); ctx.stroke();
+  if (sx > 0.5) { ctx.fillStyle = "rgba(138,60,0,.85)"; ctx.font = "900 " + (p.r * 0.95) + "px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("¥", 0, p.r * 0.06); }
+  ctx.restore();
+}
+function tick() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight);
+  parts = parts.filter((p) => p.y < innerHeight + 60 && p.life > 0);
+  for (const p of parts) {
+    p.vy += p.g; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+    if (p.k === "conf") { p.life -= 0.006; ctx.save(); ctx.globalAlpha = Math.max(0, p.life); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(1, Math.cos(p.rot * 2)); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); }
+    else drawCoin(p);
+  }
+  raf = parts.length ? requestAnimationFrame(tick) : 0;
+  if (!raf) ctx.clearRect(0, 0, innerWidth, innerHeight);
+}
+function countUp(el, to, ms) {
+  const start = performance.now(), from = 0; let lastTick = 0;
+  return new Promise((done) => {
+    function step(t) {
+      const k = Math.min(1, (t - start) / ms), e = 1 - Math.pow(1 - k, 4), v = Math.round(from + (to - from) * e);
+      el.textContent = fmt(v);
+      if (t - lastTick > 70 && k < 1) { sfxCoin(Math.floor(t / 70)); lastTick = t; }
+      k < 1 ? requestAnimationFrame(step) : done();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+/* ---------------- packet stage ---------------- */
+function showStage(packet) {
+  current = packet;
+  $("hub").classList.add("hidden");
+  $("stage").classList.remove("hidden");
+  $("ruleBtn").classList.add("hidden");
+  const welcome = packet.kind === "welcome";
+  $("kicker").textContent = welcome ? (state.invited ? "好友邀请 · 专属加成" : "新人专享") : "邀请奖励";
+  $("stageTitle").textContent = welcome ? "送你一个新人大红包" : "好友助力大红包";
+  $("stageMax").textContent = fmt(welcome ? state.welcome_max : state.invite_max);
+  // reset pieces
+  const env = $("envelope"), coin = $("coin");
+  env.className = "envelope"; coin.className = "coin-btn pulse"; coin.style.display = "";
+  $("flap").classList.remove("open"); $("result").className = "result";
+  $("tapHint").style.display = ""; $("finger").style.display = "";
+  $("cta").className = "cta"; $("amount").textContent = "0"; $("bonusTag").classList.add("hidden");
+  $("headline").classList.remove("in", "out"); document.querySelector(".backdrop").classList.remove("hot"); void env.offsetWidth;
+  $("headline").classList.add("in");
+  env.classList.add("drop");
+  setTimeout(() => { if (env.classList.contains("drop")) { env.classList.remove("drop"); env.style.transform = "none"; env.classList.add("idle"); } }, 1050);
+  vibrate(30);
+}
+
+async function openCurrent() {
+  if (busy || !current) return;
+  busy = true; ac(); sfxTap(); vibrate(20);
+  const env = $("envelope"), coin = $("coin");
+  env.classList.remove("idle", "drop"); env.style.transform = "none";
+  $("tapHint").style.display = "none"; $("finger").style.display = "none";
+  coin.classList.remove("pulse"); coin.classList.add("flip");
+  let result;
+  try {
+    [result] = await Promise.all([api("/newbie/open", { packet_id: current.id }), new Promise((r) => setTimeout(r, reduced ? 100 : 850))]);
+  } catch (e) {
+    busy = false; coin.classList.remove("flip"); coin.classList.add("pulse");
+    $("tapHint").style.display = "";
+    toast(e.message); return;
+  }
+  coin.style.display = "none";
+  // impact
+  document.body.classList.remove("shake"); void document.body.offsetWidth; document.body.classList.add("shake");
+  $("flash").classList.remove("on"); void $("flash").offsetWidth; $("flash").classList.add("on");
+  sfxBurst(); vibrate([40, 30, 80]);
+  $("flap").classList.add("open");
+  $("headline").classList.remove("in"); $("headline").classList.add("out");
+  document.querySelector(".backdrop").classList.add("hot");
+  const rect = $("envWrap").getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top + rect.height * 0.38;
+  setTimeout(() => burst(cx, cy, reduced ? 10 : 46, reduced ? 20 : 90), 120);
+  setTimeout(() => rain(reduced ? 0 : 36), 500);
+  const res = $("result");
+  $("resultLabel").textContent = result.kind === "welcome" ? "恭喜获得新人红包" : "恭喜获得邀请红包";
+  if (result.kind === "welcome" && state.bonus_percent > 0) { $("bonusTag").textContent = "好友邀请加成 +" + state.bonus_percent + "%"; $("bonusTag").classList.remove("hidden"); }
+  $("yuan").textContent = "约合 " + (result.coins / 1000).toFixed(2) + " 元 · 已存入账户";
+  res.classList.add("up");
+  setTimeout(async () => {
+    await countUp($("amount"), result.coins, reduced ? 200 : 1300);
+    res.classList.add("pop"); vibrate(25);
+    $("cta").textContent = result.kind === "welcome" ? "开心收下，去邀请好友" : "继续邀请拆红包";
+    $("cta").classList.add("in");
+    busy = false;
+  }, 450);
+  if (result.state) state = result.state;
+  current = null;
+}
+
+$("coin").addEventListener("click", openCurrent);
+$("envelope").addEventListener("click", (e) => { if (e.target.closest(".env-body,.env-flap")) openCurrent(); });
+$("cta").addEventListener("click", () => {
+  vibrate(10);
+  const next = state && state.ready_invites && state.ready_invites[0];
+  if (next && $("cta").dataset.chain === "1") { showStage({ id: next, kind: "invite" }); return; }
+  showHub();
+});
+
+/* ---------------- hub ---------------- */
+const avatarColors = ["#ff7a45", "#f5222d", "#fa8c16", "#eb2f96", "#13c2c2", "#2f54eb", "#52c41a"];
+function showHub() {
+  $("stage").classList.add("hidden");
+  $("hub").classList.remove("hidden");
+  $("ruleBtn").classList.remove("hidden");
+  render();
+}
+function render() {
+  const s = state;
+  $("hubTitle").textContent = s.title; $("hubSub").textContent = s.subtitle;
+  document.title = s.title;
+  const w = s.welcome;
+  $("sWelcome").textContent = w ? (w.status === "opened" ? fmt(w.coins) : "待拆") : "—";
+  $("sReady").textContent = (s.ready_invites || []).length;
+  $("sTotal").textContent = fmt(s.invite_coins);
+  $("inviteMax").textContent = fmt(s.invite_max);
+  $("myCode").textContent = s.invite_code;
+
+  const panel = $("readyPanel");
+  const ready = s.ready_invites || [];
+  const welcomeReady = w && w.status === "ready";
+  if (welcomeReady || ready.length) {
+    panel.classList.remove("hidden");
+    const n = (welcomeReady ? 1 : 0) + ready.length;
+    panel.innerHTML = '<button class="ready" id="readyBtn"><div class="mini-env"></div><div><div class="t1">你有 ' + n + ' 个大红包待拆</div><div class="t2">' +
+      (welcomeReady ? "新人红包最高 " + fmt(s.welcome_max) + " 金币" : "邀请红包最高 " + fmt(s.invite_max) + " 金币") +
+      '</div></div><span class="go">去拆</span><span class="badge-count">' + n + "</span></button>";
+    $("readyBtn").onclick = () => showStage(welcomeReady ? { id: w.id, kind: "welcome" } : { id: ready[0], kind: "invite" });
+  } else panel.classList.add("hidden");
+
+  const list = $("friendList");
+  const friends = s.friends || [];
+  if (!friends.length) {
+    list.innerHTML = '<div class="empty"><div class="e-icon">🧧</div>还没有邀请好友，分享海报给好友<br>每邀请 1 人就能拆 1 个大红包</div>';
+  } else {
+    const label = { pending: "待好友首签", ready: "可拆红包", opened: "", limit: "已达上限" };
+    list.innerHTML = friends.map((f, i) => {
+      const st = f.progress === "opened" ? "+" + fmt(f.coins) + " 金币" : label[f.progress];
+      const d = new Date(f.joined_at);
+      return '<div class="row"><div class="avatar" style="background:' + avatarColors[i % avatarColors.length] + '">' + esc(/^[0-9]/.test(f.name) ? "友" : f.name.slice(0, 1)) + '</div><div><div class="name">' + esc(f.name) +
+        '<span class="tag ' + f.kind + '">' + (f.kind === "new" ? "新用户" : "老用户") + '</span></div><div class="when">' + (d.getMonth() + 1) + "月" + d.getDate() + "日 加入</div></div>" +
+        '<div class="state st-' + f.progress + '">' + st + "</div></div>";
+    }).join("");
+    list.querySelectorAll(".st-ready").forEach((el) => el.onclick = () => { if (s.ready_invites.length) showStage({ id: s.ready_invites[0], kind: "invite" }); });
+  }
+}
+function esc(t) { return String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+$("ruleBtn").onclick = () => $("rules").scrollIntoView({ behavior: "smooth", block: "center" });
+$("closeBtn").onclick = close;
+
+/* ---------------- poster (drawn here, shared by the App) ---------------- */
+async function poster() {
+  const qr = await api("/invite/qr/" + encodeURIComponent(state.invite_code));
+  const W = 1080, H = 1920, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  let bg = g.createRadialGradient(W / 2, 640, 50, W / 2, 760, 1300);
+  bg.addColorStop(0, "#e8262b"); bg.addColorStop(0.5, "#a60f17"); bg.addColorStop(1, "#4d0609");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.save(); g.translate(W / 2, 700); // rays
+  for (let i = 0; i < 36; i++) { g.rotate(Math.PI / 18); g.fillStyle = "rgba(255,214,120,0.07)"; g.beginPath(); g.moveTo(0, 0); g.lineTo(-60, -1500); g.lineTo(60, -1500); g.closePath(); g.fill(); }
+  g.restore();
+  // title
+  g.textAlign = "center";
+  g.fillStyle = "#ffe7a8"; g.font = "700 46px sans-serif"; g.fillText("小橙有喜 · 新人福利", W / 2, 170);
+  const tg = g.createLinearGradient(0, 210, 0, 360); tg.addColorStop(0, "#fffbe6"); tg.addColorStop(0.5, "#ffe27a"); tg.addColorStop(1, "#ffad14");
+  g.font = "900 128px sans-serif"; g.lineWidth = 14; g.strokeStyle = "#7d2400"; g.strokeText("送你大红包", W / 2, 340); g.fillStyle = tg; g.fillText("送你大红包", W / 2, 340);
+  g.font = "800 58px sans-serif"; g.fillStyle = "#fff"; g.fillText("好友专享 最高 " + fmt(state.invited_max || state.welcome_max) + " 金币", W / 2, 440);
+  // envelope
+  const ex = W / 2 - 220, ey = 500, ew = 440, eh = 540;
+  rr(g, ex, ey + 14, ew, eh, 44, "rgba(40,0,0,.45)");
+  const eg = g.createLinearGradient(ex, ey, ex + ew, ey + eh); eg.addColorStop(0, "#ff5a45"); eg.addColorStop(1, "#c4141c");
+  rr(g, ex, ey, ew, eh, 44, eg);
+  g.fillStyle = "#ff6a50"; g.beginPath(); g.moveTo(ex, ey + 44); g.quadraticCurveTo(ex, ey, ex + 44, ey); g.lineTo(ex + ew - 44, ey); g.quadraticCurveTo(ex + ew, ey, ex + ew, ey + 44); g.lineTo(ex + ew, ey + 220); g.quadraticCurveTo(W / 2, ey + 340, ex, ey + 220); g.closePath(); g.fill();
+  const cg = g.createRadialGradient(W / 2 - 30, ey + 250, 10, W / 2, ey + 280, 95); cg.addColorStop(0, "#fff6c8"); cg.addColorStop(0.45, "#ffc531"); cg.addColorStop(1, "#c27300");
+  g.fillStyle = cg; g.beginPath(); g.arc(W / 2, ey + 280, 95, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#8a2a00"; g.font = "900 100px sans-serif"; g.textBaseline = "middle"; g.fillText("開", W / 2, ey + 284); g.textBaseline = "alphabetic";
+  g.fillStyle = "rgba(255,226,140,.95)"; g.font = "900 50px sans-serif"; g.fillText("大吉大利", W / 2, ey + 450);
+  g.font = "500 32px sans-serif"; g.fillStyle = "rgba(255,226,180,.8)"; g.fillText("可提现 · 今日暴富", W / 2, ey + 500);
+  // QR card
+  const qy = 1110, card = 500, cx = W / 2 - card / 2;
+  rr(g, cx - 20, qy - 20, card + 40, card + 160, 36, "#fff8ea");
+  // Whole-pixel cells and origin: no seams between modules, so every phone can scan it.
+  const n = qr.size, quiet = 3, cell = Math.floor((card - 40) / (n + quiet * 2)), qs = cell * (n + quiet * 2), qx = Math.round(W / 2 - qs / 2), qyy = qy + 10;
+  g.fillStyle = "#fff"; g.fillRect(qx, qyy, qs, qs); g.fillStyle = "#1a0a05";
+  qr.modules.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] === "1") g.fillRect(qx + (x + quiet) * cell, qyy + (y + quiet) * cell, cell, cell); });
+  g.fillStyle = "#c4161f"; g.font = "900 46px sans-serif"; g.fillText("长按识别二维码 领红包", W / 2, qyy + qs + 70);
+  g.fillStyle = "#a5532a"; g.font = "500 32px sans-serif"; g.fillText("邀请码 " + state.invite_code + " · 注册时填写", W / 2, qyy + qs + 120);
+  return c.toDataURL("image/png");
+}
+function rr(g, x, y, w, h, r, fill) { g.fillStyle = fill; g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fill(); }
+
+let posterCache = null;
+async function share(target) {
+  if (busy) return; busy = true; vibrate(10);
+  try {
+    if (!posterCache) { toast("正在生成专属海报…"); posterCache = await poster(); }
+    if (app && typeof app.sharePoster === "function") {
+      app.sharePoster(target, posterCache.split(",")[1], state.share_text + " " + state.invite_url);
+    } else if (target === "save") {
+      previewSheet();
+    } else if (app && app.share) {
+      app.share(state.share_text + " " + state.invite_url);
+    } else previewSheet();
+  } catch (e) { toast(e.message || "海报生成失败，请重试"); }
+  busy = false;
+}
+function previewSheet() {
+  const m = document.createElement("div"); m.className = "sheet-mask";
+  m.innerHTML = '<div class="sheet"><h3>长按图片保存或发送给好友</h3><img class="poster-preview" alt="邀请海报"><button class="close">关闭</button></div>';
+  m.querySelector("img").src = posterCache; m.querySelector(".close").onclick = () => m.remove();
+  m.onclick = (e) => { if (e.target === m) m.remove(); };
+  document.body.appendChild(m);
+}
+$("shareWx").onclick = () => share("wechat");
+$("sharePyq").onclick = () => share("moments");
+$("savePoster").onclick = () => share("save");
+
+/* ---------------- boot ---------------- */
+async function load() {
+  if (!token()) { $("loading").classList.add("hidden"); document.body.insertAdjacentHTML("beforeend", '<div style="position:fixed;inset:0;display:grid;place-items:center;z-index:30;text-align:center;font-size:16px;color:#ffe7c2;padding:30px">请在小橙有喜 App 内登录后参与活动</div>'); return; }
+  try {
+    state = await api("/newbie");
+  } catch (e) {
+    $("loading").innerHTML = '<div style="text-align:center;color:#ffe7c2">' + esc(e.message) + '<br><br><button class="cta in" style="width:180px;height:46px;font-size:16px" onclick="location.reload()">重新加载</button></div>';
+    return;
+  }
+  $("loading").classList.add("hidden");
+  if (!state.enabled) { document.body.insertAdjacentHTML("beforeend", '<div style="position:fixed;inset:0;display:grid;place-items:center;z-index:30;text-align:center;font-size:17px;color:#ffe7c2">本期活动已结束<br>敬请期待下一期</div>'); return; }
+  const w = state.welcome;
+  if (w && w.status === "ready") showStage({ id: w.id, kind: "welcome" });
+  else if (params.get("open") === "invite" && state.ready_invites.length) showStage({ id: state.ready_invites[0], kind: "invite" });
+  else showHub();
+}
+// Back from sharing: refresh the list (friends may have joined meanwhile).
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible" || !state || !$("stage").classList.contains("hidden")) return;
+  try { state = await api("/newbie"); render(); } catch (e) {}
+});
+window.addEventListener("orange:poster", (e) => toast(e.detail || "已完成"));
+load();
+})();
+</script>
+</body>
+</html>

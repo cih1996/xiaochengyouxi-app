@@ -18,6 +18,7 @@ import AdStats from "./AdStats.vue";
 import SmsAdmin from "./SmsAdmin.vue";
 import TraceLookup from "./TraceLookup.vue";
 import CosAdmin from "./CosAdmin.vue";
+import NewbieAdmin from "./NewbieAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
 defineEmits(["back"]);
@@ -67,6 +68,7 @@ const adConfigPanel = ref(null);
 const adStatsPanel = ref(null);
 const smsPanel = ref(null);
 const cosPanel = ref(null);
+const newbiePanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -93,6 +95,7 @@ const items = [
   { id: "strategy", label: "推送策略", icon: "bell" },
   { id: "rain", label: "红包雨", icon: "gift" },
   { id: "activity-config", label: "活动配置", icon: "spark" },
+  { id: "newbie", label: "新人礼包", icon: "gift" },
   { id: "home-layout", label: "首页入口", icon: "grid" },
   { id: "withdraw-rules", label: "提现档位", icon: "wallet" },
   { id: "ad-config", label: "广告配置", icon: "play" },
@@ -129,6 +132,7 @@ const groups = [
       "strategy",
       "rain",
       "activity-config",
+      "newbie",
       "home-layout",
       "invitations",
     ],
@@ -306,6 +310,7 @@ async function refreshCurrent() {
   else if (tab.value === "ad-stats") await adStatsPanel.value?.refresh();
   else if (tab.value === "sms") await smsPanel.value?.refresh();
   else if (tab.value === "cos") await cosPanel.value?.refresh();
+  else if (tab.value === "newbie") await newbiePanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -711,6 +716,12 @@ onMounted(load);
         <AdStats
           v-if="tab === 'ad-stats'"
           ref="adStatsPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <NewbieAdmin
+          v-if="tab === 'newbie'"
+          ref="newbiePanel"
           :api="api"
           @unauthorized="fail"
         />

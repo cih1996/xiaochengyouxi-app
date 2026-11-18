@@ -6,7 +6,7 @@
 - 默认两者都不显示，只用于运营活动；签到、捡漏、提现、金币明细已有固定入口，不要重复添加。名称、角标、图标均按活动填写或在后台上传图片（复用商品图片存储，返回 `/media/products/...`），App 不内置任何活动文案；悬浮入口名称留空时只显示图片。
 - 每个入口：名称（1–6 字）、角标（≤4 字）、内置图标或图标图片、打开方式、开始/结束时间（RFC3339，留空不限）、显示开关。
 - 打开方式：
-  - `native`：App 内置页面，可选 `checkin`、`invite`、`activity`、`withdraw`、`shop`、`ledger`、`me`。
+  - `native`：App 内置页面，可选 `checkin`、`invite`、`newbie`（新人礼包，见 docs/NEWBIE-GIFT.md）、`activity`、`withdraw`、`shop`、`ledger`、`me`。
   - `web`：网页活动。填站内路径（如 `/activity/demo.html`），或 `ORANGE_ACTIVITY_HOSTS` 允许域名下的 https 地址（默认 `orange.lingzidev.com,orange-api.lingzidev.com`）。
 - 悬浮入口动画：`float` 上下漂浮、`bounce` 弹跳、`shake` 摇摆、`none` 静止；用户可点 × 隐藏，后台再次保存（revision 变化）后重新出现。
 - 站内路径的活动页按 `WEB_BASE_URL`（正式包 `https://orange.lingzidev.com`）打开，页面内 `/api/` 由该站点代理到后端。
@@ -29,6 +29,8 @@
 | `OrangeApp.share(text)` | 调起系统分享，最多 300 字 |
 | `OrangeApp.toast(text)` | 轻提示，最多 60 字 |
 | `OrangeApp.close()` | 关闭活动页 |
+| `OrangeApp.sharePoster(target, pngBase64, text)` | 0.3.24 起：`wechat` 发微信好友 / `moments` 存相册并打开微信 / `save` 存相册 |
+| `OrangeApp.hasWeChat()` | 0.3.24 起：是否安装微信 |
 
 - 金币、机会、奖励一律由服务端接口结算，网页不能直接加币。激励视频桥接留待后续按需实现。
 - 示例页：`web/public/activity/demo.html`。

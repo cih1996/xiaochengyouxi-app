@@ -260,7 +260,7 @@ pub(super) async fn prebind(
         json!({"status":"pending","invite_code":code,"download_url":state.config.app_download_url.as_deref().unwrap_or("")}),
     ))
 }
-fn share_url(state: &AppState, code: &str) -> String {
+pub(super) fn share_url(state: &AppState, code: &str) -> String {
     format!(
         "{}/i/{code}",
         state.config.invite_base_url.trim_end_matches('/')

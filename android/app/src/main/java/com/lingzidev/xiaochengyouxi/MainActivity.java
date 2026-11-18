@@ -528,6 +528,7 @@ public final class MainActivity extends Activity {
     deletionPage = false;
     activities.load();
     loadHome();
+    loadNewbie();
     refreshCheckinStatus();
     if (user.optBoolean("invitation_required")) {
       invitationBinding();
@@ -677,6 +678,7 @@ public final class MainActivity extends Activity {
     endHallSession();
     api.saveToken("");
     user = null;
+    newbie = null;
     page = null;
     current = "hall";
     tip("账号已注销");
@@ -822,6 +824,7 @@ public final class MainActivity extends Activity {
     api.saveToken("");
     endHallSession();
     user = null;
+    newbie = null;
     page = null;
     current = "hall";
     auth("login");
@@ -1125,6 +1128,7 @@ public final class MainActivity extends Activity {
                   endHallSession();
                   api.saveToken("");
                   user = null;
+    newbie = null;
                   page = null;
                   tip("密码已更新，请重新登录");
                   auth("login");
@@ -1741,6 +1745,8 @@ public final class MainActivity extends Activity {
     add(copy, checkInButton, -2, 33);
     welcome.addView(copy, new FrameLayout.LayoutParams(-1, -2));
     ImageView mascot = art("mascot");
+    // During 新人礼包 the floating badge takes the mascot's corner.
+    if (newbieOn()) mascot.setVisibility(View.INVISIBLE);
     FrameLayout.LayoutParams mp =
         new FrameLayout.LayoutParams(dp(112), dp(112), Gravity.RIGHT | Gravity.BOTTOM);
     mp.rightMargin = dp(4);
@@ -1764,6 +1770,7 @@ public final class MainActivity extends Activity {
     int savedScroll = hallScrollY;
     scroll.post(() -> scroll.scrollTo(0, savedScroll));
     addFloatingEntry();
+    addNewbieBadge();
     if (foreground) rain.attach(hallSurface, rainTime);
   }
 
@@ -1771,6 +1778,115 @@ public final class MainActivity extends Activity {
   JSONObject homeLayout;
   String floatingDismissed = "";
   final ArrayList<Animator> floatingAnimators = new ArrayList<>();
+
+  // ---- 新人礼包 (activity page web/public/activity/newbie.html; amounts decided by the server) ----
+  static final String NEWBIE_PAGE = "/activity/newbie.html";
+  static final String PENDING_INVITE = "pending_invite_code";
+  JSONObject newbie;
+  boolean newbieLoading;
+
+  boolean newbieOn() {
+    return newbie != null && newbie.optBoolean("enabled");
+  }
+
+  int newbieReady() {
+    if (!newbieOn()) return 0;
+    JSONObject w = newbie.optJSONObject("welcome");
+    int n = w != null && "ready".equals(w.optString("status")) ? 1 : 0;
+    JSONArray ready = newbie.optJSONArray("ready_invites");
+    return n + (ready == null ? 0 : ready.length());
+  }
+
+  String newbieKey(JSONObject value) {
+    if (value == null || !value.optBoolean("enabled")) return "off";
+    JSONObject w = value.optJSONObject("welcome");
+    JSONArray ready = value.optJSONArray("ready_invites");
+    return value.optString("entry_label") + "|" + (w == null ? "-" : w.optString("status")) + "|" + (ready == null ? 0 : ready.length());
+  }
+
+  void loadNewbie() {
+    if (user == null || user.optBoolean("invitation_required") || api.token.isEmpty() || newbieLoading) return;
+    newbieLoading = true;
+    String token = api.token;
+    api.get(
+        "/newbie",
+        value -> {
+          newbieLoading = false;
+          if (!token.equals(api.token) || isDestroyed()) return;
+          JSONObject next = (JSONObject) value;
+          boolean changed = !newbieKey(newbie).equals(newbieKey(next));
+          newbie = next;
+          if (changed && current.equals("hall") && page != null && !rewardUiBusy) render();
+          if (!acceptPendingInvite()) maybePopupNewbie();
+        },
+        message -> {
+          newbieLoading = false;
+          android.util.Log.w("Newbie", "GET /api/newbie: " + message);
+        });
+  }
+
+  /** Once per round per account: the big packet pops up by itself while it is still unopened. */
+  void maybePopupNewbie() {
+    if (!newbieOn() || !newbie.optBoolean("auto_popup") || !foreground || rewardUiBusy) return;
+    if (!current.equals("hall") || page == null || updates.required()) return;
+    JSONObject w = newbie.optJSONObject("welcome");
+    if (w == null || !"ready".equals(w.optString("status"))) return;
+    String key = "newbie_popup_" + user.optLong("id") + "_" + newbie.optLong("round");
+    if (api.preferences.getBoolean(key, false)) return;
+    api.preferences.edit().putBoolean(key, true).apply();
+    handler.postDelayed(this::openNewbie, 600);
+  }
+
+  void openNewbie() {
+    String url = WebActivity.resolve(NEWBIE_PAGE);
+    if (url == null) return;
+    api.behavior.click(0, "home:newbie");
+    startActivityForResult(
+        new Intent(this, WebActivity.class)
+            .putExtra(WebActivity.EXTRA_URL, url)
+            .putExtra(WebActivity.EXTRA_TITLE, newbie == null ? "新人礼包" : newbie.optString("title", "新人礼包"))
+            .putExtra(WebActivity.EXTRA_IMMERSIVE, true),
+        WebActivity.REQUEST);
+    overridePendingTransition(android.R.anim.fade_in, 0);
+  }
+
+  /** An invite link opened the App (InviteLinkActivity stored the code): join this round. */
+  boolean acceptPendingInvite() {
+    String code = api.preferences.getString(PENDING_INVITE, "");
+    if (code.isEmpty() || user == null || user.optBoolean("invitation_required") || !newbieOn()) return false;
+    api.preferences.edit().remove(PENDING_INVITE).apply();
+    if (code.equalsIgnoreCase(user.optString("invite_code"))) return false;
+    api.post(
+        "/newbie/accept",
+        Api.object("invite_code", code),
+        value -> {
+          JSONObject result = (JSONObject) value;
+          if (result.has("state")) newbie = result.optJSONObject("state");
+          if (result.optBoolean("joined")) tip("已接受好友邀请，快去拆大红包");
+          openNewbie();
+        },
+        message -> {
+          tip(message);
+          maybePopupNewbie();
+        });
+    return true;
+  }
+
+  void addNewbieBadge() {
+    if (!newbieOn() || hallSurface == null) return;
+    NewbieBadge badge = new NewbieBadge(this, newbie.optString("entry_label", "新人礼包"));
+    badge.setCount(newbieReady());
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(92), dp(100), Gravity.TOP | Gravity.RIGHT);
+    lp.topMargin = dp(10);
+    lp.rightMargin = dp(16);
+    hallSurface.addView(badge, lp);
+    badge.setOnClickListener(
+        v -> {
+          press(v);
+          openNewbie();
+        });
+    badge.post(badge::start);
+  }
 
   void loadHome() {
     api.get(
@@ -1958,6 +2074,9 @@ public final class MainActivity extends Activity {
         break;
       case "invite":
         inviteFriends();
+        break;
+      case "newbie":
+        openNewbie();
         break;
       case "activity":
         if (activities.config != null) openActivity();
@@ -2679,7 +2798,7 @@ public final class MainActivity extends Activity {
   // ---- location (cell tower) permission: asked once, before the first check-in / packet /
   // withdrawal, with our own explanation first. Declining never blocks anything.
   static final String LOCATION_ASKED = "location_permission_asked_v1";
-  static final int LOCATION_REQUEST = 4107;
+  static final int LOCATION_REQUEST = 4108;
   Runnable afterLocation;
 
   void withLocation(Runnable then) {
@@ -4110,6 +4229,14 @@ public final class MainActivity extends Activity {
   }
 
   @Override
+  protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+    setIntent(intent);
+    // InviteLinkActivity brought us forward with a fresh invite code.
+    if (user != null) loadNewbie();
+  }
+
+  @Override
   protected void onResume() {
     super.onResume();
     foreground = true;
@@ -4162,6 +4289,7 @@ public final class MainActivity extends Activity {
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
     if (requestCode == WebActivity.REQUEST) {
+      loadNewbie();
       String target = data == null ? null : data.getStringExtra(WebActivity.RESULT_OPEN);
       if (resultCode == RESULT_OK && target != null) handler.post(() -> openNative(target));
       return;
@@ -4206,6 +4334,7 @@ public final class MainActivity extends Activity {
     handler.removeCallbacks(runtimeTick);
     handler.postDelayed(runtimeTick, 45000);
     loadHome();
+    loadNewbie();
     api.get(
         "/app/runtime",
         result -> {

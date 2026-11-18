@@ -41,6 +41,7 @@ mod product_admin;
 mod rain;
 mod reward_policy;
 mod risk;
+mod newbie;
 mod sms_channel;
 mod trace_lookup;
 mod user_admin;
@@ -2557,6 +2558,7 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     cos_storage::initialize(&db).map_err(|e| e.1)?;
     business_guard::initialize(&db).map_err(|e| e.1)?;
     campaign::initialize(&db).map_err(|e| e.1)?;
+    newbie::initialize(&db).map_err(|e| e.1)?;
     behavior_audit::initialize(&db)
         .map_err(|e| format!("behavior audit initialization failed: {}", e.1))?;
     Ok(())
@@ -2591,6 +2593,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(reward_policy::admin_routes())
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())
+        .merge(newbie::admin_routes())
         .merge(rain::admin_routes())
         .merge(hall_requests::admin_routes())
         .merge(user_admin::routes())
@@ -2634,6 +2637,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(hall_requests::routes())
         .merge(risk::routes())
         .merge(campaign::routes())
+        .merge(newbie::routes())
         .merge(device_bootstrap::routes())
         .merge(behavior_audit::public_routes())
         .route("/health", get(|| async { Json(json!({"ok":true})) }))
