@@ -19,6 +19,7 @@ import SmsAdmin from "./SmsAdmin.vue";
 import TraceLookup from "./TraceLookup.vue";
 import CosAdmin from "./CosAdmin.vue";
 import NewbieAdmin from "./NewbieAdmin.vue";
+import CaptchaAdmin from "./CaptchaAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
 defineEmits(["back"]);
@@ -737,6 +738,7 @@ onMounted(load);
           :api="api"
           @unauthorized="fail"
         />
+        <CaptchaAdmin v-if="tab === 'sms'" :api="api" @unauthorized="fail" />
         <WithdrawRulesAdmin
           v-if="tab === 'withdraw-rules'"
           ref="withdrawRulesPanel"

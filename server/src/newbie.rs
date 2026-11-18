@@ -213,14 +213,11 @@ fn sync(tx: &Connection, uid: i64, c: &Config) -> Result<(), ApiError> {
          WHERE (id=?2 OR inviter_id=?2) AND inviter_id IS NOT NULL AND created_at>=?3 AND invitation_bound_at IS NOT NULL",
         params![round, uid, c.round_started_at],
     )?;
-    // Welcome packet: registered during the round, or joined the round through an invitation.
-    let created: i64 = tx.query_row("SELECT created_at FROM users WHERE id=?1", [uid], |r| r.get(0))?;
-    if created >= c.round_started_at || member(tx, round, uid)?.is_some() {
-        tx.execute(
-            "INSERT OR IGNORE INTO newbie_packets(id,round,user_id,kind,invitee_id,created_at) VALUES(?1,?2,?3,'welcome',0,?4)",
-            params![Uuid::new_v4().to_string(), round, uid, now()],
-        )?;
-    }
+    // Welcome packet: every user, new or existing, once per round (amount follows their own score).
+    tx.execute(
+        "INSERT OR IGNORE INTO newbie_packets(id,round,user_id,kind,invitee_id,created_at) VALUES(?1,?2,?3,'welcome',0,?4)",
+        params![Uuid::new_v4().to_string(), round, uid, now()],
+    )?;
     // Invitees qualify after a real action (first check-in or completed packet video) + a score.
     let pending: Vec<(i64, i64)> = tx
         .prepare("SELECT user_id,joined_at FROM newbie_members WHERE round=?1 AND inviter_id=?2 AND qualified_at IS NULL")?
@@ -587,12 +584,18 @@ async fn admin_put(
 /// For the invite landing page (no login): whether the activity runs and the headline amount an
 /// invited new user can get.
 async fn public_info(State(state): State<AppState>) -> ApiResult<Value> {
-    let c = config(&open(&state)?)?;
+    let db = open(&state)?;
+    // Landing page shows the SMS form only when the human check is set up.
+    let captcha = human_check::public_app_id(&db)?;
+    let download = state.config.app_download_url.clone().unwrap_or_default();
+    let c = config(&db)?;
     if !c.enabled {
-        return Ok(Json(json!({"enabled":false})));
+        return Ok(Json(json!({"enabled":false,"captcha_app_id":captcha,"download_url":download})));
     }
     Ok(Json(json!({
         "enabled": true,
+        "captcha_app_id": captcha,
+        "download_url": download,
         "title": c.title,
         "invited_max": top(&c.welcome_tiers) * (100 + c.invited_bonus_percent) / 100,
         "bonus_percent": c.invited_bonus_percent,

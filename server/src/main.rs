@@ -41,6 +41,7 @@ mod product_admin;
 mod rain;
 mod reward_policy;
 mod risk;
+mod human_check;
 mod newbie;
 mod sms_channel;
 mod trace_lookup;
@@ -340,9 +341,33 @@ fn new_session(db: &Connection, user_id: i64) -> Result<Value, ApiError> {
     )?;
     Ok(json!({"token":token,"user":user(db,user_id)?}))
 }
+/// Checks an SMS code. Each code allows at most 5 wrong guesses, then it is void (a 6-digit code
+/// cannot be brute-forced within its lifetime).
+pub(crate) fn sms_code_ok(db: &Connection, phone: &str, purpose: &str, code: &str) -> Result<bool, ApiError> {
+    let row: Option<(String, i64, i64)> = db
+        .query_row(
+            "SELECT code,expires_at,attempts FROM sms_codes WHERE phone=?1 AND purpose=?2",
+            params![phone, purpose],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?;
+    let Some((expected, expires, attempts)) = row else {
+        return Ok(false);
+    };
+    if expires <= now() || attempts >= 5 {
+        return Ok(false);
+    }
+    if equal_secret(&expected, code.trim()) {
+        return Ok(true);
+    }
+    db.execute(
+        "UPDATE sms_codes SET attempts=attempts+1 WHERE phone=?1 AND purpose=?2",
+        params![phone, purpose],
+    )?;
+    Ok(false)
+}
 fn verify_sms(db: &Connection, phone: &str, code: &str, purpose: &str) -> Result<(), ApiError> {
-    let found:bool = db.query_row("SELECT EXISTS(SELECT 1 FROM sms_codes WHERE phone=?1 AND purpose=?2 AND code=?3 AND expires_at>?4)",params![phone,purpose,code,now()],|r|r.get(0))?;
-    if !found {
+    if !sms_code_ok(db, phone, purpose, code)? {
         return Err(invalid("验证码错误或已过期，请重新获取"));
     }
     Ok(())
@@ -387,7 +412,7 @@ async fn sms(
         sms_channel::send(&state, &input.phone, purpose, &code, &context.client_ip).await?;
     }
     let db = open(&state)?;
-    db.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,?2,?3,?4) ON CONFLICT(phone,purpose) DO UPDATE SET code=excluded.code,expires_at=excluded.expires_at", params![input.phone,purpose,code,now()+expires])?;
+    db.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,?2,?3,?4) ON CONFLICT(phone,purpose) DO UPDATE SET code=excluded.code,expires_at=excluded.expires_at,attempts=0", params![input.phone,purpose,code,now()+expires])?;
     if mock {
         return Ok(Json(json!({"code":code,"expires_in":expires,"mode":"mock"})));
     }
@@ -703,11 +728,7 @@ async fn login(
     // as long as the code is right. The random password can be set later via 找回密码.
     let credentials = match (credentials, code_login) {
         (None, Some(code)) if by_phone => {
-            let code_ok: bool = db.query_row(
-                "SELECT EXISTS(SELECT 1 FROM sms_codes WHERE phone=?1 AND purpose='login' AND code=?2 AND expires_at>?3)",
-                params![account, code, now()],
-                |r| r.get(0),
-            )?;
+            let code_ok = sms_code_ok(&db, &account, "login", code)?;
             if !code_ok {
                 let needs_captcha = record_login_failure(&db, &guard_key)?;
                 return Err(if needs_captcha {
@@ -778,7 +799,7 @@ async fn login(
         });
     };
     let valid = if let Some(code) = code_login {
-        db.query_row("SELECT EXISTS(SELECT 1 FROM sms_codes WHERE phone=?1 AND purpose='login' AND code=?2 AND expires_at>?3)",params![input.phone,code,now()],|r|r.get(0))?
+        sms_code_ok(&db, &input.phone, "login", code)?
     } else {
         let parsed = PasswordHash::new(&hash)
             .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, e.to_string(), None))?;
@@ -2496,7 +2517,7 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
         CREATE TABLE IF NOT EXISTS account_deletion_requests(id TEXT PRIMARY KEY,user_id INTEGER NOT NULL,phone_snapshot TEXT NOT NULL,nickname_snapshot TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',reason TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL,reviewed_at INTEGER,reviewer TEXT,review_note TEXT);
         CREATE INDEX IF NOT EXISTS idx_account_deletion_user ON account_deletion_requests(user_id,created_at);
         CREATE INDEX IF NOT EXISTS idx_account_deletion_status ON account_deletion_requests(status,created_at);
-        CREATE TABLE IF NOT EXISTS sms_codes(phone TEXT NOT NULL,purpose TEXT NOT NULL,code TEXT NOT NULL,expires_at INTEGER NOT NULL,PRIMARY KEY(phone,purpose));
+        CREATE TABLE IF NOT EXISTS sms_codes(phone TEXT NOT NULL,purpose TEXT NOT NULL,code TEXT NOT NULL,expires_at INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(phone,purpose));
         CREATE TABLE IF NOT EXISTS login_guard(guard_key TEXT PRIMARY KEY,failures INTEGER NOT NULL DEFAULT 0,last_failed_at INTEGER NOT NULL DEFAULT 0,captcha_id TEXT,captcha_answer TEXT,captcha_expires_at INTEGER);
         CREATE TABLE IF NOT EXISTS checkin_progress(user_id INTEGER PRIMARY KEY,cycle_start_day TEXT NOT NULL,checked_mask INTEGER NOT NULL DEFAULT 0,makeup_mask INTEGER NOT NULL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS hall_activity(user_id INTEGER PRIMARY KEY,last_open_at INTEGER NOT NULL);
@@ -2559,6 +2580,15 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     business_guard::initialize(&db).map_err(|e| e.1)?;
     campaign::initialize(&db).map_err(|e| e.1)?;
     newbie::initialize(&db).map_err(|e| e.1)?;
+    human_check::initialize(&db).map_err(|e| e.1)?;
+    let has_attempts: bool = db
+        .query_row("SELECT COUNT(*) FROM pragma_table_info('sms_codes') WHERE name='attempts'", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(true);
+    if !has_attempts {
+        db.execute_batch("ALTER TABLE sms_codes ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
+            .map_err(|e| e.to_string())?;
+    }
     behavior_audit::initialize(&db)
         .map_err(|e| format!("behavior audit initialization failed: {}", e.1))?;
     Ok(())
@@ -2594,6 +2624,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())
         .merge(newbie::admin_routes())
+        .merge(human_check::admin_routes())
         .merge(rain::admin_routes())
         .merge(hall_requests::admin_routes())
         .merge(user_admin::routes())
@@ -2663,6 +2694,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/ledger", get(ledger))
         .route("/products", get(products))
         .route("/invite/prebind", post(invitations::prebind))
+        .route("/invite/sms", post(invitations::send_code))
         .route("/invite/bind", post(invitations::bind))
         .route("/invite/summary", get(invitations::summary))
         .route("/invite/qr/{code}", get(invitations::qr))

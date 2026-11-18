@@ -3,6 +3,10 @@ import { ref, onMounted } from "vue";
 import Icon from "./Icon.vue";
 const props = defineProps({ api: Function, code: String });
 const phone = ref(""),
+  smsCode = ref(""),
+  sending = ref(false),
+  countdown = ref(0),
+  info = ref(null),
   agreed = ref(false),
   busy = ref(false),
   error = ref(""),
@@ -13,10 +17,64 @@ const guide = ref(false);
 const promo = ref(null);
 onMounted(async () => {
   try {
-    const info = await props.api("/newbie/public");
-    if (info.enabled) promo.value = info;
-  } catch (e) {}
+    info.value = await props.api("/newbie/public");
+    if (info.value.enabled) promo.value = info.value;
+  } catch (e) {
+    info.value = { captcha_app_id: null };
+  }
 });
+// Tencent Cloud captcha (天御): loaded only when the server has it configured. The ticket is
+// checked by the server, once; the SMS is never sent without it.
+function loadCaptcha() {
+  if (window.TencentCaptcha) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://turing.captcha.qcloud.com/TJCaptcha.js";
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("安全验证加载失败，请检查网络后重试"));
+    document.head.appendChild(script);
+  });
+}
+function humanCheck() {
+  return loadCaptcha().then(
+    () =>
+      new Promise((resolve, reject) => {
+        const captcha = new window.TencentCaptcha(String(info.value.captcha_app_id), (res) => {
+          if (res.ret === 0 && res.ticket) resolve(res);
+          else reject(new Error(res.ret === 2 ? "" : "安全验证未通过，请重试"));
+        }, { userLanguage: "zh-cn" });
+        captcha.show();
+      }),
+  );
+}
+async function sendCode() {
+  error.value = "";
+  if (!/^1[0-9]{10}$/.test(phone.value)) {
+    error.value = "请输入 11 位手机号";
+    return;
+  }
+  if (!agreed.value) {
+    error.value = "请先阅读并同意用户协议和隐私政策";
+    return;
+  }
+  sending.value = true;
+  try {
+    const res = await humanCheck();
+    await props.api("/invite/sms", {
+      method: "POST",
+      body: { phone: phone.value, invite_code: props.code, ticket: res.ticket, randstr: res.randstr },
+    });
+    countdown.value = 60;
+    const timer = setInterval(() => {
+      countdown.value -= 1;
+      if (countdown.value <= 0) clearInterval(timer);
+    }, 1000);
+  } catch (failure) {
+    error.value = failure.message;
+  } finally {
+    sending.value = false;
+  }
+}
 function openApp() {
   if (inWeChat) {
     guide.value = true;
@@ -42,7 +100,7 @@ async function prebind() {
   try {
     result.value = await props.api("/invite/prebind", {
       method: "POST",
-      body: { phone: phone.value, invite_code: props.code },
+      body: { phone: phone.value, invite_code: props.code, sms_code: smsCode.value },
     });
   } catch (failure) {
     error.value = failure.message;
@@ -89,9 +147,21 @@ async function prebind() {
       <section class="invite-join-card">
         <span class="invite-from"
           >来自朋友的邀请 <b>{{ code }}</b></span
-        ><template v-if="!result"
+        ><template v-if="!result && info && !info.captcha_app_id"
           ><h2>接受邀请</h2>
-          <p>输入手机号，收下朋友的邀请。</p>
+          <p>下载 App，注册时填写好友的邀请码即可。</p>
+          <div class="invite-code-big">{{ code }}</div>
+          <a
+            class="primary full invite-download"
+            :href="info.download_url || '/download/orange-rewards.apk'"
+            @click="download"
+            >下载小橙有喜 App <Icon name="arrow" :size="17" /></a
+          ><button type="button" class="invite-open-app" @click="openApp">
+            已安装小橙有喜？打开 App 领红包
+          </button></template
+        ><template v-else-if="!result"
+          ><h2>接受邀请</h2>
+          <p>验证手机号，收下朋友的邀请。</p>
           <form @submit.prevent="prebind">
             <label
               >手机号<input
@@ -103,6 +173,25 @@ async function prebind() {
                 pattern="1[0-9]{10}"
                 maxlength="11"
                 required /></label
+            ><label
+              >验证码<span class="invite-code-row"
+                ><input
+                  v-model="smsCode"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="one-time-code"
+                  placeholder="6 位短信验证码"
+                  pattern="[0-9]{6}"
+                  maxlength="6"
+                  required /><button
+                  type="button"
+                  class="invite-send"
+                  :disabled="sending || countdown > 0 || !info"
+                  @click="sendCode"
+                >
+                  {{ countdown > 0 ? countdown + " 秒" : sending ? "验证中…" : "获取验证码" }}
+                </button></span
+              ></label
             ><label class="invite-agreement"
               ><input v-model="agreed" type="checkbox" required /><span
                 >我已阅读并同意
@@ -119,7 +208,7 @@ async function prebind() {
             </button>
           </form>
           <span class="invite-join-note"
-            >绑定后，使用同一手机号登录 App。</span
+            >获取验证码前需完成安全验证；绑定后用同一手机号登录 App。</span
           ><button type="button" class="invite-open-app" @click="openApp">
             已安装小橙有喜？打开 App 领红包
           </button></template
@@ -170,6 +259,11 @@ async function prebind() {
 .invite-promo-copy small{font-size:13px;opacity:.9}
 .invite-promo-copy strong{font-size:26px;font-weight:900;letter-spacing:1px;background:linear-gradient(180deg,#fffbe6,#ffd75e 60%,#ffad14);-webkit-background-clip:text;background-clip:text;color:transparent}
 .invite-promo-copy em{font-style:normal;font-size:14px;font-weight:800;color:#ffe7a8}
+.invite-code-row{display:flex;gap:8px}
+.invite-code-row input{flex:1;min-width:0}
+.invite-send{flex:none;padding:0 14px;border:0;border-radius:12px;background:#fff0e8;color:#e2321f;font-weight:800;font-size:14px;white-space:nowrap}
+.invite-send:disabled{opacity:.55}
+.invite-code-big{margin:14px 0;text-align:center;font-size:34px;font-weight:900;letter-spacing:8px;color:#e2321f;background:#fff5f0;border-radius:14px;padding:10px 0}
 .invite-open-app{display:block;width:100%;margin-top:12px;padding:12px;border:1.5px solid #f2452b;border-radius:14px;background:#fff5f0;color:#e2321f;font-size:15px;font-weight:800}
 .wechat-tip{position:fixed;left:0;right:0;top:0;z-index:20;padding:9px 14px;background:rgba(30,10,5,.88);color:#fff;font-size:13px;text-align:center}
 .wechat-tip b{color:#ffd23f}

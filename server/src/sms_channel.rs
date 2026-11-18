@@ -105,6 +105,12 @@ fn load(db: &Connection) -> Result<(SmsConfig, String), ApiError> {
     Ok((serde_json::from_str(&raw)?, key))
 }
 
+/// Tencent Cloud API key pair saved with the SMS channel (also used for the captcha check).
+pub(super) fn cloud_keys(db: &Connection) -> Result<Option<(String, String)>, ApiError> {
+    let (cfg, key) = load(db)?;
+    Ok((!cfg.secret_id.is_empty() && !key.is_empty()).then(|| (cfg.secret_id, key)))
+}
+
 /// True when real SMS delivery is switched on and complete.
 pub(super) fn active(db: &Connection) -> Result<bool, ApiError> {
     let (cfg, key) = load(db)?;
@@ -202,18 +208,30 @@ fn hex(bytes: &[u8]) -> String {
 
 /// TC3-HMAC-SHA256 Authorization header for a JSON POST to sms.tencentcloudapi.com.
 pub(super) fn authorization(secret_id: &str, secret_key: &str, timestamp: i64, payload: &str) -> String {
+    authorization_for("sms", HOST, secret_id, secret_key, timestamp, payload)
+}
+
+/// TC3-HMAC-SHA256 for any Tencent Cloud API (service name + host), e.g. captcha.
+pub(super) fn authorization_for(
+    service: &str,
+    host: &str,
+    secret_id: &str,
+    secret_key: &str,
+    timestamp: i64,
+    payload: &str,
+) -> String {
     let date = chrono::DateTime::from_timestamp(timestamp, 0).unwrap().format("%Y-%m-%d").to_string();
     let canonical = format!(
-        "POST\n/\n\ncontent-type:application/json; charset=utf-8\nhost:{HOST}\n\ncontent-type;host\n{}",
+        "POST\n/\n\ncontent-type:application/json; charset=utf-8\nhost:{host}\n\ncontent-type;host\n{}",
         hex(&Sha256::digest(payload.as_bytes()))
     );
-    let scope = format!("{date}/sms/tc3_request");
+    let scope = format!("{date}/{service}/tc3_request");
     let to_sign = format!(
         "TC3-HMAC-SHA256\n{timestamp}\n{scope}\n{}",
         hex(&Sha256::digest(canonical.as_bytes()))
     );
     let k_date = hmac256(format!("TC3{secret_key}").as_bytes(), &date);
-    let k_service = hmac256(&k_date, "sms");
+    let k_service = hmac256(&k_date, service);
     let k_signing = hmac256(&k_service, "tc3_request");
     let signature = hex(&hmac256(&k_signing, &to_sign));
     format!("TC3-HMAC-SHA256 Credential={secret_id}/{scope}, SignedHeaders=content-type;host, Signature={signature}")

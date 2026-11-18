@@ -45,7 +45,14 @@ pub(super) fn new_code(db: &Connection) -> Result<String, ApiError> {
 }
 pub(super) fn initialize(db: &Connection) -> Result<(), ApiError> {
     db.execute_batch("CREATE TABLE IF NOT EXISTS invitation_settings(id INTEGER PRIMARY KEY CHECK(id=1),platform_code TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS invitation_prebindings(phone TEXT PRIMARY KEY,invite_code TEXT NOT NULL,inviter_id INTEGER,created_at INTEGER NOT NULL,consumed_at INTEGER,user_id INTEGER);")?;
+        CREATE TABLE IF NOT EXISTS invitation_prebindings(phone TEXT PRIMARY KEY,invite_code TEXT NOT NULL,inviter_id INTEGER,created_at INTEGER NOT NULL,consumed_at INTEGER,user_id INTEGER,verified_at INTEGER);")?;
+    // Prebindings made before SMS verification existed have verified_at NULL and are ignored.
+    let has_verified: bool = db
+        .query_row("SELECT COUNT(*) FROM pragma_table_info('invitation_prebindings') WHERE name='verified_at'", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)?;
+    if !has_verified {
+        db.execute_batch("ALTER TABLE invitation_prebindings ADD COLUMN verified_at INTEGER")?;
+    }
     db.execute(
         "INSERT OR IGNORE INTO invitation_settings(id,platform_code) VALUES(1,?1)",
         [PLATFORM_CODE],
@@ -145,7 +152,7 @@ pub(super) fn consume_pending(db: &Connection, uid: i64) -> Result<(), ApiError>
     if bound.is_some() {
         return Ok(());
     }
-    let pending:Option<(String,Option<i64>)>=db.query_row("SELECT invite_code,inviter_id FROM invitation_prebindings WHERE phone=?1 AND consumed_at IS NULL",[&phone],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
+    let pending:Option<(String,Option<i64>)>=db.query_row("SELECT invite_code,inviter_id FROM invitation_prebindings WHERE phone=?1 AND consumed_at IS NULL AND verified_at IS NOT NULL",[&phone],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;
     if let Some((code, inviter)) = pending {
         bind_relation(db, uid, &code, inviter)?;
         db.execute("UPDATE invitation_prebindings SET consumed_at=?1,user_id=?2 WHERE phone=?3 AND consumed_at IS NULL",params![now(),uid,phone])?;
@@ -177,7 +184,7 @@ pub(super) async fn bind(
         }
         return Err(conflict("邀请码已绑定，不能更换"));
     }
-    let pending:Option<String>=tx.query_row("SELECT invite_code FROM invitation_prebindings WHERE phone=(SELECT phone FROM users WHERE id=?1) AND consumed_at IS NULL",[uid],|r|r.get(0)).optional()?;
+    let pending:Option<String>=tx.query_row("SELECT invite_code FROM invitation_prebindings WHERE phone=(SELECT phone FROM users WHERE id=?1) AND consumed_at IS NULL AND verified_at IS NOT NULL",[uid],|r|r.get(0)).optional()?;
     if let Some(pending) = pending {
         if pending != code {
             return Err(conflict("该手机号已预绑定其他邀请码"));
@@ -203,10 +210,60 @@ pub(super) async fn bind(
     Ok(Json(result))
 }
 #[derive(Deserialize)]
+pub(super) struct SendCodeInput {
+    phone: String,
+    invite_code: String,
+    #[serde(default)]
+    ticket: String,
+    #[serde(default)]
+    randstr: String,
+}
+/// Landing page: SMS code for accepting an invitation. Only after a passed human check
+/// (Tencent captcha ticket, verified server-side, single use) plus the SMS rate limits.
+pub(super) async fn send_code(
+    State(state): State<AppState>,
+    Extension(context): Extension<RequestContext>,
+    Json(input): Json<SendCodeInput>,
+) -> ApiResult<Value> {
+    validate_phone(&input.phone)?;
+    let code = normalize_code(&input.invite_code)?;
+    {
+        let db = open(&state)?;
+        if human_check::public_app_id(&db)?.is_none() || !sms_channel::active(&db)? {
+            return Err(ApiError(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "请下载 App，注册时填写邀请码".into(),
+                Some("INVITE_SMS_OFF"),
+            ));
+        }
+        resolve_inviter(&db, &code, None)?;
+    }
+    human_check::verify(&state, &input.ticket, &input.randstr, &context.client_ip).await?;
+    let expires = {
+        let db = open(&state)?;
+        sms_channel::check_limits(&db, &input.phone, &context.client_ip)?;
+        sms_channel::expire_seconds(&db)?
+    };
+    let sms = {
+        use rand_core::RngCore;
+        format!("{:06}", OsRng.next_u32() % 1_000_000)
+    };
+    sms_channel::send(&state, &input.phone, "invite", &sms, &context.client_ip).await?;
+    open(&state)?.execute(
+        "INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,'invite',?2,?3) ON CONFLICT(phone,purpose) DO UPDATE SET code=excluded.code,expires_at=excluded.expires_at,attempts=0",
+        params![input.phone, sms, now() + expires],
+    )?;
+    Ok(Json(json!({"sent":true,"expires_in":expires})))
+}
+#[derive(Deserialize)]
 pub(super) struct PrebindInput {
     phone: String,
     invite_code: String,
+    #[serde(default)]
+    sms_code: String,
 }
+/// Accept an invitation for a phone number that has not registered yet. Requires the SMS code
+/// sent by /invite/sms, so nobody can attach other people's numbers to their own invite code.
 pub(super) async fn prebind(
     State(state): State<AppState>,
     Extension(context): Extension<RequestContext>,
@@ -216,6 +273,16 @@ pub(super) async fn prebind(
     let code = normalize_code(&input.invite_code)?;
     let mut db = open(&state)?;
     let tx = db.transaction()?;
+    if input.sms_code.trim().is_empty()
+        || !super::sms_code_ok(&tx, &input.phone, "invite", &input.sms_code)?
+    {
+        tx.commit()?; // keep the failed-attempt count
+        return Err(invalid("验证码错误或已过期，请重新获取"));
+    }
+    tx.execute(
+        "DELETE FROM sms_codes WHERE phone=?1 AND purpose='invite'",
+        [&input.phone],
+    )?;
     let existing_user: Option<(i64, Option<i64>)> = tx
         .query_row(
             "SELECT id,invitation_bound_at FROM users WHERE phone=?1",
@@ -227,22 +294,28 @@ pub(super) async fn prebind(
         .as_ref()
         .is_some_and(|(_, bound)| bound.is_some())
     {
-        return Err(conflict("该手机号已绑定邀请码，请直接登录"));
+        tx.commit()?;
+        return Err(conflict("该手机号已注册，请直接打开 App 登录"));
     }
-    let existing: Option<String> = tx
+    let existing: Option<(String, Option<i64>)> = tx
         .query_row(
-            "SELECT invite_code FROM invitation_prebindings WHERE phone=?1",
+            "SELECT invite_code,verified_at FROM invitation_prebindings WHERE phone=?1 AND consumed_at IS NULL",
             [&input.phone],
-            |r| r.get(0),
+            |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .optional()?;
-    if let Some(existing) = existing {
-        if existing != code {
-            return Err(conflict("该手机号已预绑定其他邀请码"));
+    match existing {
+        Some((existing, Some(_))) if existing != code => {
+            tx.commit()?;
+            return Err(conflict("该手机号已接受其他好友的邀请"));
         }
-    } else {
-        let inviter = resolve_inviter(&tx, &code, existing_user.as_ref().map(|(id, _)| *id))?;
-        tx.execute("INSERT INTO invitation_prebindings(phone,invite_code,inviter_id,created_at) VALUES(?1,?2,?3,?4)",params![input.phone,code,inviter,now()])?;
+        Some((_, Some(_))) => {}
+        _ => {
+            // No binding, or an unverified one (possibly planted by someone else): the owner of
+            // the number just proved it, so their choice wins.
+            let inviter = resolve_inviter(&tx, &code, existing_user.as_ref().map(|(id, _)| *id))?;
+            tx.execute("INSERT INTO invitation_prebindings(phone,invite_code,inviter_id,created_at,verified_at) VALUES(?1,?2,?3,?4,?4) ON CONFLICT(phone) DO UPDATE SET invite_code=excluded.invite_code,inviter_id=excluded.inviter_id,created_at=excluded.created_at,verified_at=excluded.verified_at,consumed_at=NULL,user_id=NULL",params![input.phone,code,inviter,now()])?;
+        }
     }
     user_admin::behavior(
         &tx,
@@ -253,7 +326,7 @@ pub(super) async fn prebind(
         "success",
         &code,
         None,
-        json!({}),
+        json!({"verified":true}),
     )?;
     tx.commit()?;
     Ok(Json(
@@ -442,7 +515,12 @@ mod tests {
             Some(1)
         );
         assert!(resolve_inviter(&db, &inviter_code, Some(1)).is_err());
+        // Unverified (phone-only) prebindings are never consumed: nobody can attach someone
+        // else's number to their invite code.
         db.execute("INSERT INTO invitation_prebindings(phone,invite_code,inviter_id,created_at) VALUES('13000130001',?1,1,?2)",params![inviter_code,now()]).unwrap();
+        consume_pending(&db, 2).unwrap();
+        assert_eq!(db.query_row("SELECT inviter_id FROM users WHERE id=2",[],|r|r.get::<_,Option<i64>>(0)).unwrap(), None);
+        db.execute("UPDATE invitation_prebindings SET verified_at=?1 WHERE phone='13000130001'", [now()]).unwrap();
         consume_pending(&db, 2).unwrap();
         consume_pending(&db, 2).unwrap();
         let relation: (Option<i64>, String, i64) = db
@@ -454,5 +532,19 @@ mod tests {
             .unwrap();
         assert_eq!(relation, (Some(1), inviter_code, 987));
         assert_eq!(db.query_row("SELECT COUNT(*) FROM invitation_prebindings WHERE consumed_at IS NOT NULL AND user_id=2",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+    }
+
+    #[test]
+    fn sms_code_allows_five_wrong_guesses_then_voids_it() {
+        let db = Connection::open_in_memory().unwrap();
+        db.execute_batch("CREATE TABLE sms_codes(phone TEXT NOT NULL,purpose TEXT NOT NULL,code TEXT NOT NULL,expires_at INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(phone,purpose));").unwrap();
+        db.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES('13000130009','invite','482913',?1)", [now() + 300]).unwrap();
+        for _ in 0..5 {
+            assert!(!super::super::sms_code_ok(&db, "13000130009", "invite", "000000").unwrap());
+        }
+        // Even the right code no longer works after 5 wrong guesses.
+        assert!(!super::super::sms_code_ok(&db, "13000130009", "invite", "482913").unwrap());
+        db.execute("UPDATE sms_codes SET attempts=0", []).unwrap();
+        assert!(super::super::sms_code_ok(&db, "13000130009", "invite", "482913").unwrap());
     }
 }
