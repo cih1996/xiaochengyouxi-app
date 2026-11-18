@@ -18,6 +18,7 @@ import TraceLookup from "./TraceLookup.vue";
 import CosAdmin from "./CosAdmin.vue";
 import NewbieAdmin from "./NewbieAdmin.vue";
 import WheelAdmin from "./WheelAdmin.vue";
+import ReminderAdmin from "./ReminderAdmin.vue";
 import CaptchaAdmin from "./CaptchaAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
@@ -82,6 +83,7 @@ const smsPanel = ref(null);
 const cosPanel = ref(null);
 const newbiePanel = ref(null);
 const wheelPanel = ref(null);
+const reminderPanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -108,6 +110,7 @@ const items = [
   { id: "strategy", label: "推送策略", icon: "bell" },
   { id: "rain", label: "红包雨", icon: "gift" },
   { id: "wheel", label: "幸运转盘", icon: "spark" },
+  { id: "reminders", label: "通知提醒", icon: "bell" },
   { id: "newbie", label: "新人礼包", icon: "gift" },
   { id: "withdraw-rules", label: "提现档位", icon: "wallet" },
   { id: "ad-config", label: "广告配置", icon: "play" },
@@ -145,6 +148,7 @@ const groups = [
       "rain",
       "newbie",
       "wheel",
+      "reminders",
       "invitations",
     ],
   },
@@ -321,6 +325,7 @@ async function refreshCurrent() {
   else if (tab.value === "cos") await cosPanel.value?.refresh();
   else if (tab.value === "newbie") await newbiePanel.value?.refresh();
   else if (tab.value === "wheel") await wheelPanel.value?.refresh();
+  else if (tab.value === "reminders") await reminderPanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -714,6 +719,12 @@ onMounted(load);
         <AdStats
           v-if="tab === 'ad-stats'"
           ref="adStatsPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <ReminderAdmin
+          v-if="tab === 'reminders'"
+          ref="reminderPanel"
           :api="api"
           @unauthorized="fail"
         />

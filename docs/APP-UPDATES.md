@@ -164,3 +164,9 @@ APK `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.22-25.apk`，27,11
 2026-11-19 发布 0.3.24（versionCode 27），revision 27，最低支持版本 0（可选更新）。新人礼包（盲盒视频红包、邀请拆红包）、幸运转盘重做、收款账户绑定（微信收款码本地识别）、微信钱包风格提现页、金币明细整页、音效，DeviceTrust 0.7.8（基站/定位采集、定期重新登记），启动提速（版本检查并行、设备登记最多等 2 秒）。
 
 元数据 `output/小橙有喜-0.3.24-更新发布.json`；不可变地址 `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.24-27.apk`，27,443,693 字节，SHA256 `82aae424c41a704c863104516b2454ebe5cddc3302cf13ed48a8ddecb7f6e7ea`，包名与固定证书一致。公网验收（版本边界、更新要求、受保护管理接口、APK 完整性）通过，不可变地址与通用入口下载哈希一致。下载暂由本站提供：COS 配置未启用、`dl.lingzidev.com` 未开 HTTPS，启用后 `/download/` 自动 302 到 COS。
+
+## 0.3.25 发布
+
+2026-11-19 14:20（北京时间）发布 0.3.25（versionCode 28），revision 28，最低支持版本 0（可选更新）。通知栏本地提醒（红包雨开场 / 签到 / 幸运转盘，后台“通知提醒”配置）、商品图片改为正方形完整显示、大厅悬浮入口缩小、DeviceTrust 环境采集始终调用（无定位权限时 permission_denied）。
+
+元数据 `output/小橙有喜-0.3.25-更新发布.json`；不可变地址 `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.25-28.apk`，27,460,807 字节，SHA256 `ae289a9d4a22c344bb1034a3156ab8c9a202075a604ed47e16b9514f60805d0b`，包名与固定证书一致。公网验收通过；同一文件已上传 COS `releases/`（`dl.lingzidev.com` HTTPS 已生效，后台 COS 开关开启后 `/download/` 自动跳转 COS）。

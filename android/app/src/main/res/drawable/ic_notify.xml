@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome status-bar icon: a small red packet (system tints it). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M6,2h12a2,2 0,0 1,2 2v4.2c-2.2,1.6 -5,2.5 -8,2.5s-5.8,-0.9 -8,-2.5V4a2,2 0,0 1,2,-2zM4,10.6c2.3,1.4 5.1,2.1 8,2.1s5.7,-0.7 8,-2.1V20a2,2 0,0 1,-2,2H6a2,2 0,0 1,-2,-2zM12,11.2a2.3,2.3 0,1 0,0.01 0z"/>
+</vector>

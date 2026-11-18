@@ -86,6 +86,9 @@ public final class MainActivity extends Activity {
   public void onCreate(Bundle state) {
     super.onCreate(state);
     setVolumeControlStream(AudioManager.STREAM_MUSIC);
+    // Cold start from a tapped reminder: open its target once the account is shown.
+    if (getIntent() != null && getIntent().getStringExtra(ReminderReceiver.EXTRA_TARGET) != null)
+      reminderTarget = getIntent().getStringExtra(ReminderReceiver.EXTRA_TARGET);
     api = new Api(this);
     activities = new ActivityClient(api);
     activities.onChanged =
@@ -532,6 +535,7 @@ public final class MainActivity extends Activity {
     activities.load();
     loadNewbie();
     loadWheel();
+    loadReminders();
     refreshCheckinStatus();
     if (user.optBoolean("invitation_required")) {
       invitationBinding();
@@ -540,6 +544,90 @@ public final class MainActivity extends Activity {
     home();
     refreshData();
     startHallSession();
+    handler.postDelayed(this::openReminderTarget, 600);
+  }
+
+  // ---- 通知提醒: local notifications scheduled when the App goes to the background ----
+  static final int NOTIFY_REQUEST = 4111;
+  JSONObject reminderCfg;
+  String reminderTarget = "";
+
+  void loadReminders() {
+    api.get("/app/reminders", v -> reminderCfg = (JSONObject) v, m -> android.util.Log.w("Reminders", m));
+  }
+
+  boolean remindersOn() {
+    return api.preferences.getBoolean("reminders_on", true);
+  }
+
+  void scheduleReminders() {
+    if (user == null || user.optBoolean("invitation_required")) return;
+    boolean wheel = wheelOn() && wheelInfo.optInt("available") > 0;
+    ReminderReceiver.schedule(this, reminderCfg, rain.nextStartMs(), user.optBoolean("checked_in_today"), wheel);
+  }
+
+  /** Tapped notification: go where it points once the account is shown. */
+  void openReminderTarget() {
+    String target = reminderTarget;
+    reminderTarget = "";
+    if (target.isEmpty() || user == null || page == null) return;
+    if (target.equals("checkin")) openCheckin();
+    else if (target.equals("wheel")) openWheel("");
+    else if (!current.equals("hall")) {
+      current = "hall";
+      home();
+    }
+  }
+
+  /** Android 13+: explain once, after the first successful check-in, then ask for the permission. */
+  void maybeAskNotifications() {
+    if (Build.VERSION.SDK_INT < 33 || !foreground || user == null) return;
+    if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+    if (api.preferences.getBoolean("notify_asked_v1", false)) return;
+    if (rewardUiBusy) {
+      handler.postDelayed(this::maybeAskNotifications, 2000);
+      return;
+    }
+    api.preferences.edit().putBoolean("notify_asked_v1", true).apply();
+    new AlertDialog.Builder(this)
+        .setTitle("开启活动提醒")
+        .setMessage("红包雨开场前、晚上还没签到时，小橙会在通知栏提醒你，不错过每一份金币。\n\n可随时在“我的 → 设置 → 通知提醒”中关闭。")
+        .setNegativeButton("暂不开启", null)
+        .setPositiveButton("开启提醒", (d, w) -> requestPermissions(new String[] {android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFY_REQUEST))
+        .show();
+  }
+
+  void toggleReminders(TextView value) {
+    boolean on = !remindersOn();
+    api.preferences.edit().putBoolean("reminders_on", on).apply();
+    value.setText(on ? "已开启" : "已关闭");
+    if (!on) {
+      ReminderReceiver.cancelAll(this);
+      tip("已关闭通知提醒");
+      return;
+    }
+    if (Build.VERSION.SDK_INT >= 33
+        && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+      if (!api.preferences.getBoolean("notify_asked_v1", false) || shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)) {
+        api.preferences.edit().putBoolean("notify_asked_v1", true).apply();
+        requestPermissions(new String[] {android.Manifest.permission.POST_NOTIFICATIONS}, NOTIFY_REQUEST);
+      } else openNotificationSettings();
+      return;
+    }
+    if (!((android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE)).areNotificationsEnabled()) {
+      openNotificationSettings();
+      return;
+    }
+    tip("已开启通知提醒");
+  }
+
+  void openNotificationSettings() {
+    tip("请在系统设置中允许小橙有喜发送通知");
+    try {
+      startActivity(new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName()));
+    } catch (ActivityNotFoundException e) {
+      startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+    }
   }
 
   void checkDeletionStatus(Runnable continueAccount) {
@@ -1920,9 +2008,9 @@ public final class MainActivity extends Activity {
     if (!wheelOn() || hallSurface == null) return;
     NewbieBadge badge = new NewbieBadge(this, wheelInfo.optString("entry_label", "幸运转盘"), true);
     badge.setCount(wheelInfo.optInt("available"));
-    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(92), dp(100), Gravity.TOP | Gravity.RIGHT);
-    lp.topMargin = newbieOn() ? dp(10 + 100 + 6) : dp(10);
-    lp.rightMargin = dp(16);
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(64), dp(78), Gravity.TOP | Gravity.RIGHT);
+    lp.topMargin = newbieOn() ? dp(10 + 78 + 10) : dp(10);
+    lp.rightMargin = dp(14);
     hallSurface.addView(badge, lp);
     badge.setOnClickListener(
         v -> {
@@ -1936,9 +2024,9 @@ public final class MainActivity extends Activity {
     if (!newbieOn() || hallSurface == null) return;
     NewbieBadge badge = new NewbieBadge(this, newbie.optString("entry_label", "新人礼包"));
     badge.setCount(newbieReady());
-    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(92), dp(100), Gravity.TOP | Gravity.RIGHT);
+    FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(64), dp(78), Gravity.TOP | Gravity.RIGHT);
     lp.topMargin = dp(10);
-    lp.rightMargin = dp(16);
+    lp.rightMargin = dp(14);
     hallSurface.addView(badge, lp);
     badge.setOnClickListener(
         v -> {
@@ -2178,7 +2266,8 @@ public final class MainActivity extends Activity {
         if (product == null) break;
         LinearLayout productRow = row();
         add(productRow, new View(this), 48, 1);
-        productRow.addView(productCard(product), new LinearLayout.LayoutParams(0, -2, 1));
+        // Hall card stays compact (square photo), like a shared item in a chat.
+        productRow.addView(productCard(product), new LinearLayout.LayoutParams(dp(220), -2));
         add(content, productRow, -1, -2);
         break;
       case "native_ad":
@@ -2784,6 +2873,11 @@ public final class MainActivity extends Activity {
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
     super.onRequestPermissionsResult(requestCode, permissions, results);
+    if (requestCode == NOTIFY_REQUEST) {
+      boolean granted = results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+      tip(granted ? "已开启活动提醒" : "可在“设置 → 通知提醒”中随时开启");
+      return;
+    }
     if (requestCode != LOCATION_REQUEST) return;
     Runnable then = afterLocation;
     afterLocation = null;
@@ -3067,6 +3161,7 @@ public final class MainActivity extends Activity {
           refreshCheckinStatus();
           render();
           celebrate(result.optInt("reward"));
+          handler.postDelayed(this::maybeAskNotifications, 3500);
         },
         new Api.Failure() {
           @Override
@@ -3203,7 +3298,16 @@ public final class MainActivity extends Activity {
     ProductImage photo =
         new ProductImage(
             this, p.optString("image"), p.optString("title"), ImageView.ScaleType.CENTER_CROP);
-    add(card, photo, -1, 132);
+    // Product photos are square: a square frame shows the whole picture at any card width.
+    FrameLayout square =
+        new FrameLayout(this) {
+          @Override
+          protected void onMeasure(int w, int h) {
+            super.onMeasure(w, w);
+          }
+        };
+    square.addView(photo, new FrameLayout.LayoutParams(-1, -1));
+    add(card, square, -1, -2);
     LinearLayout copy = col();
     copy.setPadding(dp(12), dp(12), dp(12), dp(14));
     TextView platform = text(p.optString("platform"), 11, MUTED, false);
@@ -3494,6 +3598,10 @@ public final class MainActivity extends Activity {
     about.setBackground(bg(WHITE, 18));
     settingRow(about, "检查更新", "当前 " + BuildConfig.VERSION_NAME, updates::manual);
     line(about);
+    TextView[] remindValue = new TextView[1];
+    settingRow(about, "通知提醒", remindersOn() ? "已开启" : "已关闭", () -> toggleReminders(remindValue[0]));
+    remindValue[0] = lastSettingValue;
+    line(about);
     settingRow(about, "隐私政策", "", () -> openPolicy("/privacy"));
     line(about);
     settingRow(about, "第三方 SDK 清单", "", () -> openPolicy("/privacy#sdk"));
@@ -3515,14 +3623,18 @@ public final class MainActivity extends Activity {
     add(body, label, -1, -2);
   }
 
+  TextView lastSettingValue;
+
   void settingRow(LinearLayout card, String title, String value, Runnable action) {
     LinearLayout r = row();
     r.setPadding(dp(18), 0, dp(14), 0);
     flex(r, label(title, 15, INK));
+    lastSettingValue = null;
     if (!value.isEmpty()) {
       TextView v = label(value, 13, MUTED);
       v.setPadding(0, 0, dp(6), 0);
       add(r, v, -2, -2);
+      lastSettingValue = v;
     }
     add(r, new LineIcon(this, "arrow", 0xffcbb9ae), 15, 15);
     r.setOnClickListener(v -> action.run());
@@ -4677,6 +4789,11 @@ public final class MainActivity extends Activity {
   protected void onNewIntent(Intent intent) {
     super.onNewIntent(intent);
     setIntent(intent);
+    String target = intent.getStringExtra(ReminderReceiver.EXTRA_TARGET);
+    if (target != null) {
+      reminderTarget = target;
+      if (user != null && page != null) handler.postDelayed(this::openReminderTarget, 300);
+    }
     // InviteLinkActivity brought us forward with a fresh invite code.
     if (user != null) loadNewbie();
   }
@@ -4697,10 +4814,12 @@ public final class MainActivity extends Activity {
     refreshRuntime();
     updates.resume();
     if (servicesReady) api.deviceTrust.refreshIfStale();
+    ReminderReceiver.cancelAll(this); // no reminders while the App is open
   }
 
   @Override
   protected void onPause() {
+    scheduleReminders();
     api.behavior.pause();
     foreground = false;
     runtimeEpoch++;

@@ -29,6 +29,15 @@ final class HallRainController {
   private Dialog countdown;
   private long countdownSecond = -1;
   private JSONObject status, assignment;
+
+  /** Next rain start (ms) from the last status, 0 if unknown (used for the local reminder). */
+  long nextStartMs() {
+    try {
+      return status == null ? 0 : RainTiming.parse(status.getString("next_start_at"));
+    } catch (Exception e) {
+      return 0;
+    }
+  }
   private long serverAtSync, elapsedAtSync;
   private int generation;
   private boolean attached, joinInFlight;
