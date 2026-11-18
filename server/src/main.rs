@@ -697,6 +697,61 @@ async fn login(
         )
         .optional()?
     };
+    // SMS login with an unregistered phone signs the user up (same as phone registration),
+    // as long as the code is right. The random password can be set later via 找回密码.
+    let credentials = match (credentials, code_login) {
+        (None, Some(code)) if by_phone => {
+            let code_ok: bool = db.query_row(
+                "SELECT EXISTS(SELECT 1 FROM sms_codes WHERE phone=?1 AND purpose='login' AND code=?2 AND expires_at>?3)",
+                params![account, code, now()],
+                |r| r.get(0),
+            )?;
+            if !code_ok {
+                let needs_captcha = record_login_failure(&db, &guard_key)?;
+                return Err(if needs_captcha {
+                    ApiError(
+                        StatusCode::TOO_MANY_REQUESTS,
+                        "尝试次数过多，请完成安全验证".into(),
+                        Some("LOGIN_CAPTCHA_REQUIRED"),
+                    )
+                } else {
+                    ApiError(StatusCode::UNAUTHORIZED, "手机号或验证码错误".into(), None)
+                });
+            }
+            use rand_core::RngCore;
+            let mut seed = [0u8; 24];
+            OsRng.fill_bytes(&mut seed);
+            let hash = password_hash(&seed.iter().map(|b| format!("{b:02x}")).collect::<String>())?;
+            let tx = db.transaction()?;
+            let exists: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM users WHERE phone=?1)",
+                [&account],
+                |r| r.get(0),
+            )?;
+            if exists {
+                return Err(conflict("请重试登录"));
+            }
+            tx.execute(
+                "INSERT INTO users(phone,password_hash,nickname,coins,created_at,invite_code) VALUES(?1,?2,?3,0,?4,?5)",
+                params![account, hash, format!("小橙{}", &account[7..]), now(), invitations::new_code(&tx)?],
+            )?;
+            let id = tx.last_insert_rowid();
+            user_admin::behavior(
+                &tx,
+                &context,
+                Some(id),
+                Some(&account),
+                "register",
+                "success",
+                &id.to_string(),
+                None,
+                json!({"via":"sms_login"}),
+            )?;
+            tx.commit()?;
+            Some((id, hash))
+        }
+        (found, _) => found,
+    };
     let Some((id, hash)) = credentials else {
         let needs_captcha = record_login_failure(&db, &guard_key)?;
         user_admin::behavior(
