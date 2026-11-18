@@ -308,6 +308,20 @@ function tone(freq, start, dur, type, vol) {
 function sfxTap() { tone(660, 0, 0.12, "triangle", 0.1); tone(990, 0.05, 0.12, "triangle", 0.08); }
 function sfxBurst() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i * 0.06, 0.35, "triangle", 0.09)); tone(110, 0, 0.35, "sawtooth", 0.05); }
 function sfxCoin(i) { tone(1568 + (i % 4) * 120, 0, 0.09, "square", 0.025); }
+/* recorded-style effects (synthesised WAVs under /assets/sfx); synth tones above stay as fallback */
+const SFX = {};
+function loadSfx() {
+  const a = ac(); if (!a) return;
+  [["open", "/assets/sfx/packet_open.wav"], ["tick", "/assets/sfx/wheel_tick.wav"], ["win", "/assets/sfx/wheel_win.wav"], ["coin", "/assets/coin-arrival.wav"]]
+    .forEach(([k, u]) => fetch(u).then((r) => r.arrayBuffer()).then((b) => a.decodeAudioData(b)).then((buf) => { SFX[k] = buf; }).catch(() => {}));
+}
+function play(k, vol) {
+  const a = ac(), b = SFX[k]; if (!a || !b) return false;
+  if (a.state === "suspended") a.resume();
+  const s = a.createBufferSource(), g = a.createGain(); g.gain.value = vol == null ? .9 : vol;
+  s.buffer = b; s.connect(g).connect(a.destination); s.start(); return true;
+}
+
 
 /* ---------------- particle FX: coins + confetti ---------------- */
 const fx = $("fx"), ctx = fx.getContext("2d");
@@ -438,7 +452,7 @@ function burstFromEnvelope(big) {
 function impact() {
   document.body.classList.remove("shake"); void document.body.offsetWidth; document.body.classList.add("shake");
   $("flash").classList.remove("on"); void $("flash").offsetWidth; $("flash").classList.add("on");
-  sfxBurst(); vibrate([40, 30, 80]);
+  if (!play("open")) sfxBurst(); vibrate([40, 30, 80]);
   $("flap").classList.add("open");
   const hl = $("headline"); hl.classList.remove("in"); hl.classList.add("out");
   document.querySelector(".backdrop").classList.add("hot");
@@ -451,7 +465,7 @@ async function showAmount(coins, label, sub, tag, animate) {
     res.classList.add("up");
     await new Promise((r) => setTimeout(r, 450));
     await countUp($("amount"), coins, reduced ? 200 : 1300);
-    res.classList.add("pop"); vibrate(25);
+    res.classList.add("pop"); vibrate(25); play("coin", .75);
   } else { $("amount").textContent = fmt(coins); res.classList.add("shown"); }
 }
 async function onTapEnvelope() {
@@ -637,6 +651,7 @@ async function load() {
   try { state = await api("/newbie"); }
   catch (e) { $("loading").innerHTML = '<div style="text-align:center;color:#ffe7c2">' + esc(e.message) + '<br><br><button class="cta in" style="width:180px;height:46px;font-size:16px;opacity:1;transform:none" onclick="location.reload()">重新加载</button></div>'; return; }
   $("loading").classList.add("hidden");
+  loadSfx();
   if (!state.enabled) { fullMessage("本期活动已结束<br>敬请期待下一期"); return; }
   $("stage").classList.remove("hidden"); $("more").classList.remove("hidden");
   render();

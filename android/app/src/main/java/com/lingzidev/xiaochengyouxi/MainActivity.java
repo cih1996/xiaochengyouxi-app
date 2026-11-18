@@ -53,7 +53,7 @@ public final class MainActivity extends Activity {
   boolean welcomeShowing;
   CheckInButton checkInButton;
   SoundPool coinSounds;
-  int coinArrivalSound;
+  int coinArrivalSound, packetOpenSound;
   final Handler handler = new Handler(Looper.getMainLooper());
   RewardedAdProvider rewarded;
   AdMediator ads;
@@ -113,6 +113,7 @@ public final class MainActivity extends Activity {
           if (status != 0) android.util.Log.e("CoinSound", "金币音效加载失败，状态：" + status);
         });
     coinArrivalSound = coinSounds.load(this, R.raw.coin_arrival, 1);
+    packetOpenSound = coinSounds.load(this, R.raw.packet_open, 1);
     getWindow().setStatusBarColor(CREAM);
     getWindow().setNavigationBarColor(WHITE);
     getWindow()
@@ -2417,6 +2418,7 @@ public final class MainActivity extends Activity {
               });
         });
     dialog.show();
+    playPacketOpen();
     dialog
         .getWindow()
         .setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(48), dp(360)), -2);
@@ -2673,6 +2675,11 @@ public final class MainActivity extends Activity {
         .setDuration(500)
         .setInterpolator(new OvershootInterpolator(1.2f))
         .start();
+  }
+
+  /** Paper rip + chime when a packet opens. */
+  void playPacketOpen() {
+    coinSounds.play(packetOpenSound, .8f, .8f, 1, 0, 1f);
   }
 
   void playCoinArrival() {

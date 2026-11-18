@@ -158,6 +158,9 @@ public final class WebActivity extends Activity {
     s.setAllowFileAccess(false);
     s.setAllowContentAccess(false);
     s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+    // Activity pages play short sound effects, also when an animation starts on its own (e.g.
+    // the wheel revealing a prize after the video).
+    s.setMediaPlaybackRequiresUserGesture(false);
     s.setUserAgentString(s.getUserAgentString() + " OrangeApp/" + BuildConfig.VERSION_NAME);
     web.addJavascriptInterface(new Bridge(), "OrangeApp");
     web.setWebViewClient(
