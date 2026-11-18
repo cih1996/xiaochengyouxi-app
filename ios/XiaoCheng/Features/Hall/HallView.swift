@@ -6,6 +6,7 @@ struct HallView: View {
     @StateObject private var model = HallModel()
     @State private var activity: ActivityLink?
     @State private var showCheckin = false
+    @State private var debugProduct = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,10 +63,19 @@ struct HallView: View {
             model.userId = session.user?.id
             model.start()
             route(reminders.pendingTarget)
+            #if DEBUG
+            if DebugLaunch.screen == "checkin" { showCheckin = true }
+            if DebugLaunch.screen == "product" { debugProduct = true }
+            #endif
         }
         .onChange(of: model.newbiePopup) { if $0 { model.newbiePopup = false; if activity == nil { activity = .newbie } } }
         .onChange(of: model.checkin?.currentDay) { _ in maybePromptCheckin() }
         .sheet(isPresented: $showCheckin) { CheckinSheet(model: model).compactSheet() }
+        #if DEBUG
+        .background(EmptyView().sheet(isPresented: $debugProduct) {
+            if let p = model.items.compactMap(\.product).first { ProductDetailSheet(product: p) }
+        })
+        #endif
 
         .onDisappear { model.stop() }
         .onChange(of: reminders.pendingTarget) { route($0) }
