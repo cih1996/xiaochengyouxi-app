@@ -1884,9 +1884,24 @@ async fn ledger(State(state): State<AppState>, headers: HeaderMap) -> ApiResult<
     let db = open(&state)?;
     let uid = auth(&db, &headers)?;
     let mut stmt = db.prepare(
-        "SELECT id,title,coins,created_at FROM ledger WHERE user_id=?1 ORDER BY id DESC LIMIT 200",
+        "SELECT id,title,coins,created_at,source FROM ledger WHERE user_id=?1 ORDER BY id DESC LIMIT 200",
     )?;
-    let rows=stmt.query_map([uid],|r|Ok(json!({"id":r.get::<_,i64>(0)?,"title":r.get::<_,String>(1)?,"coins":r.get::<_,i64>(2)?,"created_at":iso(r.get(3)?)})))?.collect::<Result<Vec<_>,_>>()?;
+    // kind: what the App shows as the row icon (the raw source stays server-side).
+    let kind = |source: &str, title: &str| -> &'static str {
+        let prefix = source.split(':').next().unwrap_or("");
+        match prefix {
+            "withdraw" => "withdraw",
+            "withdraw-refund" => "refund",
+            "rain" => "rain",
+            "newbie" => "newbie",
+            "wheel" | "campaign" => "wheel",
+            "reward" => "video",
+            _ if title.contains("签到") => "checkin",
+            _ if title.contains("邀请") => "invite",
+            _ => "other",
+        }
+    };
+    let rows=stmt.query_map([uid],|r|{let source:String=r.get(4)?;let title:String=r.get(1)?;Ok(json!({"id":r.get::<_,i64>(0)?,"kind":kind(&source,&title),"title":title,"coins":r.get::<_,i64>(2)?,"created_at":iso(r.get(3)?)}))})?.collect::<Result<Vec<_>,_>>()?;
     Ok(Json(rows))
 }
 async fn products(State(state): State<AppState>, headers: HeaderMap) -> ApiResult<Vec<Value>> {

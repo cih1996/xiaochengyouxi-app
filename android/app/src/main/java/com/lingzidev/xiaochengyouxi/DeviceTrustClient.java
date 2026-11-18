@@ -130,6 +130,15 @@ final class DeviceTrustClient {
             String base = config.getString("business_url");
             sdkBase = base;
             sdkPins = pins;
+            // Startup never waits on the network for long: a slow DNS/registration must not keep
+            // the user on the splash screen. After 5s the App continues and registration finishes
+            // in the background (business checks still attach their own fresh report).
+            final java.util.concurrent.atomic.AtomicBoolean proceeded = new java.util.concurrent.atomic.AtomicBoolean();
+            Runnable proceed =
+                () -> {
+                  if (proceeded.compareAndSet(false, true) && !activity.isDestroyed()) done.run();
+                };
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(proceed, 5000);
             new Thread(
                     () -> {
                       try {
@@ -145,10 +154,7 @@ final class DeviceTrustClient {
                         android.util.Log.e(
                             "DeviceTrust", "SDK 0.7 startup registration failed", error);
                       }
-                      activity.runOnUiThread(
-                          () -> {
-                            if (!activity.isDestroyed()) done.run();
-                          });
+                      activity.runOnUiThread(proceed);
                     },
                     "device-trust-initialize")
                 .start();

@@ -1622,20 +1622,26 @@ public final class MainActivity extends Activity {
             true);
     flex(header, title);
     if (!current.equals("me")) {
+      // Gold pill: a drawn coin on the left, the balance in warm brown.
       LinearLayout pill = row();
-      pill.setPadding(dp(10), 0, dp(13), 0);
-      pill.setBackground(bg(PALE, 18));
-      add(pill, new LineIcon(this, "coin", 0xffe08a2c), 18, 18);
-      balance = text(number(user.optInt("coins")), 15, RED, true);
-      balance.setPadding(dp(6), 0, 0, 0);
+      pill.setPadding(dp(4), 0, dp(10), 0);
+      GradientDrawable pillBg =
+          new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0xfffff6dc, 0xffffe6ad});
+      pillBg.setCornerRadius(dp(18));
+      pillBg.setStroke(dp(1), 0xffffd27a);
+      pill.setBackground(pillBg);
+      add(pill, new CoinIcon(this), 26, 26);
+      balance = text(number(user.optInt("coins")), 16, 0xff8a4b00, true);
+      balance.setPadding(dp(6), 0, dp(4), 0);
       add(pill, balance, -2, -2);
+      add(pill, new LineIcon(this, "arrow", 0xffd8a560), 12, 12);
       pill.setContentDescription("我的金币 " + user.optInt("coins"));
       pill.setOnClickListener(
           v -> {
             current = "me";
             render();
           });
-      add(header, pill, -2, 36);
+      add(header, pill, -2, 34);
     } else {
       LinearLayout settings = row();
       settings.setPadding(dp(12), 0, dp(4), 0);
@@ -3696,23 +3702,212 @@ public final class MainActivity extends Activity {
     return file;
   }
 
+  /** 金币明细: balance summary, 全部/收入/支出 filter, entries grouped by day. */
   void ledger() {
-    api.get(
-        "/ledger",
-        d -> {
-          JSONArray items = (JSONArray) d;
-          showList(
-              "金币明细",
-              items,
-              (j) ->
-                  j.optString("title")
-                      + "\n"
-                      + (j.optInt("coins") >= 0 ? "+" : "")
-                      + j.optInt("coins")
-                      + " 金币    "
-                      + date(j.optString("created_at")));
-        },
-        this::error);
+    api.get("/ledger", d -> ledgerPage((JSONArray) d, "all"), this::error);
+  }
+
+  void ledgerPage(JSONArray items, String filter) {
+    LinearLayout body = subPage("ledger", "金币明细", CREAM);
+
+    // summary
+    LinearLayout card = col();
+    card.setBackground(grad(0xffff8a4c, RED, 22));
+    card.setPadding(dp(20), dp(18), dp(20), dp(16));
+    LinearLayout top = row();
+    LinearLayout left = col();
+    add(left, label("当前金币", 13, 0xccffffff), -2, -2);
+    gap(left, 6);
+    LinearLayout amountRow = row();
+    add(amountRow, new CoinIcon(this), 28, 28);
+    TextView amount = text(" " + number(user.optInt("coins")), 32, WHITE, true);
+    amountRow.addView(amount);
+    add(left, amountRow, -2, -2);
+    gap(left, 4);
+    add(left, label("约 ¥" + money(user.optInt("coins") / 1000.0), 12, 0xddffffff), -2, -2);
+    flex(top, left);
+    TextView go = text("去提现", 13, RED, true);
+    go.setGravity(Gravity.CENTER);
+    go.setPadding(dp(16), dp(8), dp(16), dp(8));
+    go.setBackground(bg(WHITE, 18));
+    go.setOnClickListener(v -> {
+      press(v);
+      withdraw();
+    });
+    top.addView(go);
+    add(card, top, -1, -2);
+    gap(card, 14);
+    View divider = new View(this);
+    divider.setBackgroundColor(0x33ffffff);
+    add(card, divider, -1, 1);
+    gap(card, 12);
+    LinearLayout stats = row();
+    flex(stats, statCell("今日收入", user.optInt("today_earned")));
+    flex(stats, statCell("累计收入", user.optInt("total_earned")));
+    add(card, stats, -1, -2);
+    add(body, card, -1, -2);
+    gap(body, 16);
+
+    // filter
+    LinearLayout tabs = row();
+    tabs.setPadding(dp(4), dp(4), dp(4), dp(4));
+    tabs.setBackground(bg(0xfff3e6da, 16));
+    String[][] options = {{"all", "全部"}, {"in", "收入"}, {"out", "支出"}};
+    for (String[] o : options) {
+      boolean on = o[0].equals(filter);
+      TextView t = text(o[1], 14, on ? RED : 0xff9c8576, on);
+      t.setGravity(Gravity.CENTER);
+      if (on) t.setBackground(bg(WHITE, 13));
+      t.setOnClickListener(v -> ledgerPage(items, o[0]));
+      tabs.addView(t, new LinearLayout.LayoutParams(0, dp(34), 1));
+    }
+    add(body, tabs, -1, -2);
+    gap(body, 14);
+
+    // grouped list
+    SimpleDateFormat in = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.CHINA);
+    in.setTimeZone(TimeZone.getTimeZone("UTC"));
+    SimpleDateFormat dayKey = new SimpleDateFormat("yyyy-MM-dd", Locale.CHINA);
+    SimpleDateFormat dayLabel = new SimpleDateFormat("M月d日 EEEE", Locale.CHINA);
+    SimpleDateFormat clock = new SimpleDateFormat("HH:mm", Locale.CHINA);
+    TimeZone bj = TimeZone.getTimeZone("Asia/Shanghai");
+    dayKey.setTimeZone(bj);
+    dayLabel.setTimeZone(bj);
+    clock.setTimeZone(bj);
+    String today = dayKey.format(new java.util.Date());
+    String yesterday = dayKey.format(new java.util.Date(System.currentTimeMillis() - 86_400_000L));
+    String currentDay = "";
+    LinearLayout group = null;
+    TextView groupSum = null;
+    long sum = 0;
+    int shown = 0;
+    for (int i = 0; i < items.length(); i++) {
+      JSONObject j = items.optJSONObject(i);
+      int coins = j.optInt("coins");
+      if (filter.equals("in") && coins < 0 || filter.equals("out") && coins >= 0) continue;
+      java.util.Date at;
+      try {
+        at = in.parse(j.optString("created_at"));
+      } catch (ParseException e) {
+        continue;
+      }
+      String key = dayKey.format(at);
+      if (!key.equals(currentDay)) {
+        if (groupSum != null) groupSum.setText(sumText(sum));
+        currentDay = key;
+        sum = 0;
+        LinearLayout head = row();
+        head.setPadding(dp(4), 0, dp(4), dp(8));
+        String name = key.equals(today) ? "今天" : key.equals(yesterday) ? "昨天" : dayLabel.format(at);
+        flex(head, text(name, 14, INK, true));
+        groupSum = label("", 12, MUTED);
+        head.addView(groupSum);
+        if (shown > 0) gap(body, 12);
+        add(body, head, -1, -2);
+        group = col();
+        group.setBackground(bg(WHITE, 18));
+        group.setPadding(dp(14), dp(4), dp(14), dp(4));
+        add(body, group, -1, -2);
+      } else if (group != null) {
+        View sep = new View(this);
+        sep.setBackgroundColor(0xfff6ede4);
+        LinearLayout.LayoutParams sp = lp(-1, 1);
+        sp.leftMargin = dp(50);
+        group.addView(sep, sp);
+      }
+      sum += coins;
+      group.addView(ledgerRow(j, clock.format(at)));
+      shown++;
+    }
+    if (groupSum != null) groupSum.setText(sumText(sum));
+    if (shown == 0) {
+      LinearLayout empty = col();
+      empty.setGravity(Gravity.CENTER_HORIZONTAL);
+      empty.setPadding(dp(20), dp(40), dp(20), dp(40));
+      empty.setBackground(bg(WHITE, 18));
+      add(empty, new CoinIcon(this), 48, 48);
+      gap(empty, 12);
+      add(empty, text(filter.equals("out") ? "还没有支出记录" : "还没有金币记录", 15, INK, true), -2, -2);
+      gap(empty, 6);
+      add(empty, label("拆红包、签到、看视频都能得金币", 13, MUTED), -2, -2);
+      add(body, empty, -1, -2);
+    } else {
+      TextView foot = label("仅展示最近 200 条", 12, 0xffc4b2a6);
+      foot.setGravity(Gravity.CENTER);
+      foot.setPadding(0, dp(14), 0, 0);
+      add(body, foot, -1, -2);
+    }
+  }
+
+  String sumText(long sum) {
+    return sum >= 0 ? "收入 " + number((int) sum) : "支出 " + number((int) -sum);
+  }
+
+  LinearLayout statCell(String name, int value) {
+    LinearLayout c = col();
+    add(c, text(number(value), 18, WHITE, true), -2, -2);
+    gap(c, 3);
+    add(c, label(name, 12, 0xccffffff), -2, -2);
+    return c;
+  }
+
+  View ledgerRow(JSONObject j, String time) {
+    String kind = j.optString("kind", "other");
+    int coins = j.optInt("coins");
+    String icon;
+    int tint;
+    switch (kind) {
+      case "withdraw":
+        icon = "clock";
+        tint = 0xff8c7b70;
+        break;
+      case "refund":
+        icon = "back";
+        tint = 0xff2f8a4c;
+        break;
+      case "checkin":
+        icon = "check";
+        tint = 0xffff8a3d;
+        break;
+      case "rain":
+      case "newbie":
+        icon = "gift";
+        tint = 0xffe8262b;
+        break;
+      case "wheel":
+        icon = "notice";
+        tint = 0xff8e44ad;
+        break;
+      case "video":
+        icon = "gift";
+        tint = 0xfff65331;
+        break;
+      case "invite":
+        icon = "me";
+        tint = 0xff13a36f;
+        break;
+      default:
+        icon = "coin";
+        tint = 0xffe0a020;
+    }
+    LinearLayout r = row();
+    r.setPadding(0, dp(12), 0, dp(12));
+    FrameLayout disc = new FrameLayout(this);
+    disc.setBackground(bg((tint & 0x00ffffff) | 0x1f000000, 18));
+    disc.addView(new LineIcon(this, icon, tint), new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER));
+    add(r, disc, 36, 36);
+    LinearLayout mid = col();
+    mid.setPadding(dp(12), 0, dp(8), 0);
+    TextView title = text(j.optString("title"), 15, INK, false);
+    title.setSingleLine(true);
+    title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+    add(mid, title, -1, -2);
+    gap(mid, 4);
+    add(mid, label(time, 12, 0xffbba596), -2, -2);
+    flex(r, mid);
+    TextView amount = text((coins >= 0 ? "+" : "") + number(coins), 17, coins >= 0 ? 0xffe8452b : INK, true);
+    r.addView(amount);
+    return r;
   }
 
   String withdrawalsReturn = "me";
@@ -3977,7 +4172,7 @@ public final class MainActivity extends Activity {
   /** Full page with a back arrow and a title; returns the scrollable body. */
   LinearLayout subPage(String key, String title, int background) {
     authBack = null;
-    if (!current.equals("withdraw") && !current.equals("payout") && !current.equals("withdraw_done")) subReturn = current;
+    if (!current.equals("withdraw") && !current.equals("payout") && !current.equals("withdraw_done") && !current.equals("ledger")) subReturn = current;
     current = key;
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
@@ -4460,7 +4655,7 @@ public final class MainActivity extends Activity {
       closeSettings();
     } else if (current.equals("withdrawals")) {
       closeWithdrawals();
-    } else if (current.equals("withdraw") || current.equals("payout") || current.equals("withdraw_done")) {
+    } else if (current.equals("withdraw") || current.equals("payout") || current.equals("withdraw_done") || current.equals("ledger")) {
       closeSubPage();
     } else if (welcomeShowing) {
       finish();
