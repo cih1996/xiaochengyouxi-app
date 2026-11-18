@@ -7,30 +7,42 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import com.bytedance.sdk.openadsdk.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+/**
+ * Hall feed cards. Each hall item carries the server's plan ("ads"); the mediator tries the
+ * networks in order. A card that gets no ad quietly disappears — no error is shown to the user.
+ */
 final class NativeFeedAds {
   private final Activity activity;
-  private final Api.Failure failure;
+  private final AdMediator mediator;
   private final Consumer<String> removed;
   private final Map<String, Entry> ads = new LinkedHashMap<>();
   private boolean foreground;
 
-  NativeFeedAds(Activity activity, Api.Failure failure, Consumer<String> removed) {
+  NativeFeedAds(Activity activity, AdMediator mediator, Consumer<String> removed) {
     this.activity = activity;
-    this.failure = failure;
+    this.mediator = mediator;
     this.removed = removed;
   }
 
-  View card(String id, String codeId, float widthDp) {
+  View card(JSONObject item, float widthDp) {
+    String id = item.optString("id");
     Entry entry = ads.get(id);
     if (entry == null) {
-      entry = new Entry(id, codeId, widthDp);
+      JSONArray plan = item.optJSONArray("ads");
+      if (plan == null && !item.optString("ad_code_id").isEmpty()) {
+        plan = new JSONArray();
+        plan.put(
+            Api.object(
+                "network", "csj", "app_id", BuildConfig.CSJ_APP_ID, "code_id", item.optString("ad_code_id")));
+      }
+      entry = new Entry(id, plan == null ? new JSONArray() : plan, widthDp);
       ads.put(id, entry);
     }
     if (entry.card.getParent() instanceof ViewGroup) {
@@ -48,6 +60,7 @@ final class NativeFeedAds {
 
   void pause() {
     foreground = false;
+    mediator.flush();
   }
 
   void destroyAll() {
@@ -56,112 +69,44 @@ final class NativeFeedAds {
   }
 
   private void activate(Entry entry) {
-    if (!foreground || entry.removed || !entry.card.isAttachedToWindow()) return;
-    if (entry.ad != null && !entry.rendering) {
-      entry.rendering = true;
-      entry.ad.render();
-    } else if (!entry.attempted) {
-      entry.attempted = true;
-      if (!TTAdSdk.isSdkReady()) {
-        reject(entry, "穿山甲 SDK 尚未初始化成功");
-        return;
-      }
-      TTAdSdk.getAdManager()
-          .createAdNative(activity)
-          .loadNativeExpressAd(
-              new AdSlot.Builder()
-                  .setCodeId(entry.codeId)
-                  .setAdCount(1)
-                  .setAdLoadType(TTAdLoadType.LOAD)
-                  .setExpressViewAcceptedSize(entry.widthDp, 0)
-                  .build(),
-              new TTAdNative.NativeExpressAdListener() {
-                @Override
-                public void onError(int code, String message) {
-                  ui(() -> reject(entry, "穿山甲信息流加载（" + code + "）：" + message));
-                }
+    if (!foreground || entry.removed || entry.attempted || !entry.card.isAttachedToWindow()) return;
+    entry.attempted = true;
+    int widthPx = Math.max(dp(200), dp(entry.widthDp) - dp(24));
+    mediator.loadFeed(
+        activity,
+        entry.plan,
+        widthPx,
+        new AdMediator.FeedResult() {
+          @Override
+          public void rendered(View view, Runnable destroy) {
+            if (entry.removed) {
+              destroy.run();
+              return;
+            }
+            entry.destroyAd = destroy;
+            if (view.getParent() instanceof ViewGroup) ((ViewGroup) view.getParent()).removeView(view);
+            entry.host.removeAllViews();
+            entry.host.addView(view, new FrameLayout.LayoutParams(-1, -2));
+            entry.card.setVisibility(View.VISIBLE);
+          }
 
-                @Override
-                public void onNativeExpressAdLoad(List<TTNativeExpressAd> loaded) {
-                  activity.runOnUiThread(
-                      () -> {
-                        if (entry.removed || activity.isDestroyed()) {
-                          for (TTNativeExpressAd ad : loaded) ad.destroy();
-                          return;
-                        }
-                        if (loaded.isEmpty()) {
-                          reject(entry, "穿山甲信息流返回空广告列表");
-                          return;
-                        }
-                        entry.ad = loaded.get(0);
-                        for (int i = 1; i < loaded.size(); i++) loaded.get(i).destroy();
-                        entry.ad.setExpressInteractionListener(
-                            new TTNativeExpressAd.ExpressAdInteractionListener() {
-                              @Override
-                              public void onAdClicked(View view, int type) {}
+          @Override
+          public void empty() {
+            drop(entry);
+          }
 
-                              @Override
-                              public void onAdShow(View view, int type) {}
-
-                              @Override
-                              public void onRenderFail(View view, String message, int code) {
-                                ui(() -> reject(entry, "穿山甲信息流渲染（" + code + "）：" + message));
-                              }
-
-                              @Override
-                              public void onRenderSuccess(View view, float width, float height) {
-                                ui(
-                                    () -> {
-                                      if (entry.removed) return;
-                                      if (view.getParent() instanceof ViewGroup)
-                                        ((ViewGroup) view.getParent()).removeView(view);
-                                      entry.host.removeAllViews();
-                                      entry.host.addView(
-                                          view, new FrameLayout.LayoutParams(-1, -2));
-                                      entry.card.setVisibility(View.VISIBLE);
-                                    });
-                              }
-                            });
-                        entry.ad.setDislikeCallback(
-                            activity,
-                            new TTAdDislike.DislikeInteractionCallback() {
-                              @Override
-                              public void onShow() {}
-
-                              @Override
-                              public void onCancel() {}
-
-                              @Override
-                              public void onSelected(int position, String value, boolean enforce) {
-                                ui(
-                                    () -> {
-                                      if (entry.removed) return;
-                                      entry.destroy();
-                                      ads.remove(entry.id);
-                                      removed.accept(entry.id);
-                                    });
-                              }
-                            });
-                        activate(entry);
-                      });
-                }
-              });
-    }
+          @Override
+          public void dismissed() {
+            drop(entry);
+          }
+        });
   }
 
-  private void reject(Entry entry, String message) {
+  private void drop(Entry entry) {
     if (entry.removed) return;
     entry.destroy();
     ads.remove(entry.id);
     removed.accept(entry.id);
-    failure.failed(message);
-  }
-
-  private void ui(Runnable action) {
-    activity.runOnUiThread(
-        () -> {
-          if (!activity.isDestroyed()) action.run();
-        });
   }
 
   private int dp(float value) {
@@ -169,16 +114,17 @@ final class NativeFeedAds {
   }
 
   private final class Entry {
-    final String id, codeId;
+    final String id;
+    final JSONArray plan;
     final float widthDp;
     final LinearLayout card;
     final FrameLayout host;
-    TTNativeExpressAd ad;
-    boolean attempted, rendering, removed;
+    Runnable destroyAd;
+    boolean attempted, removed;
 
-    Entry(String id, String codeId, float widthDp) {
+    Entry(String id, JSONArray plan, float widthDp) {
       this.id = id;
-      this.codeId = codeId;
+      this.plan = plan;
       this.widthDp = widthDp;
       card = new LinearLayout(activity);
       card.setOrientation(LinearLayout.VERTICAL);
@@ -200,8 +146,13 @@ final class NativeFeedAds {
 
     void destroy() {
       removed = true;
-      if (ad != null) ad.destroy();
-      ad = null;
+      if (destroyAd != null) {
+        try {
+          destroyAd.run();
+        } catch (RuntimeException ignored) {
+        }
+      }
+      destroyAd = null;
       host.removeAllViews();
       card.setVisibility(View.GONE);
       if (card.getParent() instanceof ViewGroup) ((ViewGroup) card.getParent()).removeView(card);

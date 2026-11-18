@@ -56,7 +56,7 @@ public final class MainActivity extends Activity {
   int coinArrivalSound;
   final Handler handler = new Handler(Looper.getMainLooper());
   RewardedAdProvider rewarded;
-  PangleAds csjAds;
+  AdMediator ads;
   NativeFeedAds nativeFeeds;
   HallRainController rain;
   FrameLayout hallSurface;
@@ -93,10 +93,10 @@ public final class MainActivity extends Activity {
                   if (current.equals("hall")) render();
                 });
     updates = new AppUpdates(this, api, state);
-    csjAds = new PangleAds();
-    nativeFeeds = new NativeFeedAds(this, this::error, this::removeHallItem);
+    ads = new AdMediator(api);
+    nativeFeeds = new NativeFeedAds(this, ads, this::removeHallItem);
     rain = new HallRainController(this, api);
-    rewarded = BuildConfig.ADS_ENABLED ? csjAds : new RewardedAdProvider.Mock();
+    rewarded = BuildConfig.ADS_ENABLED ? ads : new RewardedAdProvider.Mock();
     coinSounds =
         new SoundPool.Builder()
             .setMaxStreams(1)
@@ -217,8 +217,12 @@ public final class MainActivity extends Activity {
     else loadAccount();
   }
 
+  static final String PRIVACY_ACCEPTED = "privacy_accepted_v2";
+
   void confirmPrivacy() {
-    if (api.preferences.getBoolean("privacy_accepted", false)
+    // Bumped when the policy adds third parties (0.3.21: 快手/百度/优量汇 ad SDKs, 腾讯云短信),
+    // so users who agreed to the older text are asked once more.
+    if (api.preferences.getBoolean(PRIVACY_ACCEPTED, false)
         && api.preferences.getBoolean(DeviceTrustClient.CONSENT, false)) {
       afterPrivacy();
       return;
@@ -228,14 +232,14 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
             .setTitle("欢迎来到小橙有喜")
             .setMessage(
-                "广西奇易电子商务有限公司为你提供服务。请阅读隐私政策和用户协议。为提供福利、广告与账户安全服务，我们使用穿山甲广告 SDK 和知衡 DeviceTrust"
+                "广西奇易电子商务有限公司为你提供服务。请阅读隐私政策和用户协议。为提供福利、广告与账户安全服务，我们使用穿山甲、快手、百度、优量汇广告 SDK 和知衡 DeviceTrust"
                     + " SDK，处理必要的设备、系统组件、网络及广告互动信息；安全核验会读取设备标识（ANDROID_ID 及 Widevine 设备标识的不可逆摘要，原值不上传），检测指定风险工具是否安装、无障碍服务状态及本机调试端口，读取当前局域网的内网地址、网关和 DNS，并按核验需要检测同一网段内其他设备是否在线或开启无线调试，不读取应用列表。登录后记录本应用的页面访问、点击、停留与触点，用于账户安全和服务改进。不会采集输入内容、密码短信、屏幕画面或其他应用的使用内容。")
             .setPositiveButton(
                 "同意并继续",
                 (dialog, which) -> {
                   api.preferences
                       .edit()
-                      .putBoolean("privacy_accepted", true)
+                      .putBoolean(PRIVACY_ACCEPTED, true)
                       .putBoolean(DeviceTrustClient.CONSENT, true)
                       .apply();
                   afterPrivacy();
@@ -266,6 +270,7 @@ public final class MainActivity extends Activity {
           try {
             api.deviceTrustEnabled = ((JSONObject) result).getBoolean("device_trust_enabled");
             api.authConfig = ((JSONObject) result).optJSONObject("auth");
+            api.adsConfig = ((JSONObject) result).optJSONObject("ads");
             activities.configure((JSONObject) result);
             api.configurationLoaded = true;
             api.deviceTrust.initialize(
@@ -298,10 +303,8 @@ public final class MainActivity extends Activity {
   }
 
   void startAdSdk() {
-    csjAds.initialize(
-        this,
-        () -> android.util.Log.i("PangleAds", "SDK ready"),
-        message -> android.util.Log.e("PangleAds", "SDK init failed: " + message));
+    // Starts every network the server enabled; which one serves a request is decided per request.
+    ads.start(this, api.adsConfig);
   }
 
   void openPolicy(String path) {
@@ -2090,7 +2093,7 @@ public final class MainActivity extends Activity {
                 - 64;
         add(
             content,
-            nativeFeeds.card(item.optString("id"), item.optString("ad_code_id"), widthDp),
+            nativeFeeds.card(item, widthDp),
             -1,
             -2);
         break;
@@ -2350,7 +2353,11 @@ public final class MainActivity extends Activity {
         message -> {
           if (!isDestroyed() && token.equals(api.token)) {
             api.behavior.external(0);
-            rewardError(message + "\n奖励编号：" + id);
+            if (AdMediator.NO_AD.equals(message)) {
+              // Plain "no ad right now" — identical whether no network filled or ads are withheld.
+              rewardUiBusy = false;
+              tip(AdMediator.NO_AD);
+            } else rewardError(message + "\n奖励编号：" + id);
           }
         });
   }
@@ -3861,7 +3868,7 @@ public final class MainActivity extends Activity {
     api.behavior.destroy();
     updates.destroy();
     endHallSession();
-    csjAds.dispose();
+    ads.flush();
     coinSounds.release();
     super.onDestroy();
   }

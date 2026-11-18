@@ -13,6 +13,9 @@ import BehaviorAdmin from "./BehaviorAdmin.vue";
 import ActivityAdmin from "./ActivityAdmin.vue";
 import HomeLayoutAdmin from "./HomeLayoutAdmin.vue";
 import WithdrawRulesAdmin from "./WithdrawRulesAdmin.vue";
+import AdConfigAdmin from "./AdConfigAdmin.vue";
+import AdStats from "./AdStats.vue";
+import SmsAdmin from "./SmsAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
 defineEmits(["back"]);
@@ -58,6 +61,9 @@ const rainAdmin = ref(null),
 const activityPanel = ref(null);
 const homePanel = ref(null);
 const withdrawRulesPanel = ref(null);
+const adConfigPanel = ref(null);
+const adStatsPanel = ref(null);
+const smsPanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -86,10 +92,16 @@ const items = [
   { id: "activity-config", label: "活动配置", icon: "spark" },
   { id: "home-layout", label: "首页入口", icon: "grid" },
   { id: "withdraw-rules", label: "提现档位", icon: "wallet" },
+  { id: "ad-config", label: "广告配置", icon: "play" },
+  { id: "ad-stats", label: "广告统计", icon: "list" },
+  { id: "sms", label: "短信通道", icon: "mail" },
   { id: "invitations", label: "邀请管理", icon: "send" },
   { id: "settings", label: "运营设置", icon: "settings" },
   { id: "release", label: "版本发布", icon: "download" },
 ];
+// Deep link: /admin?tab=ad-config opens that page directly.
+const initialTab = new URLSearchParams(location.search).get("tab");
+if (initialTab && items.some((i) => i.id === initialTab)) tab.value = initialTab;
 const groups = [
   {
     id: "people",
@@ -124,10 +136,16 @@ const groups = [
     children: ["rewards", "withdrawals", "withdraw-rules", "account-deletions"],
   },
   {
+    id: "ads",
+    label: "广告管理",
+    icon: "play",
+    children: ["ad-config", "ad-stats"],
+  },
+  {
     id: "system",
     label: "系统设置",
     icon: "settings",
-    children: ["settings", "release"],
+    children: ["settings", "sms", "release"],
   },
 ];
 const userCenterTabs = ["user-overview", "registrations", "activity"];
@@ -280,6 +298,9 @@ async function refreshCurrent() {
   else if (tab.value === "activity-config") await activityPanel.value.refresh();
   else if (tab.value === "home-layout") await homePanel.value?.refresh();
   else if (tab.value === "withdraw-rules") await withdrawRulesPanel.value?.refresh();
+  else if (tab.value === "ad-config") await adConfigPanel.value?.refresh();
+  else if (tab.value === "ad-stats") await adStatsPanel.value?.refresh();
+  else if (tab.value === "sms") await smsPanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -672,6 +693,24 @@ onMounted(load);
         <HomeLayoutAdmin
           v-if="tab === 'home-layout'"
           ref="homePanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <AdConfigAdmin
+          v-if="tab === 'ad-config'"
+          ref="adConfigPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <AdStats
+          v-if="tab === 'ad-stats'"
+          ref="adStatsPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <SmsAdmin
+          v-if="tab === 'sms'"
+          ref="smsPanel"
           :api="api"
           @unauthorized="fail"
         />

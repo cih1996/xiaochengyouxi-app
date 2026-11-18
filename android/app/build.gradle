@@ -6,7 +6,7 @@ android {
     namespace 'com.lingzidev.xiaochengyouxi'
     compileSdk 35
     defaultConfig {
-        applicationId 'com.lingzidev.xiaochengyouxi'; minSdk 24; targetSdk 35; versionCode 23; versionName '0.3.20'
+        applicationId 'com.lingzidev.xiaochengyouxi'; minSdk 24; targetSdk 35; versionCode 24; versionName '0.3.21'
         buildConfigField 'String', 'DEVICE_TRUST_APP_ID', '"24befb89afb1186d8dc492c722ba302d40b148e8f5ca5a5f"'
         buildConfigField 'String', 'CSJ_APP_ID', '"5931950"'
         buildConfigField 'String', 'CSJ_REWARD_SLOT', '"993606639"'
@@ -43,7 +43,11 @@ android {
 }
 dependencies {
     implementation files('libs/device-trust-base-0.7.6.aar', 'libs/device-trust-secure-0.7.6.aar')
+    // Ad networks (official AARs, unmodified; hashes in android/docs/AD-NETWORKS.md).
     implementation files('libs/open_ad_sdk_7.8.1.4.aar')
+    implementation files('libs/kssdklite-ad-5.9.10.1.aar')
+    implementation files('libs/Baidu_MobAds_SDK-release_v9.460.aar')
+    implementation files('libs/GDTSDK.unionNormal.4.640.1510.aar')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
 }

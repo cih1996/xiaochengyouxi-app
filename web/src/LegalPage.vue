@@ -35,26 +35,35 @@ defineProps({ type: String });
         </p>
         <h2>三、广告与第三方服务</h2>
         <p>
-          Android App 的开屏、激励视频和信息流广告使用穿山甲广告
-          SDK，提供方为北京巨量引擎网络技术有限公司及其关联方。SDK
-          用于展示广告、统计广告效果和防止作弊，其信息处理说明涵盖设备型号、系统与屏幕信息、设备标识（如
-          AndroidID、OAID）、网络状态、IP
-          地址、应用信息、广告展示点击记录及崩溃性能数据，具体以接入版本和授权配置为准。
+          Android App 的激励视频和信息流广告接入以下广告 SDK，每次请求由服务端按运营配置选择其中一家：
+        </p>
+        <ul>
+          <li>
+            穿山甲广告 SDK，提供方为北京巨量引擎网络技术有限公司及其关联方，详见
+            <a href="https://www.csjplatform.com/privacy/partner" target="_blank" rel="noopener">穿山甲广告 SDK 隐私政策</a>；
+          </li>
+          <li>
+            快手广告 SDK（快手联盟），提供方为北京快手广告有限公司及其关联方，详见
+            <a href="https://u.kuaishou.com/" target="_blank" rel="noopener">快手联盟</a>公布的 SDK 隐私政策；
+          </li>
+          <li>
+            百度广告 SDK（百青藤），提供方为北京百度网讯科技有限公司及其关联方，详见
+            <a href="https://union.baidu.com/bqt/#/legal/policies" target="_blank" rel="noopener">百度联盟隐私政策</a>；
+          </li>
+          <li>
+            优量汇广告 SDK，提供方为深圳市腾讯计算机系统有限公司及其关联方，详见
+            <a href="https://e.qq.com/dev/help_detail.html?cid=2005&pid=5983" target="_blank" rel="noopener">优量汇 SDK 隐私保护声明</a>。
+          </li>
+        </ul>
+        <p>
+          SDK 用于展示广告、统计广告效果和防止作弊，可能处理设备型号、系统与屏幕信息、设备标识（如 OAID）、网络状态、IP
+          地址、应用信息、广告展示点击记录及崩溃性能数据，具体以接入版本和授权配置为准。当前 Android
+          版本已通过各 SDK 的隐私配置关闭定位、应用安装列表、电话状态、Wi-Fi 详情、MAC
+          地址、麦克风及传感器等可选读取，不申请电话、定位等敏感权限，并关闭个性化广告。观看激励视频时，我们会把您的账号编号和本次奖励编号传给提供该广告的平台，平台在您看完后回传给我们核对奖励。SDK
+          在您同意 App 隐私政策后初始化。您可以在手机系统设置中管理已授予的权限，也可以停止使用相关广告功能。
         </p>
         <p>
-          当前 Android 版本已通过 SDK
-          配置关闭定位、应用安装列表、电话状态、Wi-Fi
-          详情、AndroidID、麦克风及传感器等可选读取，关闭个性化广告，不向 SDK
-          提供自定义设备标识。SDK
-          仍会处理提供广告服务所需的设备、网络、广告交互与性能信息。SDK 在您同意
-          App
-          隐私政策后初始化。您可以在手机系统设置中管理已授予的权限，也可以停止使用相关广告功能。详见
-          <a
-            href="https://www.csjplatform.com/privacy/partner"
-            target="_blank"
-            rel="noopener"
-            >穿山甲广告 SDK 隐私政策</a
-          >。
+          获取短信验证码时，我们通过腾讯云短信服务（腾讯云计算（北京）有限责任公司）向您的手机号发送验证码。
         </p>
         <p>
           网页不加载 Android 广告 SDK。广告领取功能按页面和 App

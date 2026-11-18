@@ -1,0 +1,1 @@
+TC3-HMAC-SHA256 Credential=AKIDEXAMPLE/2023-11-14/sms/tc3_request, SignedHeaders=content-type;host, Signature=4395f412195d921571ccf2fb8c81a329ec2f4f49fec8447db32d2511837b61cd

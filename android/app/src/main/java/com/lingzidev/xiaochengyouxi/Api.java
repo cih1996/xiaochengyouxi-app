@@ -33,6 +33,8 @@ final class Api {
   boolean deviceTrustEnabled;
   /** Server-provided login/registration options from /api/config (register_mode, login_default). */
   org.json.JSONObject authConfig;
+  /** /config "ads": app ids of the networks the server enabled. */
+  org.json.JSONObject adsConfig;
   boolean updateRequired;
   String token;
 

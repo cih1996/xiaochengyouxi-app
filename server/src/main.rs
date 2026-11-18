@@ -23,6 +23,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
 };
 use uuid::Uuid;
+mod ad_mediation;
 mod admin_account;
 mod app_config;
 mod behavior_audit;
@@ -39,6 +40,7 @@ mod product_admin;
 mod rain;
 mod reward_policy;
 mod risk;
+mod sms_channel;
 mod user_admin;
 mod user_stats;
 mod withdraw_rules;
@@ -177,6 +179,8 @@ async fn public_config(State(state): State<AppState>) -> ApiResult<Value> {
     let config = &state.config;
     let mut result = json!({"app_name":"小橙有喜","operator_name":"广西奇易电子商务有限公司","android_package":"com.lingzidev.xiaochengyouxi","environment":if config.production {"production"} else {"local"},"admin_auth_required":admin_account::required(&state,&open(&state)?)?,"ad_mode":config.ad_mode,"sms_mode":"mock","payment_mode":"mock","invite_required":true,"invite_sms_required":false});
     result["device_trust_enabled"] = json!(config.device_trust.is_some());
+    result["ads"] = ad_mediation::public_networks(&open(&state)?)?;
+    result["sms_mode"] = json!(if sms_channel::active(&open(&state)?)? { "tencent" } else { "mock" });
     result["auth"] = json!({"register_mode":register_mode(&open(&state)?)?,"login_default":"password","login_methods":["password","sms"]});
     if let Some(url) = &config.app_download_url {
         result["app_download_url"] = json!(url);
@@ -316,7 +320,11 @@ struct SmsInput {
     phone: String,
     purpose: String,
 }
-async fn sms(State(state): State<AppState>, Json(input): Json<SmsInput>) -> ApiResult<Value> {
+async fn sms(
+    State(state): State<AppState>,
+    Extension(context): Extension<RequestContext>,
+    Json(input): Json<SmsInput>,
+) -> ApiResult<Value> {
     validate_phone(&input.phone)?;
     let purpose = match input.purpose.as_str() {
         "register" => "register",
@@ -324,21 +332,37 @@ async fn sms(State(state): State<AppState>, Json(input): Json<SmsInput>) -> ApiR
         "reset" | "reset-password" => "reset",
         _ => return Err(invalid("验证码用途应为 register 或 reset")),
     };
-    // Local development keeps a fixed, returned code. Production never returns or logs the code:
-    // it is random per request and is delivered only by the SMS channel (to be connected here).
-    let local = !state.config.production;
-    let code = if local {
+    // Real delivery once the admin turns the Tencent Cloud channel on. Without it, local
+    // development keeps a fixed, returned code; production generates a random code that is
+    // never returned or logged (so nothing changes in the app when the channel is switched on).
+    let (channel, expires) = {
+        let db = open(&state)?;
+        let channel = sms_channel::active(&db)?;
+        if channel || state.config.production {
+            sms_channel::check_limits(&db, &input.phone, &context.client_ip)?;
+        }
+        (channel, sms_channel::expire_seconds(&db)?)
+    };
+    let mock = !channel && !state.config.production;
+    let code = if mock {
         "123456".to_string()
     } else {
         use rand_core::RngCore;
         format!("{:06}", OsRng.next_u32() % 1_000_000)
     };
-    open(&state)?.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,?2,?3,?4) ON CONFLICT(phone,purpose) DO UPDATE SET code=excluded.code,expires_at=excluded.expires_at", params![input.phone,purpose,code,now()+300])?;
-    if local {
-        return Ok(Json(json!({"code":code,"expires_in":300,"mode":"mock"})));
+    if channel {
+        sms_channel::send(&state, &input.phone, purpose, &code, &context.client_ip).await?;
     }
-    eprintln!("短信通道尚未接入：{purpose} 验证码已生成但未实际下发");
-    Ok(Json(json!({"expires_in":300,"sent":true})))
+    let db = open(&state)?;
+    db.execute("INSERT INTO sms_codes(phone,purpose,code,expires_at) VALUES(?1,?2,?3,?4) ON CONFLICT(phone,purpose) DO UPDATE SET code=excluded.code,expires_at=excluded.expires_at", params![input.phone,purpose,code,now()+expires])?;
+    if mock {
+        return Ok(Json(json!({"code":code,"expires_in":expires,"mode":"mock"})));
+    }
+    if !channel {
+        sms_channel::record_unsent(&db, &input.phone, purpose, &context.client_ip)?;
+        eprintln!("短信通道未开启：{purpose} 验证码已生成但未实际下发");
+    }
+    Ok(Json(json!({"expires_in":expires,"sent":true})))
 }
 #[derive(Deserialize)]
 struct RegisterInput {
@@ -1183,7 +1207,7 @@ async fn reward_start(
                 |r| Ok((r.get(0)?, r.get(1)?)),
             )?;
             business_guard::dispatch(state.clone(), sid.clone());
-            return Ok(Json(reward_payload(&sid, uid, title, reward, &provider)));
+            return Ok(Json(reward_payload(&state, &db, &sid, uid, title, reward, &provider)?));
         }
         uid
     };
@@ -1202,7 +1226,7 @@ async fn reward_start(
             params![sid, uid],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
-        return Ok(Json(reward_payload(sid, uid, title, reward, &provider)));
+        return Ok(Json(reward_payload(&state, &tx, sid, uid, title, reward, &provider)?));
     }
     let grand = rain::grand_task(&state, &tx, uid, &input.task_id)?;
     if let Some(existing) = grand.as_ref().and_then(|v| v.session_id.as_deref()) {
@@ -1212,8 +1236,8 @@ async fn reward_start(
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
         return Ok(Json(reward_payload(
-            existing, uid, title, reward, &provider,
-        )));
+            &state, &tx, existing, uid, title, reward, &provider,
+        )?));
     }
     let event = business_guard::validate_local(&state, &tx, &headers, uid, "reward", actual)?;
     let claimed: i64 = tx.query_row(
@@ -1248,19 +1272,41 @@ async fn reward_start(
     )?;
     tx.commit()?;
     Ok(Json(reward_payload(
+        &state,
+        &db,
         &sid,
         uid,
         title,
         quote.coins,
         &state.config.ad_mode,
-    )))
+    )?))
 }
-fn reward_payload(id: &str, uid: i64, title: &str, reward: i64, provider: &str) -> Value {
-    if provider == "csj" {
-        json!({"id":id,"operation_id":id,"reward":reward,"title":title,"mode":"csj","user_id":uid.to_string(),"ad_app_id":"5931950","ad_code_id":"993606639","media_extra":json!({"reward_session_id":id}).to_string()})
-    } else {
-        json!({"id":id,"operation_id":id,"reward":reward,"duration_seconds":5,"title":title,"mode":"mock"})
+/// Real-ad sessions carry the server's ad plan: the ordered networks the app may try.
+/// An empty plan (switched off, or a risk decision) looks to the app like ordinary "no fill".
+fn reward_payload(
+    state: &AppState,
+    db: &Connection,
+    id: &str,
+    uid: i64,
+    title: &str,
+    reward: i64,
+    provider: &str,
+) -> Result<Value, ApiError> {
+    if provider != "csj" {
+        return Ok(
+            json!({"id":id,"operation_id":id,"reward":reward,"duration_seconds":5,"title":title,"mode":"mock"}),
+        );
     }
+    let plan = ad_mediation::plan(state, db, uid, "rewarded", id)?;
+    let mut payload = json!({"id":id,"operation_id":id,"reward":reward,"title":title,"mode":"csj","user_id":uid.to_string(),"media_extra":json!({"reward_session_id":id}).to_string(),"plan":plan});
+    // Clients before 0.3.21 only know 穿山甲 and read these two fields. They keep their old
+    // behaviour (an empty code would make them show a visible load error); 0.3.21+ ignore
+    // these and follow "plan", so the quiet risk block applies once users update.
+    if let Some((app_id, code_id)) = ad_mediation::legacy_csj(db)? {
+        payload["ad_app_id"] = json!(app_id);
+        payload["ad_code_id"] = json!(code_id);
+    }
+    Ok(payload)
 }
 async fn reward_status(
     State(state): State<AppState>,
@@ -1441,25 +1487,24 @@ async fn reward_complete(
         json!({"operation_id":id,"reward":reward,"user":user(&db,uid)?}),
     ))
 }
-struct CallbackDecision {
-    valid: bool,
-    reason: &'static str,
-}
-fn callback_rejected(reason: &'static str) -> CallbackDecision {
+fn callback_rejected(reason: &'static str) -> ad_mediation::Decision {
     eprintln!("穿山甲回调未通过：{reason}");
-    CallbackDecision {
+    ad_mediation::Decision {
         valid: false,
         reason,
+        session: String::new(),
+        uid: None,
     }
 }
 fn verify_csj_callback(
     state: &AppState,
     query: &HashMap<String, String>,
-) -> Result<CallbackDecision, ApiError> {
+) -> Result<ad_mediation::Decision, ApiError> {
     if state.config.ad_mode != "csj" {
         return Ok(callback_rejected("当前广告通道未开启"));
     }
-    let Some(secret) = &state.config.csj_reward_secret else {
+    let db = open(state)?;
+    let Some(secret) = ad_mediation::secret(state, &db, "csj")? else {
         return Err(ApiError(
             StatusCode::INTERNAL_SERVER_ERROR,
             "缺少 CSJ_REWARD_SECRET 配置".into(),
@@ -1486,7 +1531,7 @@ fn verify_csj_callback(
     {
         return Ok(callback_rejected("奖励数量必须大于 0"));
     }
-    let expected: (String, i64) = open(state)?.query_row(
+    let expected: (String, i64) = db.query_row(
         "SELECT name,amount FROM csj_reward_config WHERE id=1",
         [],
         |r| Ok((r.get(0)?, r.get(1)?)),
@@ -1496,48 +1541,12 @@ fn verify_csj_callback(
     {
         return Ok(callback_rejected("广告平台奖励配置不匹配"));
     }
-    let extra: Value = match serde_json::from_str(get("extra")) {
-        Ok(value) => value,
-        Err(_) => return Ok(callback_rejected("extra 应为奖励会话 JSON")),
-    };
-    let Some(session_id) = extra.get("reward_session_id").and_then(Value::as_str) else {
-        return Ok(callback_rejected("extra 缺少 reward_session_id"));
-    };
-    let mut db = open(state)?;
-    let tx = db.transaction()?;
-    let session:Option<(i64,String,i64,Option<i64>,Option<String>)>=tx.query_row("SELECT user_id,provider,started_at,verified_at,csj_trans_id FROM reward_sessions WHERE id=?1",[session_id],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional()?;
-    let Some((uid, provider, started_at, verified_at, previous_trans)) = session else {
-        return Ok(callback_rejected("奖励会话不存在"));
-    };
-    if uid.to_string() != get("user_id") || provider != "csj" {
-        return Ok(callback_rejected("奖励会话归属不匹配"));
+    drop(db);
+    let decision = ad_mediation::accept_reward(state, "csj", trans_id, get("user_id"), get("extra"))?;
+    if !decision.valid {
+        eprintln!("穿山甲回调未通过：{}", decision.reason);
     }
-    if now() - started_at > 1800 {
-        return Ok(callback_rejected("奖励会话已过期"));
-    }
-    if verified_at.is_some() {
-        return Ok(CallbackDecision {
-            valid: previous_trans.as_deref() == Some(trans_id),
-            reason: "duplicate_transaction",
-        });
-    }
-    let used: bool = tx.query_row(
-        "SELECT EXISTS(SELECT 1 FROM reward_sessions WHERE csj_trans_id=?1)",
-        [trans_id],
-        |r| r.get(0),
-    )?;
-    if used {
-        return Ok(callback_rejected("交易编号已关联另一份奖励"));
-    }
-    tx.execute(
-        "UPDATE reward_sessions SET verified_at=?1,csj_trans_id=?2 WHERE id=?3",
-        params![now(), trans_id, session_id],
-    )?;
-    tx.commit()?;
-    Ok(CallbackDecision {
-        valid: true,
-        reason: "verified",
-    })
+    Ok(decision)
 }
 async fn csj_callback(
     State(state): State<AppState>,
@@ -1545,12 +1554,14 @@ async fn csj_callback(
     Query(query): Query<HashMap<String, String>>,
 ) -> ApiResult<Value> {
     let decision = verify_csj_callback(&state, &query)?;
-    user_admin::callback_audit(
-        &open(&state)?,
+    let get = |key: &str| query.get(key).map(String::as_str).unwrap_or("");
+    ad_mediation::record_callback(
+        &state,
         &context,
-        &query,
-        decision.valid,
-        decision.reason,
+        "csj",
+        get("trans_id"),
+        get("extra"),
+        &decision,
     )?;
     Ok(Json(json!({"isValid":decision.valid})))
 }
@@ -2029,7 +2040,19 @@ fn hall_item(
     } else if kind == "product" {
         item["product"] = product.expect("positive product weight has an active product");
     } else if kind == "native_ad" {
-        item["ad_code_id"] = json!("993606636");
+        let plan = ad_mediation::plan(state, &db, uid, "feed", "")?;
+        if plan.is_empty() {
+            return Ok(None);
+        }
+        // Clients before 0.3.21 render 穿山甲 only and read ad_code_id.
+        if let Some(code) = ad_mediation::config(&db)?
+            .networks
+            .get("csj")
+            .filter(|n| n.enabled && !n.feed.is_empty())
+        {
+            item["ad_code_id"] = json!(code.feed);
+        }
+        item["ads"] = json!(plan);
     }
     Ok(Some(item))
 }
@@ -2374,6 +2397,8 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     rain::initialize(&db).map_err(|e| e.1)?;
     hall_requests::initialize(&db).map_err(|e| e.1)?;
     reward_policy::initialize(&db).map_err(|e| e.1)?;
+    ad_mediation::initialize(&db).map_err(|e| e.1)?;
+    sms_channel::initialize(&db).map_err(|e| e.1)?;
     business_guard::initialize(&db).map_err(|e| e.1)?;
     campaign::initialize(&db).map_err(|e| e.1)?;
     behavior_audit::initialize(&db)
@@ -2403,6 +2428,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(app_config::admin_routes())
         .merge(home_layout::admin_routes())
         .merge(withdraw_rules::admin_routes())
+        .merge(ad_mediation::admin_routes())
+        .merge(sms_channel::admin_routes())
         .merge(reward_policy::admin_routes())
         .merge(business_guard::admin_routes())
         .merge(campaign::admin_routes())
@@ -2442,6 +2469,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(app_config::routes())
         .merge(home_layout::routes())
         .merge(withdraw_rules::routes())
+        .merge(ad_mediation::routes())
         .merge(reward_policy::routes())
         .merge(rain::routes())
         .merge(hall_requests::routes())
@@ -2526,7 +2554,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("小橙有喜服务启动 http://{}", listener.local_addr()?);
     println!("SQLite {}", state.db_path.display());
     println!(
-        "环境：{}，广告通道：{}，短信：mock，提现：mock",
+        "环境：{}，广告通道：{}，短信：后台配置，提现：mock",
         if state.config.production {
             "production"
         } else {
