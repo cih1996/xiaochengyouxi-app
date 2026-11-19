@@ -170,3 +170,9 @@ APK `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.22-25.apk`，27,11
 2026-11-19 14:20（北京时间）发布 0.3.25（versionCode 28），revision 28，最低支持版本 0（可选更新）。通知栏本地提醒（红包雨开场 / 签到 / 幸运转盘，后台“通知提醒”配置）、商品图片改为正方形完整显示、大厅悬浮入口缩小、DeviceTrust 环境采集始终调用（无定位权限时 permission_denied）。
 
 元数据 `output/小橙有喜-0.3.25-更新发布.json`；不可变地址 `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.25-28.apk`，27,460,807 字节，SHA256 `ae289a9d4a22c344bb1034a3156ab8c9a202075a604ed47e16b9514f60805d0b`，包名与固定证书一致。公网验收通过；同一文件已上传 COS `releases/`（`dl.lingzidev.com` HTTPS 已生效，后台 COS 开关开启后 `/download/` 自动跳转 COS）。
+
+## 0.3.26 发布
+
+2026-11-19 19:22（北京时间）发布 0.3.26（versionCode 29），最低支持版本 0（可选更新）。DeviceTrust SDK 升级到 0.7.11 并接入行为画像统计（`TouchAudit.record` 覆盖全部 Activity 与弹窗，App 内页面切换调用 `BehaviorAudit.screen()`；进程回收前的统计会存盘补报），隐私政策同步更新到 1.8（网页与 App 内）。同批服务端修复：新人礼包 / 幸运转盘 / 红包雨大奖视频的会话超过 30 分钟未验证时释放并重开，避免优量汇等平台的回调因“奖励会话已过期”被拒、App 显示“奖励待确认”。
+
+元数据 `output/小橙有喜-0.3.26-更新发布.json`；不可变地址 `https://orange.lingzidev.com/download/xiaochengyouxi-0.3.26-29.apk`，27,460,812 字节，SHA256 `e0ddeb29e2f065b8524d49b9e89d60451e1fb07b797cb7490f703408b5cd3643`，包名与固定证书一致。公网验收通过（`tools/verify-app-updates-live.py`）。

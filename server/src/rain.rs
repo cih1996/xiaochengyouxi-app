@@ -498,6 +498,23 @@ pub(super) fn attach_session(
     }
     Ok(())
 }
+/// A video session that expired unverified (user quit the ad, or the network never called back)
+/// must not pin its packet forever: unbind it so the next attempt starts a fresh session.
+pub(super) fn release_session(db: &Connection, uid: i64, task: &str, sid: &str) -> Result<(), ApiError> {
+    let changed = if let Some(id) = task.strip_prefix("newbie:") {
+        db.execute("UPDATE newbie_packets SET status='revealed',session_id=NULL WHERE id=?1 AND user_id=?2 AND kind='video' AND status='ad_started' AND session_id=?3", params![id, uid, sid])?
+    } else if let Some(id) = task.strip_prefix("wheel:") {
+        db.execute("UPDATE wheel_chances SET status='locked',session_id=NULL WHERE id=?1 AND user_id=?2 AND source='video' AND status='ad_started' AND session_id=?3", params![id, uid, sid])?
+    } else if let Some(id) = task.strip_prefix("rain:") {
+        db.execute("UPDATE rain_packets SET status='opened',session_id=NULL WHERE id=?1 AND user_id=?2 AND kind='large' AND status='ad_started' AND session_id=?3", params![id, uid, sid])?
+    } else {
+        0
+    };
+    if changed != 1 {
+        return Err(conflict("该红包已处理，请刷新后重试"));
+    }
+    Ok(())
+}
 pub(super) fn completion_packet(
     db: &Connection,
     uid: i64,

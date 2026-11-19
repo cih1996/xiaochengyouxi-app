@@ -1345,15 +1345,20 @@ async fn reward_start(
         return Ok(Json(reward_payload(&state, &tx, sid, uid, title, reward, &provider)?));
     }
     let grand = rain::grand_task(&state, &tx, uid, &input.task_id)?;
-    if let Some(existing) = grand.as_ref().and_then(|v| v.session_id.as_deref()) {
-        let (reward, provider): (i64, String) = tx.query_row(
-            "SELECT reward,provider FROM reward_sessions WHERE id=?1 AND user_id=?2",
+    if let Some(existing) = grand.as_ref().and_then(|v| v.session_id.clone()) {
+        let (reward, provider, started, verified): (i64, String, i64, Option<i64>) = tx.query_row(
+            "SELECT reward,provider,started_at,verified_at FROM reward_sessions WHERE id=?1 AND user_id=?2",
             params![existing, uid],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )?;
-        return Ok(Json(reward_payload(
-            &state, &tx, existing, uid, title, reward, &provider,
-        )?));
+        if verified.is_some() || now() - started <= 1800 {
+            return Ok(Json(reward_payload(
+                &state, &tx, &existing, uid, title, reward, &provider,
+            )?));
+        }
+        // The earlier attempt expired unverified: its callback would now be rejected as
+        // expired, so release the packet and fall through to a fresh session.
+        rain::release_session(&tx, uid, &input.task_id, &existing)?;
     }
     let event = business_guard::validate_local(&state, &tx, &headers, uid, "reward", actual)?;
     // 新人礼包 video packets are separate from the hall's daily packet limit.

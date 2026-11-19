@@ -666,4 +666,16 @@ mod tests {
         }
         assert!(validate(&c).is_ok());
     }
+
+    #[test]
+    fn expired_video_session_releases_the_chance_for_a_new_one() {
+        let db = Connection::open_in_memory().unwrap();
+        db.execute_batch("CREATE TABLE wheel_chances(id TEXT PRIMARY KEY,user_id INTEGER,source TEXT,status TEXT,session_id TEXT);
+            INSERT INTO wheel_chances VALUES('c1',7,'video','ad_started','old');").unwrap();
+        assert!(rain::release_session(&db, 7, "wheel:c1", "other").is_err());
+        rain::release_session(&db, 7, "wheel:c1", "old").unwrap();
+        assert!(attach_session(&db, 7, "c1", "new").unwrap());
+        let sid: String = db.query_row("SELECT session_id FROM wheel_chances WHERE id='c1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(sid, "new");
+    }
 }

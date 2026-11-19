@@ -2,6 +2,8 @@ package com.lingzidev.xiaochengyouxi;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.view.MotionEvent;
+import com.device.trust.secure.TouchAudit;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -31,6 +33,12 @@ import java.util.Set;
  * our own hosts; navigation to any other host is refused. Coins are always settled by the server.
  */
 public final class WebActivity extends Activity {
+  @Override
+  public boolean dispatchTouchEvent(MotionEvent event) {
+    TouchAudit.record(event);
+    return super.dispatchTouchEvent(event);
+  }
+
   static final String EXTRA_URL = "url", EXTRA_TITLE = "title", RESULT_OPEN = "open";
   /** Full-screen page without the title bar (the page draws its own close button). */
   static final String EXTRA_IMMERSIVE = "immersive";

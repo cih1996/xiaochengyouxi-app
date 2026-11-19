@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "latest_version_code": 29,
+  "latest_version_name": "0.3.26",
+  "min_supported_version_code": 0,
+  "title": "小橙有喜有新版本啦",
+  "release_notes": "账户安全保护升级；修复部分视频看完后奖励显示待确认的问题；隐私政策更新",
+  "apk_url": "https://orange.lingzidev.com/download/xiaochengyouxi-0.3.26-29.apk",
+  "apk_sha256": "e0ddeb29e2f065b8524d49b9e89d60451e1fb07b797cb7490f703408b5cd3643",
+  "apk_size_bytes": 27460812
+}

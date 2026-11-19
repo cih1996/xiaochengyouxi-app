@@ -1,6 +1,8 @@
 package com.lingzidev.xiaochengyouxi;
 
 import android.app.Activity;
+import android.view.MotionEvent;
+import com.device.trust.secure.TouchAudit;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -11,6 +13,12 @@ import android.os.Bundle;
  * invitation for the current 新人礼包 round once the user is signed in.
  */
 public final class InviteLinkActivity extends Activity {
+  @Override
+  public boolean dispatchTouchEvent(MotionEvent event) {
+    TouchAudit.record(event);
+    return super.dispatchTouchEvent(event);
+  }
+
   @Override
   protected void onCreate(Bundle state) {
     super.onCreate(state);

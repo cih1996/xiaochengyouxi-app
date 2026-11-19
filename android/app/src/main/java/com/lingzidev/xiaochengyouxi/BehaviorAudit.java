@@ -304,6 +304,8 @@ final class BehaviorAudit {
     if (next == screen) return;
     leaveScreen();
     screen = next;
+    // Pages inside MainActivity are views, not Activities: tell the DeviceTrust behaviour profile.
+    if (foreground) com.device.trust.secure.BehaviorAudit.screen();
     if (foreground && live()) {
       screenSince = SystemClock.elapsedRealtime();
       record(1, 0, 0, 0, "");
