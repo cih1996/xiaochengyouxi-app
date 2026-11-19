@@ -19,6 +19,7 @@ import CosAdmin from "./CosAdmin.vue";
 import NewbieAdmin from "./NewbieAdmin.vue";
 import WheelAdmin from "./WheelAdmin.vue";
 import ReminderAdmin from "./ReminderAdmin.vue";
+import ApiTokenAdmin from "./ApiTokenAdmin.vue";
 import CaptchaAdmin from "./CaptchaAdmin.vue";
 import { openMailWindow } from "./mail-window";
 const props = defineProps({ api: Function, config: Object });
@@ -84,6 +85,7 @@ const cosPanel = ref(null);
 const newbiePanel = ref(null);
 const wheelPanel = ref(null);
 const reminderPanel = ref(null);
+const apiTokenPanel = ref(null);
 const mobileNav = ref(false),
   expandedGroups = ref(["people"]);
 const userAdvanced = ref(false),
@@ -120,6 +122,7 @@ const items = [
   { id: "invitations", label: "邀请管理", icon: "send" },
   { id: "settings", label: "运营设置", icon: "settings" },
   { id: "release", label: "版本发布", icon: "download" },
+  { id: "api-tokens", label: "接口令牌", icon: "shield" },
 ];
 // Deep link: /admin?tab=ad-config opens that page directly.
 const initialTab = new URLSearchParams(location.search).get("tab");
@@ -168,7 +171,7 @@ const groups = [
     id: "system",
     label: "系统设置",
     icon: "settings",
-    children: ["settings", "sms", "cos", "release"],
+    children: ["settings", "sms", "cos", "release", "api-tokens"],
   },
 ];
 const userCenterTabs = ["user-overview", "registrations", "activity"];
@@ -326,6 +329,7 @@ async function refreshCurrent() {
   else if (tab.value === "newbie") await newbiePanel.value?.refresh();
   else if (tab.value === "wheel") await wheelPanel.value?.refresh();
   else if (tab.value === "reminders") await reminderPanel.value?.refresh();
+  else if (tab.value === "api-tokens") await apiTokenPanel.value?.refresh();
   else if (userCenterTabs.includes(tab.value)) await userCenter.value.refresh();
   else if (tab.value === "release") await releasePanel.value.refresh();
   else if (tab.value === "settings")
@@ -719,6 +723,12 @@ onMounted(load);
         <AdStats
           v-if="tab === 'ad-stats'"
           ref="adStatsPanel"
+          :api="api"
+          @unauthorized="fail"
+        />
+        <ApiTokenAdmin
+          v-if="tab === 'api-tokens'"
+          ref="apiTokenPanel"
           :api="api"
           @unauthorized="fail"
         />

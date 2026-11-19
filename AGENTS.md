@@ -32,4 +32,5 @@
 - 风控信号采集遵循用户授权、系统权限和最小必要范围。采集失败与已确认风险分别记录。
 - 后台“首页入口”与旧版转盘已移除（/api/app/home 只为旧版 App 返回空布局）；活动用大厅右上角专属悬浮入口（新人礼包、幸运转盘，见 `docs/NEWBIE-GIFT.md`）。新活动以网页形式放在 `web/public/activity/`，App 内 `WebActivity` 只加载允许域名资源并通过 `window.OrangeApp` 桥接，金币由服务端结算。提现只允许后台“提现档位”中的固定金额，每档可限每日/累计次数；收款账户单独绑定（微信收款码本地识别后只上传 wxp:// 内容）。详见 `docs/HOME-ENTRIES-AND-WEB-ACTIVITIES.md`。
 - 广告由后台“广告配置”决定：穿山甲、快手、百度、优量汇四家，每次请求服务器下发 plan（按概率滑块或固定顺序），App 依次尝试；命中风控时 plan 为空，App 与无填充一样只提示“暂时没有可观看的视频”。激励金币只认各平台已验签的服务器回调。短信通道由后台“短信通道”配置腾讯云短信，SecretKey 只写不读。详见 `docs/ADS-AND-SMS.md`。
+- 测试分发账号由后台“接口令牌”签发的令牌调用 `POST /api/integration/test-accounts`（手机号+密码）创建：绑定平台邀请码并以“人工放行”加入白名单，已注册手机号只加白、不改密码；令牌只存摘要、仅显示一次。详见 `docs/TEST-ACCOUNTS-API.md`。
 - 服务器 `43.142.123.26` 与 DeviceTrust 共用。仅维护本项目端口 38180、orange-rewards 服务、对应目录及两个 orange 域名配置；保留其他项目的服务和 Nginx 配置。

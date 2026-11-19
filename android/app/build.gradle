@@ -1,7 +1,9 @@
 plugins { id 'com.android.application' }
 buildDir = file("${rootProject.projectDir}/build-output/${project.name}")
 def releaseSigning = new Properties()
-rootProject.file('signing/keystore.properties').withInputStream { releaseSigning.load(it) }
+def releaseSigningFile = rootProject.file('signing/keystore.properties')
+// The release keystore is kept out of the source tree; debug builds work without it.
+if (releaseSigningFile.exists()) releaseSigningFile.withInputStream { releaseSigning.load(it) }
 android {
     namespace 'com.lingzidev.xiaochengyouxi'
     compileSdk 35
@@ -16,7 +18,7 @@ android {
     }
     buildFeatures { buildConfig true }
     signingConfigs {
-        release {
+        if (releaseSigningFile.exists()) release {
             storeFile rootProject.file(releaseSigning.getProperty('storeFile'))
             storePassword releaseSigning.getProperty('storePassword')
             keyAlias releaseSigning.getProperty('keyAlias')
@@ -31,7 +33,7 @@ android {
             buildConfigField 'boolean', 'ADS_ENABLED', 'false'
         }
         release {
-            signingConfig signingConfigs.release
+            if (releaseSigningFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             buildConfigField 'String', 'API_BASE_URL', '"https://orange-api.lingzidev.com"'
             // H5 activities are served by the web site; its /api/ is proxied to the same backend.

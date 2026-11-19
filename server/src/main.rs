@@ -47,6 +47,7 @@ mod payout;
 mod reminders;
 mod wheel;
 mod sms_channel;
+mod test_accounts;
 mod trace_lookup;
 mod user_admin;
 mod user_stats;
@@ -2634,6 +2635,7 @@ fn init(state: &AppState) -> Result<(), Box<dyn std::error::Error>> {
     payout::initialize(&db).map_err(|e| e.1)?;
     reminders::initialize(&db).map_err(|e| e.1)?;
     human_check::initialize(&db).map_err(|e| e.1)?;
+    test_accounts::initialize(&db).map_err(|e| e.1)?;
     let has_attempts: bool = db
         .query_row("SELECT COUNT(*) FROM pragma_table_info('sms_codes') WHERE name='attempts'", [], |r| r.get::<_, i64>(0))
         .map(|n| n > 0)
@@ -2678,6 +2680,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(wheel::admin_routes())
         .merge(payout::admin_routes())
         .merge(reminders::admin_routes())
+        .merge(test_accounts::admin_routes())
         .merge(human_check::admin_routes())
         .merge(rain::admin_routes())
         .merge(hall_requests::admin_routes())
@@ -2726,6 +2729,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(wheel::routes())
         .merge(payout::routes())
         .merge(reminders::routes())
+        .merge(test_accounts::routes())
         .merge(device_bootstrap::routes())
         .merge(behavior_audit::public_routes())
         .route("/health", get(|| async { Json(json!({"ok":true})) }))

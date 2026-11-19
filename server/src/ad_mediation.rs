@@ -529,7 +529,7 @@ async fn client_events(
 
 // ---------- admin ----------
 
-fn callback_base(state: &AppState) -> String {
+pub(super) fn callback_base(state: &AppState) -> String {
     env_value("ORANGE_PUBLIC_API_URL").unwrap_or_else(|| {
         if state.config.production {
             "https://orange-api.lingzidev.com".into()

@@ -15,7 +15,7 @@ fn normalize_code(input: &str) -> Result<String, ApiError> {
     }
     Ok(code)
 }
-fn platform_code(db: &Connection) -> Result<String, ApiError> {
+pub(super) fn platform_code(db: &Connection) -> Result<String, ApiError> {
     Ok(db.query_row(
         "SELECT platform_code FROM invitation_settings WHERE id=1",
         [],

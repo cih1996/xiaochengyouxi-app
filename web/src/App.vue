@@ -6,6 +6,7 @@ import LandingPage from "./LandingPage.vue";
 import ActivityWidget from "./ActivityWidget.vue";
 import LegalPage from "./LegalPage.vue";
 import ProductApiDocs from "./ProductApiDocs.vue";
+import TestAccountsApiDocs from "./TestAccountsApiDocs.vue";
 import BindInvitation from "./BindInvitation.vue";
 import InviteLanding from "./InviteLanding.vue";
 import InvitePoster from "./InvitePoster.vue";
@@ -20,7 +21,10 @@ import { readHallStream } from "./hall-stream";
 const tab = ref("hall"),
   route = ref(
     location.pathname.startsWith("/admin")
-      ? "admin"
+      ? new URLSearchParams(location.search).get("doc") === "test-accounts" &&
+        sessionStorage.getItem("orange-admin-token")
+        ? "test-accounts-docs"
+        : "admin"
       : location.pathname === "/docs/product-api"
         ? sessionStorage.getItem("orange-admin-token")
           ? "product-docs"
@@ -651,7 +655,7 @@ function time(s) {
   });
 }
 async function initialize() {
-  if (["privacy", "terms", "product-docs"].includes(route.value)) return;
+  if (["privacy", "terms", "product-docs", "test-accounts-docs"].includes(route.value)) return;
   try {
     config.value = await api("/config");
     if (route.value === "invite") return;
@@ -727,6 +731,7 @@ onUnmounted(() => {
     :type="route"
   />
   <ProductApiDocs v-else-if="route === 'product-docs' && adminSession" />
+  <TestAccountsApiDocs v-else-if="route === 'test-accounts-docs' && adminSession" />
   <InviteLanding
     v-else-if="route === 'invite'"
     :api="api"
